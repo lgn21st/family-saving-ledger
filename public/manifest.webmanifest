@@ -1,0 +1,17 @@
+{
+  "name": "Home Bank",
+  "short_name": "Home Bank",
+  "description": "Family savings ledger",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#1f5a85",
+  "icons": [
+    {
+      "src": "/icons/home-bank.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
