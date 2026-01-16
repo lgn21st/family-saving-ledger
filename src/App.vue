@@ -896,7 +896,7 @@ type AvatarOption = {
   id: string;
   label: string;
   role: Role;
-  seed: string;
+  imagePath: string;
 };
 
 type TransferTarget = Account & { ownerName: string };
@@ -909,18 +909,78 @@ type ChartPoint = {
 const supportedCurrencies = ["SGD", "CNY"];
 
 const avatarOptions: AvatarOption[] = [
-  { id: "parent-1", label: "爸爸", role: "parent", seed: "dad-sunshine" },
-  { id: "parent-2", label: "妈妈", role: "parent", seed: "mom-happy" },
-  { id: "child-1", label: "男孩", role: "child", seed: "kid-boy" },
-  { id: "child-2", label: "女孩", role: "child", seed: "kid-girl" },
-  { id: "child-3", label: "幼儿", role: "child", seed: "kid-tiny" },
-  { id: "child-4", label: "少年", role: "child", seed: "kid-teen" },
-  { id: "child-5", label: "小勇士", role: "child", seed: "kid-hero" },
-  { id: "child-6", label: "探索者", role: "child", seed: "kid-explore" },
-  { id: "child-7", label: "创意派", role: "child", seed: "kid-creative" },
-  { id: "child-8", label: "阳光派", role: "child", seed: "kid-sun" },
-  { id: "child-9", label: "运动派", role: "child", seed: "kid-sport" },
-  { id: "child-10", label: "学者派", role: "child", seed: "kid-scholar" },
+  {
+    id: "parent-1",
+    label: "爸爸微笑",
+    role: "parent",
+    imagePath: "/avatars/01.png",
+  },
+  {
+    id: "parent-2",
+    label: "爸爸认真",
+    role: "parent",
+    imagePath: "/avatars/02.png",
+  },
+  {
+    id: "parent-3",
+    label: "妈妈温柔",
+    role: "parent",
+    imagePath: "/avatars/03.png",
+  },
+  {
+    id: "parent-4",
+    label: "妈妈开心",
+    role: "parent",
+    imagePath: "/avatars/04.png",
+  },
+  {
+    id: "child-1",
+    label: "小可爱",
+    role: "child",
+    imagePath: "/avatars/05.png",
+  },
+  {
+    id: "child-2",
+    label: "小天使",
+    role: "child",
+    imagePath: "/avatars/06.png",
+  },
+  {
+    id: "child-3",
+    label: "小公主",
+    role: "child",
+    imagePath: "/avatars/07.png",
+  },
+  {
+    id: "child-4",
+    label: "小萌宝",
+    role: "child",
+    imagePath: "/avatars/08.png",
+  },
+  {
+    id: "child-5",
+    label: "小花仙",
+    role: "child",
+    imagePath: "/avatars/09.png",
+  },
+  {
+    id: "child-6",
+    label: "小画家",
+    role: "child",
+    imagePath: "/avatars/10.png",
+  },
+  {
+    id: "child-7",
+    label: "小学霸",
+    role: "child",
+    imagePath: "/avatars/11.png",
+  },
+  {
+    id: "child-8",
+    label: "小音乐家",
+    role: "child",
+    imagePath: "/avatars/12.png",
+  },
 ];
 
 const transactionLabels: Record<Transaction["type"], string> = {

@@ -3,49 +3,55 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from "vue";
 
-type Role = 'parent' | 'child'
+type Role = "parent" | "child";
 
 type AvatarOption = {
-  id: string
-  label: string
-  role: Role
-  seed: string
-}
+  id: string;
+  label: string;
+  role: Role;
+  imagePath: string;
+};
 
 type Props = {
-  avatarId?: string | null
-  role: Role
-  class?: string
-  options: AvatarOption[]
-}
+  avatarId?: string | null;
+  role: Role;
+  class?: string;
+  options: AvatarOption[];
+};
 
-const props = defineProps<Props>()
+const props = defineProps<Props>();
 
 const fallbackAvatar: AvatarOption = {
-  id: 'default',
-  label: '家庭成员',
-  role: 'child',
-  seed: 'kid-default'
-}
+  id: "default",
+  label: "家庭成员",
+  role: "child",
+  imagePath: "",
+};
 
-const optionsById = computed(() => new Map(props.options.map((option) => [option.id, option])))
+const optionsById = computed(
+  () => new Map(props.options.map((option) => [option.id, option])),
+);
 
 const avatar = computed(() => {
   if (props.avatarId) {
-    return optionsById.value.get(props.avatarId) ?? fallbackAvatar
+    return optionsById.value.get(props.avatarId) ?? fallbackAvatar;
   }
 
-  return props.options.find((option) => option.role === props.role) ?? props.options[0] ?? fallbackAvatar
-})
+  return (
+    props.options.find((option) => option.role === props.role) ??
+    props.options[0] ??
+    fallbackAvatar
+  );
+});
 
 const avatarUrl = computed(() => {
-  return `https://api.dicebear.com/9.x/big-smile/svg?seed=${encodeURIComponent(avatar.value.seed)}`
-})
+  return avatar.value.imagePath;
+});
 
 const resolvedClass = computed(() => {
-  const base = props.class ?? ''
-  return `${base} rounded-full border-2 border-white shadow-md`
-})
+  const base = props.class ?? "";
+  return `${base} rounded-full border-2 border-white shadow-md`;
+});
 </script>
