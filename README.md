@@ -1,12 +1,12 @@
 # Family Saving Ledger
 
-Family Saving Ledger is the Vue 3 rewrite of the Home Bank family savings ledger. It provides a PIN-based login, parent-managed transactions, child read-only views, and manual monthly interest settlement. The UI is PWA-ready for desktop and mobile.
+Family Saving Ledger is a Vue 3 family savings ledger app. It provides a PIN-based login, parent-managed transactions, child read-only views, and automated monthly interest settlement. The UI is PWA-ready for desktop and mobile.
 
 ## Features
 
 - PIN-based login (4-digit) with parent/child roles
 - Multi-currency accounts grouped by currency
-- Parent actions: deposit, withdrawal, same-currency transfer, manual interest
+- Parent actions: deposit, withdrawal, same-currency transfer
 - Child actions: read-only access to balances and transactions
 - PWA installation for app-like usage
 
@@ -37,7 +37,7 @@ supabase start
 Apply the schema:
 
 ```bash
-psql "<local-connection-url>" -f supabase/schema.sql
+supabase db reset --local
 ```
 
 ### 3) Configure environment variables
@@ -47,6 +47,7 @@ Create `.env.local` in the project root:
 ```bash
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
 ### 4) Run the app
@@ -64,12 +65,13 @@ Tables are defined in `supabase/schema.sql`:
 - `app_users`: PIN login user records (parent/child)
 - `accounts`: account name, currency, owner child, creator
 - `transactions`: ledger entries (deposit/withdrawal/transfer/interest)
-- `interest_config`: global interest rate
+- `settings`: global configuration (interest rate, timezone)
 - `interest_log`: monthly interest audit
+- `cron.job`: scheduled interest runs (Supabase)
 
 ### Seed Data
 
-The database is seeded automatically via `supabase db reset --local`. Seed users and accounts:
+The database is seeded automatically via `supabase db reset --local`.
 
 ```sql
 with parents as (
@@ -85,6 +87,15 @@ children as (
     ('大女儿', 'child', '1111', 'child-2'),
     ('小女儿', 'child', '2222', 'child-3')
   returning id, name
+),
+settings_row as (
+  insert into settings (id, annual_rate, timezone)
+  values ('00000000-0000-0000-0000-000000000001', 10.00, 'Asia/Singapore')
+  on conflict (id) do update
+  set annual_rate = excluded.annual_rate,
+      timezone = excluded.timezone,
+      updated_at = now()
+  returning id
 )
 insert into accounts (name, currency, owner_child_id, created_by)
 values
@@ -110,10 +121,10 @@ values
 
 ## Usage
 
-- Parents log in to add deposits, withdrawals, transfers, and interest.
+- Parents log in to add deposits, withdrawals, and transfers.
 - Children log in to view balances and transaction history.
 - Transfers only work between accounts of the same currency.
-- Interest is applied manually via the "月结息" button.
+- Interest is settled automatically by a Supabase cron job.
 
 ## Scripts
 
@@ -123,7 +134,7 @@ values
 - `npm run lint` - ESLint
 - `npm run test` - run unit tests
 - `npm run test:watch` - watch tests
-- `./test-interest.sh [month]` - test monthly interest calculation locally
+- `npm run settle-interest` - run monthly interest settlement locally
 
 ## Tests
 
@@ -135,36 +146,15 @@ npm run test
 
 ## Monthly Interest Calculation
 
-The app automatically calculates monthly interest on the 1st of each month. The interest calculation is handled by:
+Monthly interest is settled by a Supabase cron job that runs at 09:00 Asia/Singapore time on the 1st of each month (configured as `0 1 1 * *` UTC). The settlement logic lives in `run_monthly_interest()` inside `supabase/schema.sql` and uses the `settings` table for the annual rate and timezone.
 
-1. **Database Function**: `run_monthly_interest()` in `supabase/schema.sql`
-2. **Edge Function**: `supabase/functions/monthly-interest/` for API access
-3. **GitHub Actions**: `.github/workflows/monthly-interest.yml` for scheduling
+### Manual Trigger
 
-### Manual Testing
-
-Test the interest calculation locally:
+Run the settlement locally (requires `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`):
 
 ```bash
-# Calculate interest for current month
-./test-interest.sh
-
-# Calculate interest for specific month
-./test-interest.sh 2024-01
+npm run settle-interest
 ```
-
-### Production Setup
-
-For production, set up the GitHub Actions workflow by:
-
-1. Go to your GitHub repository Settings → Secrets and variables → Actions
-2. Add these repository secrets:
-   - `SUPABASE_URL`: Your Supabase project URL
-   - `SUPABASE_ANON_KEY`: Your Supabase anon key
-3. Add these repository variables:
-   - `SUPABASE_URL`: Your Supabase project URL
-
-The workflow runs automatically on the 1st of each month, or can be triggered manually.
 
 ## PWA Notes
 
@@ -179,7 +169,9 @@ The app includes a web manifest and service worker configuration. Install on iOS
 - `src/App.vue`: main UI and business logic
 - `src/main.ts`: app entry and service worker registration
 - `src/supabaseClient.ts`: Supabase client initialization
+- `scripts/settle-interest.mjs`: local interest settlement task
 - `supabase/schema.sql`: database schema
+- `supabase/migrations/`: database migrations
 - `public/manifest.webmanifest`: PWA manifest
 - `vite.config.ts`: Vite + PWA configuration
 

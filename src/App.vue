@@ -487,15 +487,6 @@
               </p>
             </template>
           </div>
-          <div class="flex items-center gap-2">
-            <button
-              class="rounded-2xl bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="loading || interestPlan.length === 0"
-              @click="handleInterest"
-            >
-              月结息
-            </button>
-          </div>
         </div>
 
         <div
@@ -897,17 +888,6 @@ type Transaction = {
   created_at: string;
 };
 
-type InterestConfig = {
-  id: string;
-  annual_rate: number;
-};
-
-type InterestPlanEntry = {
-  year: number;
-  month: number;
-  amount: number;
-};
-
 type AvatarOption = {
   id: string;
   label: string;
@@ -965,28 +945,6 @@ const formatAmount = (amount: number, currency: string) => {
   return `${amount.toFixed(2)} ${currency}`;
 };
 
-const monthKey = (year: number, month: number) => {
-  return `${year}-${String(month).padStart(2, "0")}`;
-};
-
-const monthKeyFromDate = (date: Date) => {
-  return monthKey(date.getFullYear(), date.getMonth() + 1);
-};
-
-const monthLabel = (year: number, month: number) => {
-  return `${year}年${month}月`;
-};
-
-const parseInterestMonth = (note?: string | null) => {
-  if (!note) return null;
-  const match = note.match(/(\d{4})年(\d{1,2})月结息/);
-  if (!match) return null;
-  return {
-    year: Number(match[1]),
-    month: Number(match[2]),
-  };
-};
-
 const signedAmount = (transaction: Transaction) => {
   const direction =
     transaction.type === "withdrawal" || transaction.type === "transfer_out"
@@ -1000,87 +958,6 @@ const computeBalance = (transactions: Transaction[]) => {
     (total, transaction) => total + signedAmount(transaction),
     0,
   );
-};
-
-const effectiveDateForInterest = (transaction: Transaction) => {
-  if (transaction.type !== "interest") {
-    return new Date(transaction.created_at);
-  }
-
-  const parsed = parseInterestMonth(transaction.note);
-  if (!parsed) {
-    return new Date(transaction.created_at);
-  }
-
-  return new Date(parsed.year, parsed.month, 0, 23, 59, 59, 999);
-};
-
-const buildInterestPlan = (
-  transactions: Transaction[],
-  annualRate: number,
-  now: Date,
-) => {
-  if (transactions.length === 0) return [];
-
-  const sorted = transactions
-    .map((transaction) => ({
-      transaction,
-      effectiveDate: effectiveDateForInterest(transaction),
-    }))
-    .sort(
-      (left, right) =>
-        left.effectiveDate.getTime() - right.effectiveDate.getTime(),
-    );
-
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const firstDate = sorted[0]?.effectiveDate;
-  if (!firstDate) return [];
-
-  const startMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
-  if (startMonth > lastMonthStart) return [];
-
-  const settledMonths = new Set<string>();
-  sorted.forEach(({ transaction }) => {
-    if (transaction.type !== "interest") return;
-    const parsed = parseInterestMonth(transaction.note);
-    const key = parsed
-      ? monthKey(parsed.year, parsed.month)
-      : monthKeyFromDate(new Date(transaction.created_at));
-    settledMonths.add(key);
-  });
-
-  const plan: InterestPlanEntry[] = [];
-  let runningBalance = 0;
-  let index = 0;
-  const cursor = new Date(startMonth);
-
-  while (cursor <= lastMonthStart) {
-    const year = cursor.getFullYear();
-    const month = cursor.getMonth() + 1;
-    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
-
-    while (index < sorted.length) {
-      const entry = sorted[index];
-      if (!entry || entry.effectiveDate > monthEnd) break;
-      runningBalance += signedAmount(entry.transaction);
-      index += 1;
-    }
-
-    const key = monthKey(year, month);
-    if (!settledMonths.has(key) && runningBalance > 0) {
-      const interestAmount = Number(
-        (runningBalance * (annualRate / 12 / 100)).toFixed(2),
-      );
-      if (interestAmount > 0) {
-        plan.push({ year, month, amount: interestAmount });
-        runningBalance += interestAmount;
-      }
-    }
-
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-
-  return plan;
 };
 
 const transactionTone = (transaction: Transaction) => {
@@ -1104,7 +981,6 @@ const selectedLoginUserId = ref<string | null>(null);
 const accounts = ref<Account[]>([]);
 const allTransactions = ref<Transaction[]>([]);
 const selectedAccountId = ref<string | null>(null);
-const interestConfig = ref<InterestConfig | null>(null);
 const status = ref<string | null>(null);
 const loading = ref(false);
 const amountInput = ref("");
@@ -1237,15 +1113,6 @@ const hasMoreTransactions = computed(() => {
   return selectedTransactions.value.length > visibleTransactions.value;
 });
 
-const interestPlan = computed(() => {
-  if (!selectedAccount.value || !interestConfig.value) return [];
-  return buildInterestPlan(
-    selectedTransactions.value,
-    interestConfig.value.annual_rate,
-    new Date(Date.now()),
-  );
-});
-
 const chartPoints = computed<ChartPoint[]>(() => {
   if (!selectedAccount.value) return [];
   if (selectedTransactions.value.length === 0) return [];
@@ -1258,7 +1125,7 @@ const chartPoints = computed<ChartPoint[]>(() => {
   const accountTransactions = selectedTransactions.value
     .map((transaction) => ({
       transaction,
-      effectiveDate: effectiveDateForInterest(transaction),
+      effectiveDate: new Date(transaction.created_at),
     }))
     .sort(
       (left, right) =>
@@ -1363,19 +1230,6 @@ const loadAccounts = async (currentUser: AppUser) => {
   accounts.value = loadedAccounts;
   await loadTransactions(loadedAccounts);
   loading.value = false;
-};
-
-const loadInterestConfig = async () => {
-  const { data, error } = await supabase
-    .from("interest_config")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    status.value = error.message;
-    return;
-  }
-  interestConfig.value = data ?? { id: "default", annual_rate: 5 };
 };
 
 const loadChildUsers = async () => {
@@ -1843,42 +1697,6 @@ const handleTransfer = async () => {
   loading.value = false;
 };
 
-const handleInterest = async () => {
-  if (!selectedAccount.value || !user.value || !interestConfig.value) return;
-  if (loading.value) return;
-
-  if (interestPlan.value.length === 0) {
-    status.value = "暂无可结息月份。";
-    return;
-  }
-
-  loading.value = true;
-  const payload = interestPlan.value.map((entry) => ({
-    account_id: selectedAccount.value?.id,
-    type: "interest" as const,
-    amount: entry.amount,
-    currency: selectedAccount.value?.currency ?? "",
-    note: `${monthLabel(entry.year, entry.month)}结息，利率 ${interestConfig.value?.annual_rate}%`,
-    related_account_id: null,
-    created_by: user.value?.id ?? "",
-  }));
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert(payload)
-    .select();
-
-  if (error) {
-    status.value = error.message;
-    loading.value = false;
-    return;
-  }
-
-  allTransactions.value = [...allTransactions.value, ...(data ?? [])];
-  status.value = "已完成结息。";
-  loading.value = false;
-};
-
 const getTransactionNote = (transaction: Transaction) => {
   if (transaction.related_account_id) {
     const relatedAccount = accounts.value.find(
@@ -2012,7 +1830,6 @@ onMounted(async () => {
 watch(user, async (currentUser) => {
   if (!currentUser) return;
   await loadAccounts(currentUser);
-  await loadInterestConfig();
   if (currentUser.role === "parent") {
     await loadChildUsers();
   }

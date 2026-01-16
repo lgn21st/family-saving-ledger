@@ -1,8 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/vue";
+import { render, screen, within } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
 
 import App from "../App.vue";
+import { vi } from "vitest";
 
 type Role = "parent" | "child";
 
@@ -37,16 +37,17 @@ type Transaction = {
   created_at: string;
 };
 
-type InterestConfig = {
+type Settings = {
   id: string;
   annual_rate: number;
+  timezone: string;
 };
 
 type DataStore = {
   app_users: AppUser[];
   accounts: Account[];
   transactions: Transaction[];
-  interest_config: InterestConfig[];
+  settings: Settings[];
 };
 
 type DataRow<T extends keyof DataStore> = DataStore[T][number];
@@ -56,7 +57,7 @@ function createDefaultData() {
     app_users: [],
     accounts: [],
     transactions: [],
-    interest_config: [{ id: "config", annual_rate: 5 }],
+    settings: [{ id: "settings", annual_rate: 5, timezone: "Asia/Singapore" }],
   };
 }
 
@@ -69,7 +70,7 @@ function createSupabaseMock() {
       ...override,
       app_users: override.app_users ?? dataStore.app_users,
       accounts: override.accounts ?? dataStore.accounts,
-      interest_config: override.interest_config ?? dataStore.interest_config,
+      settings: override.settings ?? dataStore.settings,
       transactions: override.transactions ?? dataStore.transactions,
     };
   };
@@ -280,10 +281,6 @@ describe("Home Bank UI", () => {
   beforeEach(() => {
     loadMockData({});
     sessionStorage.clear();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   it("shows validation when PIN length is invalid", async () => {
@@ -591,128 +588,6 @@ describe("Home Bank UI", () => {
     expect(screen.getAllByText("心愿账户").length).toBeGreaterThan(0);
   });
 
-  it("creates an interest transaction", async () => {
-    const nowSpy = vi
-      .spyOn(Date, "now")
-      .mockReturnValue(new Date("2024-02-10T12:00:00Z").valueOf());
-
-    loadMockData({
-      app_users: [
-        { id: "parent", name: "妈妈", role: "parent", pin: "2222" },
-        { id: "child-1", name: "大女儿", role: "child", pin: "1111" },
-      ],
-      accounts: [
-        {
-          id: "acc-1",
-          name: "大女儿-日常",
-          currency: "CNY",
-          owner_child_id: "child-1",
-          created_by: "parent",
-          is_active: true,
-          created_at: "2024-01-01T08:00:00Z",
-        },
-      ],
-      transactions: [
-        {
-          id: "t-1",
-          account_id: "acc-1",
-          type: "deposit",
-          amount: 100,
-          currency: "CNY",
-          note: "储蓄",
-          related_account_id: null,
-          created_by: "parent",
-          created_at: "2024-01-01T10:00:00Z",
-        },
-      ],
-    });
-
-    render(App);
-    const user = userEvent.setup();
-
-    await loginAs(user, "妈妈", "2222");
-    await selectChild(user, "大女儿");
-    await selectAccount(user, "大女儿-日常");
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "月结息" })).not.toBeDisabled();
-    });
-
-    await user.click(screen.getByRole("button", { name: "月结息" }));
-
-    expect(await screen.findByText("已完成结息。")).toBeInTheDocument();
-    expect(screen.getByText("2024年1月结息，利率 5%")).toBeInTheDocument();
-    expect(screen.getAllByText("100.42 CNY").length).toBeGreaterThan(0);
-    nowSpy.mockRestore();
-  });
-
-  it("settles unpaid months and skips settled ones", async () => {
-    const nowSpy = vi
-      .spyOn(Date, "now")
-      .mockReturnValue(new Date("2024-04-10T12:00:00Z").valueOf());
-
-    loadMockData({
-      app_users: [
-        { id: "parent", name: "妈妈", role: "parent", pin: "2222" },
-        { id: "child-1", name: "大女儿", role: "child", pin: "1111" },
-      ],
-      accounts: [
-        {
-          id: "acc-1",
-          name: "大女儿-日常",
-          currency: "CNY",
-          owner_child_id: "child-1",
-          created_by: "parent",
-          is_active: true,
-          created_at: "2024-01-01T08:00:00Z",
-        },
-      ],
-      transactions: [
-        {
-          id: "t-1",
-          account_id: "acc-1",
-          type: "deposit",
-          amount: 100,
-          currency: "CNY",
-          note: "储蓄",
-          related_account_id: null,
-          created_by: "parent",
-          created_at: "2024-01-01T10:00:00Z",
-        },
-        {
-          id: "t-2",
-          account_id: "acc-1",
-          type: "interest",
-          amount: 0.42,
-          currency: "CNY",
-          note: "2024年2月结息，利率 5%",
-          related_account_id: null,
-          created_by: "parent",
-          created_at: "2024-04-01T10:00:00Z",
-        },
-      ],
-    });
-
-    render(App);
-    const user = userEvent.setup();
-
-    await loginAs(user, "妈妈", "2222");
-    await selectChild(user, "大女儿");
-    await selectAccount(user, "大女儿-日常");
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "月结息" })).not.toBeDisabled();
-    });
-
-    await user.click(screen.getByRole("button", { name: "月结息" }));
-
-    expect(await screen.findByText("已完成结息。")).toBeInTheDocument();
-    expect(screen.getByText("2024年1月结息，利率 5%")).toBeInTheDocument();
-    expect(screen.getByText("2024年3月结息，利率 5%")).toBeInTheDocument();
-    expect(screen.getAllByText("2024年2月结息，利率 5%").length).toBe(1);
-    nowSpy.mockRestore();
-  });
-
   it("renders child view as read-only", async () => {
     loadMockData({
       app_users: [
@@ -757,9 +632,6 @@ describe("Home Bank UI", () => {
 
     expect(screen.queryByText("新增/扣减")).not.toBeInTheDocument();
     expect(screen.queryByText("同币种转账")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "月结息" }),
-    ).not.toBeInTheDocument();
 
     await user.click(
       await screen.findByRole("button", { name: /大女儿-日常/ }),

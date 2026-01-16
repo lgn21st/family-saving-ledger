@@ -1,33 +1,4 @@
-create table if not exists app_users (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  role text not null check (role in ('parent', 'child')),
-  pin text not null,
-  avatar_id text,
-  created_at timestamp with time zone default now()
-);
-
-create table if not exists accounts (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  currency text not null,
-  owner_child_id uuid not null references app_users(id),
-  created_by uuid not null references app_users(id),
-  is_active boolean not null default true,
-  created_at timestamp with time zone default now()
-);
-
-create table if not exists transactions (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id),
-  type text not null check (type in ('deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'interest')),
-  amount numeric(12, 2) not null,
-  currency text not null,
-  note text,
-  related_account_id uuid references accounts(id),
-  created_by uuid not null references app_users(id),
-  created_at timestamp with time zone default now()
-);
+create extension if not exists pg_cron;
 
 create table if not exists settings (
   id uuid primary key default gen_random_uuid(),
@@ -36,15 +7,14 @@ create table if not exists settings (
   updated_at timestamp with time zone default now()
 );
 
-create table if not exists interest_log (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id) on delete cascade,
-  month date not null,
-  annual_rate numeric(5, 2) not null,
-  interest_amount numeric(12, 2) not null,
-  created_at timestamp with time zone default now(),
-  unique (account_id, month)
-);
+insert into settings (id, annual_rate, timezone)
+values ('00000000-0000-0000-0000-000000000001', 10.00, 'Asia/Singapore')
+on conflict (id) do update
+set annual_rate = excluded.annual_rate,
+    timezone = excluded.timezone,
+    updated_at = now();
+
+drop table if exists interest_config;
 
 drop function if exists run_monthly_interest(date);
 
@@ -200,9 +170,13 @@ begin
 end;
 $$;
 
-insert into settings (id, annual_rate, timezone)
-values ('00000000-0000-0000-0000-000000000001', 10.00, 'Asia/Singapore')
-on conflict (id) do update
-set annual_rate = excluded.annual_rate,
-    timezone = excluded.timezone,
-    updated_at = now();
+select cron.unschedule('monthly-interest-calculation')
+where exists (
+  select 1 from cron.job where jobname = 'monthly-interest-calculation'
+);
+
+select cron.schedule(
+  'monthly-interest-calculation',
+  '0 1 1 * *',
+  $$ select run_monthly_interest(); $$
+);
