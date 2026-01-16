@@ -15,19 +15,19 @@ children as (
 insert into accounts (name, currency, owner_child_id, created_by)
 values
   (
-    '大女儿-日常',
+    '中国-日常',
     'CNY',
     (select id from children where name = '大女儿'),
     (select id from parents where name = '爸爸')
   ),
   (
-    '大女儿-目标基金',
+    '中国 - 目标基金',
     'CNY',
     (select id from children where name = '大女儿'),
     (select id from parents where name = '爸爸')
   ),
   (
-    '小女儿-日常',
+    '中国 - 日常',
     'CNY',
     (select id from children where name = '小女儿'),
     (select id from parents where name = '妈妈')

@@ -3,13 +3,21 @@
     v-if="!user"
     class="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-500 px-4"
   >
-    <div class="w-full max-w-2xl rounded-3xl bg-white/90 p-8 text-center shadow-2xl backdrop-blur">
+    <div
+      class="w-full max-w-2xl rounded-3xl bg-white/90 p-8 text-center shadow-2xl backdrop-blur"
+    >
       <h1 class="text-2xl font-semibold text-slate-900">Home Bank</h1>
       <p class="mt-2 text-sm text-slate-600">请选择用户并输入 PIN。</p>
-      <span v-if="!isSupabaseConfigured" class="mt-6 block text-sm text-rose-600">
+      <span
+        v-if="!isSupabaseConfigured"
+        class="mt-6 block text-sm text-rose-600"
+      >
         请先配置 Supabase 连接。
       </span>
-      <span v-else-if="loginUsers.length === 0" class="mt-6 block text-sm text-slate-500">
+      <span
+        v-else-if="loginUsers.length === 0"
+        class="mt-6 block text-sm text-slate-500"
+      >
         暂无用户，请先创建家庭成员。
       </span>
       <template v-else>
@@ -23,14 +31,23 @@
               'flex items-center gap-4 rounded-3xl border px-4 py-3 text-left transition',
               entry.id === selectedLoginUserId
                 ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200'
-                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50'
+                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50',
             ]"
             @click="selectLoginUser(entry.id)"
           >
-            <Avatar :avatar-id="entry.avatar_id" :options="avatarOptions" :role="entry.role" class="h-16 w-16" />
+            <Avatar
+              :avatar-id="entry.avatar_id"
+              :options="avatarOptions"
+              :role="entry.role"
+              class="h-16 w-16"
+            />
             <div>
-              <p class="text-lg font-semibold text-slate-800">{{ entry.name }}</p>
-              <p class="text-sm text-slate-500">{{ entry.role === 'parent' ? '家长' : '孩子' }}</p>
+              <p class="text-lg font-semibold text-slate-800">
+                {{ entry.name }}
+              </p>
+              <p class="text-sm text-slate-500">
+                {{ entry.role === "parent" ? "家长" : "孩子" }}
+              </p>
             </div>
           </button>
         </div>
@@ -53,24 +70,34 @@
           >
             {{
               loading
-                ? '登录中...'
+                ? "登录中..."
                 : selectedLoginUser
                   ? `登录 ${selectedLoginUser.name}`
-                  : '登录'
+                  : "登录"
             }}
           </button>
         </form>
       </template>
-      <span v-if="sessionStatus || status" class="mt-3 block text-sm text-rose-600">
+      <span
+        v-if="sessionStatus || status"
+        class="mt-3 block text-sm text-rose-600"
+      >
         {{ sessionStatus ?? status }}
       </span>
     </div>
   </main>
 
   <div v-else class="flex min-h-screen flex-col">
-    <header class="flex flex-wrap items-center justify-between gap-4 bg-brand-600 px-6 py-4 text-white shadow-lg">
+    <header
+      class="flex flex-wrap items-center justify-between gap-4 bg-brand-600 px-6 py-4 text-white shadow-lg"
+    >
       <div class="flex items-center gap-4">
-        <Avatar :avatar-id="user.avatar_id" :options="avatarOptions" :role="user.role" class="h-16 w-16" />
+        <Avatar
+          :avatar-id="user.avatar_id"
+          :options="avatarOptions"
+          :role="user.role"
+          class="h-16 w-16"
+        />
         <div>
           <h2 class="text-xl font-semibold">{{ user.name }}</h2>
           <span class="text-sm text-white/80">Home Bank</span>
@@ -83,10 +110,10 @@
           class="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold text-white transition hover:bg-white/30"
           @click="showChildManager = !showChildManager"
         >
-          {{ showChildManager ? '关闭孩子管理' : '管理孩子' }}
+          {{ showChildManager ? "关闭孩子管理" : "管理孩子" }}
         </button>
         <span class="rounded-full bg-white/30 px-3 py-1 text-xs font-semibold">
-          {{ user.role === 'parent' ? '家长' : '孩子' }}
+          {{ user.role === "parent" ? "家长" : "孩子" }}
         </span>
         <button
           class="rounded-full bg-white px-4 py-1 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-100"
@@ -131,11 +158,16 @@
               'flex flex-col items-center gap-3 rounded-3xl border px-4 py-3 text-sm transition',
               avatar.id === newChildAvatarId
                 ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200'
-                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50'
+                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50',
             ]"
             @click="newChildAvatarId = avatar.id"
           >
-              <Avatar :avatar-id="avatar.id" :options="avatarOptions" role="child" class="h-16 w-16" />
+            <Avatar
+              :avatar-id="avatar.id"
+              :options="avatarOptions"
+              role="child"
+              class="h-16 w-16"
+            />
             <span class="text-slate-600">{{ avatar.label }}</span>
           </button>
         </div>
@@ -146,21 +178,31 @@
         >
           创建孩子
         </button>
-        <ul v-if="childUsers.length > 0" class="mt-4 space-y-2 text-sm text-slate-700">
+        <ul
+          v-if="childUsers.length > 0"
+          class="mt-4 space-y-2 text-sm text-slate-700"
+        >
           <li
             v-for="child in childUsers"
             :key="child.id"
             class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3"
           >
             <div class="flex items-center gap-4">
-              <Avatar :avatar-id="child.avatar_id" :options="avatarOptions" role="child" class="h-16 w-16" />
+              <Avatar
+                :avatar-id="child.avatar_id"
+                :options="avatarOptions"
+                role="child"
+                class="h-16 w-16"
+              />
               <input
                 v-if="editingChildId === child.id"
                 v-model="editingChildName"
                 type="text"
                 class="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
-              <span v-else class="text-base font-semibold">{{ child.name }}</span>
+              <span v-else class="text-base font-semibold">{{
+                child.name
+              }}</span>
             </div>
             <div class="flex items-center gap-2">
               <template v-if="editingChildId === child.id">
@@ -209,7 +251,9 @@
           :key="currency"
           class="rounded-3xl bg-white/90 p-5 text-center shadow-lg backdrop-blur"
         >
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <p
+            class="text-xs font-semibold uppercase tracking-wide text-slate-400"
+          >
             {{ currency }} 资产总览
           </p>
           <p class="mt-3 text-3xl font-semibold text-slate-800">
@@ -218,7 +262,9 @@
         </div>
       </div>
 
-      <section class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
+      <section
+        class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
+      >
         <h4 class="text-sm font-semibold text-slate-700">孩子列表</h4>
         <p v-if="childUsers.length === 0" class="mt-3 text-sm text-slate-500">
           暂无孩子，请先创建。
@@ -232,20 +278,32 @@
               'flex min-w-[160px] flex-col items-center gap-3 rounded-3xl border px-4 py-3 text-sm transition',
               selectedChildId === child.id
                 ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200'
-                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50'
+                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50',
             ]"
             @click="selectedChildId = child.id"
           >
-            <Avatar :avatar-id="child.avatar_id" :options="avatarOptions" role="child" class="h-16 w-16" />
-            <span class="text-base font-semibold text-slate-700">{{ child.name }}</span>
+            <Avatar
+              :avatar-id="child.avatar_id"
+              :options="avatarOptions"
+              role="child"
+              class="h-16 w-16"
+            />
+            <span class="text-base font-semibold text-slate-700">{{
+              child.name
+            }}</span>
           </button>
         </div>
       </section>
 
-      <section class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
+      <section
+        class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
+      >
         <div class="flex items-center justify-between">
           <h4 class="text-sm font-semibold text-slate-700">账户列表</h4>
-          <span v-if="selectedChild" class="text-xs font-semibold text-slate-400">
+          <span
+            v-if="selectedChild"
+            class="text-xs font-semibold text-slate-400"
+          >
             {{ selectedChild?.name }}
           </span>
         </div>
@@ -254,45 +312,67 @@
           v-if="selectedChildId"
           class="mt-4 rounded-2xl border border-dashed border-brand-200 bg-white/70 p-4"
         >
-          <h5 class="text-sm font-semibold text-slate-600">创建账户</h5>
-          <div class="mt-3 flex flex-col gap-3 lg:flex-row">
-            <input
-              v-model="newAccountName"
-              type="text"
-              placeholder="账户名称"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-            <select
-              v-model="newAccountCurrency"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            >
-              <option v-for="currency in supportedCurrencies" :key="currency" :value="currency">
-                {{ currency }}
-              </option>
-            </select>
-          </div>
-          <div class="mt-3 flex flex-col gap-3 lg:flex-row">
-            <select
-              v-model="newAccountOwnerId"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 sm:w-40"
-            >
-              <option value="">选择孩子</option>
-              <option v-for="child in childUsers" :key="child.id" :value="child.id">
-                {{ child.name }}
-              </option>
-            </select>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h5 class="text-sm font-semibold text-slate-600">创建账户</h5>
             <button
-              class="min-w-[96px] rounded-2xl bg-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="loading"
-              @click="handleCreateAccount"
+              type="button"
+              class="rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-700"
+              @click="showAccountCreator = !showAccountCreator"
             >
-              创建
+              {{ showAccountCreator ? "收起" : "创建账户" }}
             </button>
+          </div>
+          <div v-if="showAccountCreator" class="mt-4">
+            <div class="flex flex-col gap-3 lg:flex-row">
+              <input
+                v-model="newAccountName"
+                type="text"
+                placeholder="账户名称"
+                class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              />
+              <select
+                v-model="newAccountCurrency"
+                class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              >
+                <option
+                  v-for="currency in supportedCurrencies"
+                  :key="currency"
+                  :value="currency"
+                >
+                  {{ currency }}
+                </option>
+              </select>
+            </div>
+            <div class="mt-3 flex flex-col gap-3 lg:flex-row">
+              <select
+                v-model="newAccountOwnerId"
+                class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 sm:w-40"
+              >
+                <option value="">选择孩子</option>
+                <option
+                  v-for="child in childUsers"
+                  :key="child.id"
+                  :value="child.id"
+                >
+                  {{ child.name }}
+                </option>
+              </select>
+              <button
+                class="min-w-[96px] rounded-2xl bg-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="loading"
+                @click="handleCreateAccount"
+              >
+                创建
+              </button>
+            </div>
           </div>
         </div>
 
         <template v-if="selectedChildId">
-          <p v-if="selectedChildAccounts.length === 0" class="mt-4 text-sm text-slate-500">
+          <p
+            v-if="selectedChildAccounts.length === 0"
+            class="mt-4 text-sm text-slate-500"
+          >
             该孩子暂无账户。
           </p>
           <div v-else class="mt-4 grid gap-3 md:grid-cols-2">
@@ -303,7 +383,7 @@
                 'flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition',
                 account.id === selectedAccountId
                   ? 'bg-brand-100 text-brand-900 ring-2 ring-brand-300'
-                  : 'bg-white text-slate-700 shadow-sm hover:bg-brand-50'
+                  : 'bg-white text-slate-700 shadow-sm hover:bg-brand-50',
               ]"
             >
               <button
@@ -324,7 +404,9 @@
               </button>
               <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold text-slate-500">
-                  {{ formatAmount(balances[account.id] ?? 0, account.currency) }}
+                  {{
+                    formatAmount(balances[account.id] ?? 0, account.currency)
+                  }}
                 </span>
                 <template v-if="editingAccountId === account.id">
                   <button
@@ -391,10 +473,17 @@
               </div>
             </template>
             <template v-else>
-              <h3 class="text-lg font-semibold text-slate-800">{{ selectedAccount.name }}</h3>
+              <h3 class="text-lg font-semibold text-slate-800">
+                {{ selectedAccount.name }}
+              </h3>
               <p class="text-sm text-slate-500">
                 币种 {{ selectedAccount.currency }} · 余额
-                {{ formatAmount(balances[selectedAccount.id] ?? 0, selectedAccount.currency) }}
+                {{
+                  formatAmount(
+                    balances[selectedAccount.id] ?? 0,
+                    selectedAccount.currency,
+                  )
+                }}
               </p>
             </template>
           </div>
@@ -409,13 +498,19 @@
           </div>
         </div>
 
-        <div class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
+        <div
+          class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
+        >
           <div class="flex items-center justify-between">
             <div>
-              <h4 class="text-sm font-semibold text-slate-700">近 30 天余额趋势</h4>
+              <h4 class="text-sm font-semibold text-slate-700">
+                近 30 天余额趋势
+              </h4>
               <p class="text-xs text-slate-400">按日累计余额</p>
             </div>
-            <span class="text-xs font-semibold text-brand-600">{{ selectedAccount.currency }}</span>
+            <span class="text-xs font-semibold text-brand-600">{{
+              selectedAccount.currency
+            }}</span>
           </div>
           <div class="mt-4 h-32">
             <svg v-if="chartPath" viewBox="0 0 100 100" class="h-full w-full">
@@ -442,7 +537,17 @@
           v-if="canEdit"
           class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
         >
-          <h4 class="text-sm font-semibold text-slate-700">新增/扣减</h4>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="text-sm font-semibold text-slate-700">新增/扣减</h4>
+            <span
+              v-if="selectedChild"
+              class="text-xs font-semibold text-slate-400"
+            >
+              当前：{{ selectedChild.name }} ·
+              {{ selectedAccount?.name ?? "未选择账户" }}
+            </span>
+          </div>
+
           <div class="mt-4 flex flex-col gap-3 lg:flex-row">
             <input
               v-model="amountInput"
@@ -507,7 +612,12 @@
             </select>
           </div>
           <p class="mt-3 text-xs text-slate-500">
-            可转账余额：{{ formatAmount(balances[selectedAccount.id] ?? 0, selectedAccount.currency) }}
+            可转账余额：{{
+              formatAmount(
+                balances[selectedAccount.id] ?? 0,
+                selectedAccount.currency,
+              )
+            }}
           </p>
           <button
             class="mt-3 rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
@@ -518,9 +628,14 @@
           </button>
         </section>
 
-        <section class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
+        <section
+          class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
+        >
           <h4 class="text-sm font-semibold text-slate-700">交易记录</h4>
-          <p v-if="selectedTransactions.length === 0" class="mt-3 text-sm text-slate-500">
+          <p
+            v-if="selectedTransactions.length === 0"
+            class="mt-3 text-sm text-slate-500"
+          >
             暂无交易。
           </p>
           <template v-else>
@@ -534,10 +649,16 @@
                 <div class="flex-1">
                   <div class="flex items-center justify-between">
                     <div>
-                      <span class="font-semibold">{{ transactionLabels[transaction.type] }}</span>
-                      <span class="ml-2 text-slate-500">{{ getTransactionNote(transaction) }}</span>
+                      <span class="font-semibold">{{
+                        transactionLabels[transaction.type]
+                      }}</span>
+                      <span class="ml-2 text-slate-500">{{
+                        getTransactionNote(transaction)
+                      }}</span>
                     </div>
-                    <span :class="['font-semibold', transactionTone(transaction)]">
+                    <span
+                      :class="['font-semibold', transactionTone(transaction)]"
+                    >
                       {{ formatSignedAmount(transaction) }}
                     </span>
                   </div>
@@ -568,7 +689,9 @@
             :key="currency"
             class="rounded-3xl bg-white/90 p-5 text-center shadow-lg backdrop-blur"
           >
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <p
+              class="text-xs font-semibold uppercase tracking-wide text-slate-400"
+            >
               {{ currency }} 资产总览
             </p>
             <p class="mt-3 text-3xl font-semibold text-slate-800">
@@ -583,11 +706,18 @@
       >
         <h3 class="text-sm font-semibold text-slate-600">账户</h3>
         <div class="mt-4 space-y-4">
-          <div v-for="(currencyAccounts, currency) in groupedAccounts" :key="currency">
-            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <div
+            v-for="(currencyAccounts, currency) in groupedAccounts"
+            :key="currency"
+          >
+            <h4
+              class="text-xs font-semibold uppercase tracking-wide text-slate-400"
+            >
               {{ currency }}
             </h4>
-            <div class="mt-2 flex gap-3 overflow-x-auto pb-2 lg:block lg:space-y-2 lg:overflow-visible">
+            <div
+              class="mt-2 flex gap-3 overflow-x-auto pb-2 lg:block lg:space-y-2 lg:overflow-visible"
+            >
               <button
                 v-for="account in currencyAccounts"
                 :key="account.id"
@@ -601,7 +731,9 @@
               >
                 <span>{{ account.name }}</span>
                 <span class="text-xs font-semibold text-slate-500">
-                  {{ formatAmount(balances[account.id] ?? 0, account.currency) }}
+                  {{
+                    formatAmount(balances[account.id] ?? 0, account.currency)
+                  }}
                 </span>
               </button>
             </div>
@@ -613,21 +745,34 @@
         <template v-if="selectedAccount">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h3 class="text-lg font-semibold text-slate-800">{{ selectedAccount.name }}</h3>
+              <h3 class="text-lg font-semibold text-slate-800">
+                {{ selectedAccount.name }}
+              </h3>
               <p class="text-sm text-slate-500">
                 币种 {{ selectedAccount.currency }} · 余额
-                {{ formatAmount(balances[selectedAccount.id] ?? 0, selectedAccount.currency) }}
+                {{
+                  formatAmount(
+                    balances[selectedAccount.id] ?? 0,
+                    selectedAccount.currency,
+                  )
+                }}
               </p>
             </div>
           </div>
 
-          <div class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
+          <div
+            class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
+          >
             <div class="flex items-center justify-between">
               <div>
-                <h4 class="text-sm font-semibold text-slate-700">近 30 天余额趋势</h4>
+                <h4 class="text-sm font-semibold text-slate-700">
+                  近 30 天余额趋势
+                </h4>
                 <p class="text-xs text-slate-400">按日累计余额</p>
               </div>
-              <span class="text-xs font-semibold text-brand-600">{{ selectedAccount.currency }}</span>
+              <span class="text-xs font-semibold text-brand-600">{{
+                selectedAccount.currency
+              }}</span>
             </div>
             <div class="mt-4 h-32">
               <svg v-if="chartPath" viewBox="0 0 100 100" class="h-full w-full">
@@ -650,9 +795,14 @@
             </div>
           </div>
 
-          <div class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
+          <div
+            class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
+          >
             <h4 class="text-sm font-semibold text-slate-700">交易记录</h4>
-            <p v-if="selectedTransactions.length === 0" class="mt-3 text-sm text-slate-500">
+            <p
+              v-if="selectedTransactions.length === 0"
+              class="mt-3 text-sm text-slate-500"
+            >
               暂无交易。
             </p>
             <template v-else>
@@ -666,10 +816,16 @@
                   <div class="flex-1">
                     <div class="flex items-center justify-between">
                       <div>
-                        <span class="font-semibold">{{ transactionLabels[transaction.type] }}</span>
-                        <span class="ml-2 text-slate-500">{{ getTransactionNote(transaction) }}</span>
+                        <span class="font-semibold">{{
+                          transactionLabels[transaction.type]
+                        }}</span>
+                        <span class="ml-2 text-slate-500">{{
+                          getTransactionNote(transaction)
+                        }}</span>
                       </div>
-                      <span :class="['font-semibold', transactionTone(transaction)]">
+                      <span
+                        :class="['font-semibold', transactionTone(transaction)]"
+                      >
                         {{ formatSignedAmount(transaction) }}
                       </span>
                     </div>
@@ -703,560 +859,663 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { isSupabaseConfigured, supabase } from './supabaseClient'
-import Avatar from './components/Avatar.vue'
-import TransactionIcon from './components/TransactionIcon.vue'
+import { computed, onMounted, ref, watch } from "vue";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import Avatar from "./components/Avatar.vue";
+import TransactionIcon from "./components/TransactionIcon.vue";
 
-type Role = 'parent' | 'child'
+type Role = "parent" | "child";
 
 type AppUser = {
-  id: string
-  name: string
-  role: Role
-  pin: string
-  avatar_id?: string | null
-}
+  id: string;
+  name: string;
+  role: Role;
+  pin: string;
+  avatar_id?: string | null;
+  created_at?: string;
+};
 
 type Account = {
-  id: string
-  name: string
-  currency: string
-  owner_child_id: string
-  created_by: string
-  is_active: boolean
-  created_at?: string
-}
+  id: string;
+  name: string;
+  currency: string;
+  owner_child_id: string;
+  created_by: string;
+  is_active: boolean;
+  created_at?: string;
+};
 
 type Transaction = {
-  id: string
-  account_id: string
-  type: 'deposit' | 'withdrawal' | 'transfer_in' | 'transfer_out' | 'interest'
-  amount: number
-  currency: string
-  note: string | null
-  related_account_id: string | null
-  created_by: string
-  created_at: string
-}
+  id: string;
+  account_id: string;
+  type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "interest";
+  amount: number;
+  currency: string;
+  note: string | null;
+  related_account_id: string | null;
+  created_by: string;
+  created_at: string;
+};
 
 type InterestConfig = {
-  id: string
-  annual_rate: number
-}
+  id: string;
+  annual_rate: number;
+};
 
 type InterestPlanEntry = {
-  year: number
-  month: number
-  amount: number
-}
+  year: number;
+  month: number;
+  amount: number;
+};
 
 type AvatarOption = {
-  id: string
-  label: string
-  role: Role
-  seed: string
-}
+  id: string;
+  label: string;
+  role: Role;
+  seed: string;
+};
 
-type TransferTarget = Account & { ownerName: string }
+type TransferTarget = Account & { ownerName: string };
 
 type ChartPoint = {
-  date: Date
-  balance: number
-}
+  date: Date;
+  balance: number;
+};
 
-const supportedCurrencies = ['SGD', 'CNY']
+const supportedCurrencies = ["SGD", "CNY"];
 
 const avatarOptions: AvatarOption[] = [
-  { id: 'parent-1', label: '爸爸', role: 'parent', seed: 'dad-sunshine' },
-  { id: 'parent-2', label: '妈妈', role: 'parent', seed: 'mom-happy' },
-  { id: 'child-1', label: '男孩', role: 'child', seed: 'kid-boy' },
-  { id: 'child-2', label: '女孩', role: 'child', seed: 'kid-girl' },
-  { id: 'child-3', label: '幼儿', role: 'child', seed: 'kid-tiny' },
-  { id: 'child-4', label: '少年', role: 'child', seed: 'kid-teen' },
-  { id: 'child-5', label: '小勇士', role: 'child', seed: 'kid-hero' },
-  { id: 'child-6', label: '探索者', role: 'child', seed: 'kid-explore' },
-  { id: 'child-7', label: '创意派', role: 'child', seed: 'kid-creative' },
-  { id: 'child-8', label: '阳光派', role: 'child', seed: 'kid-sun' },
-  { id: 'child-9', label: '运动派', role: 'child', seed: 'kid-sport' },
-  { id: 'child-10', label: '学者派', role: 'child', seed: 'kid-scholar' }
-]
+  { id: "parent-1", label: "爸爸", role: "parent", seed: "dad-sunshine" },
+  { id: "parent-2", label: "妈妈", role: "parent", seed: "mom-happy" },
+  { id: "child-1", label: "男孩", role: "child", seed: "kid-boy" },
+  { id: "child-2", label: "女孩", role: "child", seed: "kid-girl" },
+  { id: "child-3", label: "幼儿", role: "child", seed: "kid-tiny" },
+  { id: "child-4", label: "少年", role: "child", seed: "kid-teen" },
+  { id: "child-5", label: "小勇士", role: "child", seed: "kid-hero" },
+  { id: "child-6", label: "探索者", role: "child", seed: "kid-explore" },
+  { id: "child-7", label: "创意派", role: "child", seed: "kid-creative" },
+  { id: "child-8", label: "阳光派", role: "child", seed: "kid-sun" },
+  { id: "child-9", label: "运动派", role: "child", seed: "kid-sport" },
+  { id: "child-10", label: "学者派", role: "child", seed: "kid-scholar" },
+];
 
-const transactionLabels: Record<Transaction['type'], string> = {
-  deposit: '增加',
-  withdrawal: '减少',
-  transfer_in: '转入',
-  transfer_out: '转出',
-  interest: '利息'
-}
+const transactionLabels: Record<Transaction["type"], string> = {
+  deposit: "增加",
+  withdrawal: "减少",
+  transfer_in: "转入",
+  transfer_out: "转出",
+  interest: "利息",
+};
 
-const childAvatars = avatarOptions.filter((avatar) => avatar.role === 'child')
+const childAvatars = avatarOptions.filter((avatar) => avatar.role === "child");
 
-const sanitizePin = (value: string) => value.replace(/\D/g, '')
+const sanitizePin = (value: string) => value.replace(/\D/g, "");
 
 const currencyGroups = (accounts: Account[]) => {
   return accounts.reduce<Record<string, Account[]>>((grouped, account) => {
     if (!grouped[account.currency]) {
-      grouped[account.currency] = []
+      grouped[account.currency] = [];
     }
-    grouped[account.currency]?.push(account)
-    return grouped
-  }, {})
-}
+    grouped[account.currency]?.push(account);
+    return grouped;
+  }, {});
+};
 
 const formatAmount = (amount: number, currency: string) => {
-  return `${amount.toFixed(2)} ${currency}`
-}
+  return `${amount.toFixed(2)} ${currency}`;
+};
 
 const monthKey = (year: number, month: number) => {
-  return `${year}-${String(month).padStart(2, '0')}`
-}
+  return `${year}-${String(month).padStart(2, "0")}`;
+};
 
 const monthKeyFromDate = (date: Date) => {
-  return monthKey(date.getFullYear(), date.getMonth() + 1)
-}
+  return monthKey(date.getFullYear(), date.getMonth() + 1);
+};
 
 const monthLabel = (year: number, month: number) => {
-  return `${year}年${month}月`
-}
+  return `${year}年${month}月`;
+};
 
 const parseInterestMonth = (note?: string | null) => {
-  if (!note) return null
-  const match = note.match(/(\d{4})年(\d{1,2})月结息/)
-  if (!match) return null
+  if (!note) return null;
+  const match = note.match(/(\d{4})年(\d{1,2})月结息/);
+  if (!match) return null;
   return {
     year: Number(match[1]),
-    month: Number(match[2])
-  }
-}
+    month: Number(match[2]),
+  };
+};
 
 const signedAmount = (transaction: Transaction) => {
-  const direction = transaction.type === 'withdrawal' || transaction.type === 'transfer_out' ? -1 : 1
-  return direction * transaction.amount
-}
+  const direction =
+    transaction.type === "withdrawal" || transaction.type === "transfer_out"
+      ? -1
+      : 1;
+  return direction * transaction.amount;
+};
 
 const computeBalance = (transactions: Transaction[]) => {
-  return transactions.reduce((total, transaction) => total + signedAmount(transaction), 0)
-}
+  return transactions.reduce(
+    (total, transaction) => total + signedAmount(transaction),
+    0,
+  );
+};
 
 const effectiveDateForInterest = (transaction: Transaction) => {
-  if (transaction.type !== 'interest') {
-    return new Date(transaction.created_at)
+  if (transaction.type !== "interest") {
+    return new Date(transaction.created_at);
   }
 
-  const parsed = parseInterestMonth(transaction.note)
+  const parsed = parseInterestMonth(transaction.note);
   if (!parsed) {
-    return new Date(transaction.created_at)
+    return new Date(transaction.created_at);
   }
 
-  return new Date(parsed.year, parsed.month, 0, 23, 59, 59, 999)
-}
+  return new Date(parsed.year, parsed.month, 0, 23, 59, 59, 999);
+};
 
-const buildInterestPlan = (transactions: Transaction[], annualRate: number, now: Date) => {
-  if (transactions.length === 0) return []
+const buildInterestPlan = (
+  transactions: Transaction[],
+  annualRate: number,
+  now: Date,
+) => {
+  if (transactions.length === 0) return [];
 
   const sorted = transactions
-    .map((transaction) => ({ transaction, effectiveDate: effectiveDateForInterest(transaction) }))
-    .sort((left, right) => left.effectiveDate.getTime() - right.effectiveDate.getTime())
+    .map((transaction) => ({
+      transaction,
+      effectiveDate: effectiveDateForInterest(transaction),
+    }))
+    .sort(
+      (left, right) =>
+        left.effectiveDate.getTime() - right.effectiveDate.getTime(),
+    );
 
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const firstDate = sorted[0]?.effectiveDate
-  if (!firstDate) return []
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const firstDate = sorted[0]?.effectiveDate;
+  if (!firstDate) return [];
 
-  const startMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1)
-  if (startMonth > lastMonthStart) return []
+  const startMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+  if (startMonth > lastMonthStart) return [];
 
-  const settledMonths = new Set<string>()
+  const settledMonths = new Set<string>();
   sorted.forEach(({ transaction }) => {
-    if (transaction.type !== 'interest') return
-    const parsed = parseInterestMonth(transaction.note)
+    if (transaction.type !== "interest") return;
+    const parsed = parseInterestMonth(transaction.note);
     const key = parsed
       ? monthKey(parsed.year, parsed.month)
-      : monthKeyFromDate(new Date(transaction.created_at))
-    settledMonths.add(key)
-  })
+      : monthKeyFromDate(new Date(transaction.created_at));
+    settledMonths.add(key);
+  });
 
-  const plan: InterestPlanEntry[] = []
-  let runningBalance = 0
-  let index = 0
-  const cursor = new Date(startMonth)
+  const plan: InterestPlanEntry[] = [];
+  let runningBalance = 0;
+  let index = 0;
+  const cursor = new Date(startMonth);
 
   while (cursor <= lastMonthStart) {
-    const year = cursor.getFullYear()
-    const month = cursor.getMonth() + 1
-    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth() + 1;
+    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
 
     while (index < sorted.length) {
-      const entry = sorted[index]
-      if (!entry || entry.effectiveDate > monthEnd) break
-      runningBalance += signedAmount(entry.transaction)
-      index += 1
+      const entry = sorted[index];
+      if (!entry || entry.effectiveDate > monthEnd) break;
+      runningBalance += signedAmount(entry.transaction);
+      index += 1;
     }
 
-    const key = monthKey(year, month)
+    const key = monthKey(year, month);
     if (!settledMonths.has(key) && runningBalance > 0) {
-      const interestAmount = Number((runningBalance * (annualRate / 12 / 100)).toFixed(2))
+      const interestAmount = Number(
+        (runningBalance * (annualRate / 12 / 100)).toFixed(2),
+      );
       if (interestAmount > 0) {
-        plan.push({ year, month, amount: interestAmount })
-        runningBalance += interestAmount
+        plan.push({ year, month, amount: interestAmount });
+        runningBalance += interestAmount;
       }
     }
 
-    cursor.setMonth(cursor.getMonth() + 1)
+    cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  return plan
-}
+  return plan;
+};
 
 const transactionTone = (transaction: Transaction) => {
-  return signedAmount(transaction) >= 0 ? 'text-emerald-600' : 'text-rose-500'
-}
+  return signedAmount(transaction) >= 0 ? "text-emerald-600" : "text-rose-500";
+};
 
 const formatSignedAmount = (transaction: Transaction) => {
-  const amount = signedAmount(transaction)
-  const sign = amount >= 0 ? '+' : '-'
-  return `${sign}${Math.abs(amount).toFixed(2)} ${transaction.currency}`
-}
+  const amount = signedAmount(transaction);
+  const sign = amount >= 0 ? "+" : "-";
+  return `${sign}${Math.abs(amount).toFixed(2)} ${transaction.currency}`;
+};
 
 const formatTimestamp = (value: string) => {
-  return new Date(value).toLocaleString()
-}
+  return new Date(value).toLocaleString();
+};
 
-const user = ref<AppUser | null>(null)
-const loginPin = ref('')
-const loginUsers = ref<AppUser[]>([])
-const selectedLoginUserId = ref<string | null>(null)
-const accounts = ref<Account[]>([])
-const allTransactions = ref<Transaction[]>([])
-const selectedAccountId = ref<string | null>(null)
-const interestConfig = ref<InterestConfig | null>(null)
-const status = ref<string | null>(null)
-const loading = ref(false)
-const amountInput = ref('')
-const noteInput = ref('')
-const transferAmount = ref('')
-const transferTargetId = ref('')
-const childUsers = ref<AppUser[]>([])
-const newAccountName = ref('')
-const newAccountCurrency = ref('SGD')
-const newAccountOwnerId = ref('')
-const newChildName = ref('')
-const newChildPin = ref('')
-const newChildAvatarId = ref(childAvatars[0]?.id ?? '')
-const visibleTransactions = ref(10)
-const editingChildId = ref<string | null>(null)
-const editingChildName = ref('')
-const editingAccountId = ref<string | null>(null)
-const editingAccountName = ref('')
-const sessionStatus = ref<string | null>(null)
-const selectedChildId = ref<string | null>(null)
-const showChildManager = ref(false)
+const user = ref<AppUser | null>(null);
+const loginPin = ref("");
+const loginUsers = ref<AppUser[]>([]);
+const selectedLoginUserId = ref<string | null>(null);
+const accounts = ref<Account[]>([]);
+const allTransactions = ref<Transaction[]>([]);
+const selectedAccountId = ref<string | null>(null);
+const interestConfig = ref<InterestConfig | null>(null);
+const status = ref<string | null>(null);
+const loading = ref(false);
+const amountInput = ref("");
+const noteInput = ref("");
+const transferAmount = ref("");
+const transferTargetId = ref("");
+const childUsers = ref<AppUser[]>([]);
+const newAccountName = ref("");
+const newAccountCurrency = ref("SGD");
+const newAccountOwnerId = ref("");
+const newChildName = ref("");
+const newChildPin = ref("");
+const newChildAvatarId = ref(childAvatars[0]?.id ?? "");
+const visibleTransactions = ref(10);
+const editingChildId = ref<string | null>(null);
+const editingChildName = ref("");
+const editingAccountId = ref<string | null>(null);
+const editingAccountName = ref("");
+const sessionStatus = ref<string | null>(null);
+const selectedChildId = ref<string | null>(null);
+const showChildManager = ref(false);
+const showAccountCreator = ref(false);
 
+watch(selectedChildId, (nextChildId, previousChildId) => {
+  if (!nextChildId || nextChildId === previousChildId) return;
+  showAccountCreator.value = false;
+  newAccountName.value = "";
+  newAccountCurrency.value = supportedCurrencies[0] ?? "SGD";
+});
+
+watch(selectedChildId, () => {
+  if (selectedChildId.value) {
+    newAccountOwnerId.value = selectedChildId.value;
+  }
+});
 const selectedLoginUser = computed(() => {
-  return loginUsers.value.find((entry) => entry.id === selectedLoginUserId.value) ?? null
-})
+  return (
+    loginUsers.value.find((entry) => entry.id === selectedLoginUserId.value) ??
+    null
+  );
+});
 
 const selectedAccount = computed(() => {
-  return accounts.value.find((account) => account.id === selectedAccountId.value) ?? null
-})
+  return (
+    accounts.value.find((account) => account.id === selectedAccountId.value) ??
+    null
+  );
+});
 
 const selectedChild = computed(() => {
-  return childUsers.value.find((child) => child.id === selectedChildId.value) ?? null
-})
+  if (user.value?.role === "parent") {
+    return (
+      childUsers.value.find((child) => child.id === selectedChildId.value) ??
+      null
+    );
+  }
 
-const selectedTransactions = computed(() => {
-  if (!selectedAccountId.value) return []
-  return allTransactions.value
-    .filter((transaction) => transaction.account_id === selectedAccountId.value)
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-})
+  if (user.value?.role === "child") {
+    return user.value;
+  }
 
-const pagedTransactions = computed(() => {
-  return selectedTransactions.value.slice(0, visibleTransactions.value)
-})
-
-const hasMoreTransactions = computed(() => {
-  return selectedTransactions.value.length > visibleTransactions.value
-})
+  return null;
+});
 
 const balances = computed(() => {
   return accounts.value.reduce<Record<string, number>>((result, account) => {
     const accountTransactions = allTransactions.value.filter(
-      (transaction) => transaction.account_id === account.id
-    )
-    result[account.id] = computeBalance(accountTransactions)
-    return result
-  }, {})
-})
+      (transaction) => transaction.account_id === account.id,
+    );
+    result[account.id] = computeBalance(accountTransactions);
+    return result;
+  }, {});
+});
 
-const interestPlan = computed(() => {
-  if (!selectedAccountId.value || !interestConfig.value) return []
-  const accountTransactions = allTransactions.value.filter(
-    (transaction) => transaction.account_id === selectedAccountId.value
-  )
-
-  return buildInterestPlan(accountTransactions, interestConfig.value.annual_rate, new Date(Date.now()))
-})
-
-const groupedAccounts = computed(() => currencyGroups(accounts.value))
+const groupedAccounts = computed(() => currencyGroups(accounts.value));
 
 const currencyTotals = computed(() => {
   return accounts.value.reduce<Record<string, number>>((result, account) => {
-    result[account.currency] = (result[account.currency] ?? 0) + (balances.value[account.id] ?? 0)
-    return result
-  }, {})
-})
+    result[account.currency] =
+      (result[account.currency] ?? 0) + (balances.value[account.id] ?? 0);
+    return result;
+  }, {});
+});
 
 const selectedChildAccounts = computed(() => {
-  if (!selectedChildId.value) return []
+  if (!selectedChildId.value) return [];
   return accounts.value
     .filter((account) => account.owner_child_id === selectedChildId.value)
-    .sort((left, right) => (left.created_at ?? '').localeCompare(right.created_at ?? ''))
-})
+    .sort((left, right) =>
+      (left.created_at ?? "").localeCompare(right.created_at ?? ""),
+    );
+});
 
-const canEdit = computed(() => user.value?.role === 'parent')
-
-const chartPoints = computed<ChartPoint[]>(() => {
-  if (!selectedAccount.value) return []
-  const transactions = allTransactions.value
-    .filter((transaction) => transaction.account_id === selectedAccount.value?.id)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-
-  const endDate = new Date()
-  endDate.setHours(0, 0, 0, 0)
-  const startDate = new Date(endDate)
-  startDate.setDate(endDate.getDate() - 29)
-
-  return Array.from({ length: 30 }, (_, index) => {
-    const day = new Date(startDate)
-    day.setDate(startDate.getDate() + index)
-    const dayEnd = new Date(day)
-    dayEnd.setHours(23, 59, 59, 999)
-
-    const dailyBalance = transactions.reduce((total, transaction) => {
-      const createdAt = new Date(transaction.created_at)
-      if (createdAt <= dayEnd) {
-        return total + signedAmount(transaction)
-      }
-      return total
-    }, 0)
-
-    return {
-      date: day,
-      balance: dailyBalance
-    }
-  })
-})
-
-const chartPath = computed(() => {
-  if (chartPoints.value.length === 0) return ''
-  const values = chartPoints.value.map((point) => point.balance)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-
-  return chartPoints.value
-    .map((point, index) => {
-      const x = (index / (chartPoints.value.length - 1)) * 100
-      const y = 100 - ((point.balance - min) / range) * 100
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
-    })
-    .join(' ')
-})
+const canEdit = computed(() => user.value?.role === "parent");
 
 const transferTargets = computed(() => {
-  if (!selectedAccount.value) return [] as TransferTarget[]
+  if (!selectedAccount.value) return [] as TransferTarget[];
   return accounts.value
     .filter(
       (account) =>
-        account.currency === selectedAccount.value?.currency && account.id !== selectedAccount.value?.id
+        account.currency === selectedAccount.value?.currency &&
+        account.id !== selectedAccount.value?.id,
     )
     .map((account) => ({
       ...account,
       ownerName:
-        childUsers.value.find((child) => child.id === account.owner_child_id)?.name ?? account.name
+        childUsers.value.find((child) => child.id === account.owner_child_id)
+          ?.name ?? account.name,
+    }));
+});
+
+const selectedTransactions = computed(() => {
+  if (!selectedAccount.value) return [];
+  return allTransactions.value
+    .filter(
+      (transaction) => transaction.account_id === selectedAccount.value?.id,
+    )
+    .sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() -
+        new Date(left.created_at).getTime(),
+    );
+});
+
+const pagedTransactions = computed(() => {
+  return selectedTransactions.value.slice(0, visibleTransactions.value);
+});
+
+const hasMoreTransactions = computed(() => {
+  return selectedTransactions.value.length > visibleTransactions.value;
+});
+
+const interestPlan = computed(() => {
+  if (!selectedAccount.value || !interestConfig.value) return [];
+  return buildInterestPlan(
+    selectedTransactions.value,
+    interestConfig.value.annual_rate,
+    new Date(Date.now()),
+  );
+});
+
+const chartPoints = computed<ChartPoint[]>(() => {
+  if (!selectedAccount.value) return [];
+  if (selectedTransactions.value.length === 0) return [];
+
+  const now = new Date(Date.now());
+  const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startDate = new Date(endDate);
+  startDate.setDate(endDate.getDate() - 29);
+
+  const accountTransactions = selectedTransactions.value
+    .map((transaction) => ({
+      transaction,
+      effectiveDate: effectiveDateForInterest(transaction),
     }))
-})
+    .sort(
+      (left, right) =>
+        left.effectiveDate.getTime() - right.effectiveDate.getTime(),
+    );
+
+  let runningBalance = 0;
+  let index = 0;
+  const points: ChartPoint[] = [];
+
+  for (let day = 0; day < 30; day += 1) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + day);
+    const dayEnd = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
+
+    while (index < accountTransactions.length) {
+      const entry = accountTransactions[index];
+      if (!entry || entry.effectiveDate > dayEnd) break;
+      runningBalance += signedAmount(entry.transaction);
+      index += 1;
+    }
+
+    points.push({
+      date,
+      balance: Number(runningBalance.toFixed(2)),
+    });
+  }
+
+  return points;
+});
+
+const chartPath = computed(() => {
+  if (chartPoints.value.length < 2) return "";
+
+  const balances = chartPoints.value.map((point) => point.balance);
+  const minBalance = Math.min(...balances);
+  const maxBalance = Math.max(...balances);
+  const range = maxBalance - minBalance || 1;
+
+  return chartPoints.value
+    .map((point, index) => {
+      const x = (index / (chartPoints.value.length - 1)) * 100;
+      const y = 100 - ((point.balance - minBalance) / range) * 100;
+      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
+});
 
 const selectLoginUser = (userId: string) => {
-  selectedLoginUserId.value = userId
-  loginPin.value = ''
-}
+  selectedLoginUserId.value = userId;
+  loginPin.value = "";
+};
 
 const selectAccount = (accountId: string) => {
-  selectedAccountId.value = accountId
-}
+  selectedAccountId.value = accountId;
+};
 
 const loadTransactions = async (loadedAccounts: Account[]) => {
   if (loadedAccounts.length === 0) {
-    allTransactions.value = []
-    return
+    allTransactions.value = [];
+    return;
   }
 
-  const accountIds = loadedAccounts.map((account) => account.id)
-  const { data, error } = await supabase.from('transactions').select('*').in('account_id', accountIds)
+  const accountIds = loadedAccounts.map((account) => account.id);
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*")
+    .in("account_id", accountIds);
 
   if (error) {
-    status.value = error.message
-    return
+    status.value = error.message;
+    return;
   }
 
-  allTransactions.value = data ?? []
-}
+  allTransactions.value = data ?? [];
+};
 
 const loadAccounts = async (currentUser: AppUser) => {
-  loading.value = true
-  status.value = null
-  const query = supabase.from('accounts').select('*').eq('is_active', true)
+  loading.value = true;
+  status.value = null;
+  const query = supabase.from("accounts").select("*").eq("is_active", true);
   const { data, error } =
-    currentUser.role === 'parent'
-      ? await query.order('created_at')
-      : await query.eq('owner_child_id', currentUser.id).order('created_at')
+    currentUser.role === "parent"
+      ? await query.order("created_at")
+      : await query.eq("owner_child_id", currentUser.id).order("created_at");
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  const loadedAccounts = data ?? []
-  accounts.value = loadedAccounts
-  await loadTransactions(loadedAccounts)
-  loading.value = false
-}
+  const loadedAccounts = data ?? [];
+  accounts.value = loadedAccounts;
+  await loadTransactions(loadedAccounts);
+  loading.value = false;
+};
 
 const loadInterestConfig = async () => {
-  const { data, error } = await supabase.from('interest_config').select('*').limit(1).maybeSingle()
+  const { data, error } = await supabase
+    .from("interest_config")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
   if (error) {
-    status.value = error.message
-    return
+    status.value = error.message;
+    return;
   }
-  interestConfig.value = data ?? { id: 'default', annual_rate: 5 }
-}
+  interestConfig.value = data ?? { id: "default", annual_rate: 5 };
+};
 
 const loadChildUsers = async () => {
   const { data, error } = await supabase
-    .from('app_users')
-    .select('*')
-    .eq('role', 'child')
-    .order('created_at')
+    .from("app_users")
+    .select("*")
+    .eq("role", "child")
+    .order("created_at");
 
   if (error) {
-    status.value = error.message
-    return
+    status.value = error.message;
+    return;
   }
 
-  childUsers.value = data ?? []
-}
+  childUsers.value = data ?? [];
+};
 
 const loadLoginUsers = async () => {
-  const { data, error } = await supabase.from('app_users').select('*').order('role')
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("*")
+    .order("created_at");
 
   if (error) {
-    status.value = error.message
-    return
+    status.value = error.message;
+    return;
   }
 
-  const sorted = (data ?? []).sort((left, right) => {
-    if (left.role === right.role) {
-      return left.name.localeCompare(right.name)
-    }
-    return left.role === 'parent' ? -1 : 1
-  })
+  const parents = (data ?? [])
+    .filter((user) => user.role === "parent")
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const children = (data ?? [])
+    .filter((user) => user.role === "child")
+    .sort((left, right) =>
+      (left.created_at ?? "").localeCompare(right.created_at ?? ""),
+    );
 
-  loginUsers.value = sorted
+  const sorted = [...parents, ...children];
+
+  loginUsers.value = sorted;
   if (!selectedLoginUserId.value && sorted.length > 0) {
-    selectedLoginUserId.value = sorted[0].id
+    selectedLoginUserId.value = sorted[0].id;
   }
-}
+};
 
 const restoreSession = async (userId: string) => {
-  loading.value = true
-  const { data, error } = await supabase.from('app_users').select('*').eq('id', userId).maybeSingle()
+  loading.value = true;
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
 
   if (error || !data) {
-    sessionStorage.removeItem('homebank.session')
-    loading.value = false
-    return
+    sessionStorage.removeItem("homebank.session");
+    loading.value = false;
+    return;
   }
 
-  user.value = data
-  loading.value = false
-}
+  user.value = data;
+  loading.value = false;
+};
 
 const handleLogin = async () => {
-  status.value = null
-  sessionStatus.value = null
+  status.value = null;
+  sessionStatus.value = null;
 
   if (!isSupabaseConfigured) {
-    status.value = '请先配置 Supabase 环境变量。'
-    return
+    status.value = "请先配置 Supabase 环境变量。";
+    return;
   }
 
   if (!selectedLoginUserId.value) {
-    status.value = '请选择登录用户。'
-    return
+    status.value = "请选择登录用户。";
+    return;
   }
 
   if (loginPin.value.length !== 4) {
-    status.value = '请输入 4 位 PIN。'
-    return
+    status.value = "请输入 4 位 PIN。";
+    return;
   }
 
-  loading.value = true
+  loading.value = true;
   const { data, error } = await supabase
-    .from('app_users')
-    .select('*')
-    .eq('id', selectedLoginUserId.value)
-    .eq('pin', loginPin.value)
-    .maybeSingle()
+    .from("app_users")
+    .select("*")
+    .eq("id", selectedLoginUserId.value)
+    .eq("pin", loginPin.value)
+    .maybeSingle();
 
   if (error || !data) {
-    status.value = 'PIN 无效，请重试。'
-    loading.value = false
-    return
+    status.value = "PIN 无效，请重试。";
+    loading.value = false;
+    return;
   }
 
-  user.value = data
-  loginPin.value = ''
+  user.value = data;
+  loginPin.value = "";
 
-  const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 30
-  sessionStorage.setItem('homebank.session', JSON.stringify({ userId: data.id, expiresAt }))
+  const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 30;
+  sessionStorage.setItem(
+    "homebank.session",
+    JSON.stringify({ userId: data.id, expiresAt }),
+  );
 
-  loading.value = false
-}
+  loading.value = false;
+};
 
 const handleLogout = () => {
-  user.value = null
-  accounts.value = []
-  allTransactions.value = []
-  selectedAccountId.value = null
-  status.value = null
-  loginPin.value = ''
-  selectedLoginUserId.value = null
-  selectedChildId.value = null
-  showChildManager.value = false
-  sessionStorage.removeItem('homebank.session')
-}
+  user.value = null;
+  accounts.value = [];
+  allTransactions.value = [];
+  selectedAccountId.value = null;
+  status.value = null;
+  loginPin.value = "";
+  selectedLoginUserId.value = null;
+  selectedChildId.value = null;
+  showChildManager.value = false;
+  showAccountCreator.value = false;
+  sessionStorage.removeItem("homebank.session");
+};
 
-const handleAddTransaction = async (type: 'deposit' | 'withdrawal') => {
-  if (!selectedAccount.value || !user.value) return
+const handleAddTransaction = async (type: "deposit" | "withdrawal") => {
+  if (!selectedAccount.value || !user.value) return;
 
-  const amount = Number.parseFloat(amountInput.value)
+  const amount = Number.parseFloat(amountInput.value);
   if (Number.isNaN(amount) || amount <= 0) {
-    status.value = '请输入有效金额。'
-    return
+    status.value = "请输入有效金额。";
+    return;
   }
 
-  const trimmedNote = noteInput.value.trim()
+  const trimmedNote = noteInput.value.trim();
   if (!trimmedNote) {
-    status.value = '请输入备注。'
-    return
+    status.value = "请输入备注。";
+    return;
   }
 
-  loading.value = true
+  loading.value = true;
   const { data, error } = await supabase
-    .from('transactions')
+    .from("transactions")
     .insert([
       {
         account_id: selectedAccount.value.id,
@@ -1265,465 +1524,497 @@ const handleAddTransaction = async (type: 'deposit' | 'withdrawal') => {
         currency: selectedAccount.value.currency,
         note: trimmedNote,
         related_account_id: null,
-        created_by: user.value.id
-      }
+        created_by: user.value.id,
+      },
     ])
-    .select()
+    .select();
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  allTransactions.value = [...allTransactions.value, ...(data ?? [])]
-  amountInput.value = ''
-  noteInput.value = ''
-  status.value = '已保存交易。'
-  loading.value = false
-}
+  allTransactions.value = [...allTransactions.value, ...(data ?? [])];
+  amountInput.value = "";
+  noteInput.value = "";
+  status.value = "已保存交易。";
+  loading.value = false;
+};
 
 const handleCreateAccount = async () => {
-  if (!user.value) return
+  if (!user.value) return;
 
-  const trimmedName = newAccountName.value.trim()
-  const trimmedCurrency = newAccountCurrency.value.trim().toUpperCase()
+  const trimmedName = newAccountName.value.trim();
+  const trimmedCurrency = newAccountCurrency.value.trim().toUpperCase();
 
   if (!trimmedName) {
-    status.value = '请输入账户名称。'
-    return
+    status.value = "请输入账户名称。";
+    return;
   }
 
   if (!supportedCurrencies.includes(trimmedCurrency)) {
-    status.value = '请选择有效币种。'
-    return
+    status.value = "请选择有效币种。";
+    return;
   }
 
   if (!newAccountOwnerId.value) {
-    status.value = '请选择孩子账户归属。'
-    return
+    status.value = "请选择孩子账户归属。";
+    return;
   }
 
-  loading.value = true
-  const { error } = await supabase.from('accounts').insert([
+  loading.value = true;
+  const { error } = await supabase.from("accounts").insert([
     {
       name: trimmedName,
       currency: trimmedCurrency,
       owner_child_id: newAccountOwnerId.value,
       created_by: user.value.id,
-      is_active: true
-    }
-  ])
+      is_active: true,
+    },
+  ]);
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  newAccountName.value = ''
-  status.value = '账户已创建。'
-  await loadAccounts(user.value)
-  loading.value = false
-}
+  newAccountName.value = "";
+  status.value = "账户已创建。";
+  await loadAccounts(user.value);
+  loading.value = false;
+};
 
 const handleCreateChild = async () => {
-  if (!user.value) return
+  if (!user.value) return;
 
-  const trimmedName = newChildName.value.trim()
-  const trimmedPin = newChildPin.value.trim()
+  const trimmedName = newChildName.value.trim();
+  const trimmedPin = newChildPin.value.trim();
 
   if (!trimmedName) {
-    status.value = '请输入孩子姓名。'
-    return
+    status.value = "请输入孩子姓名。";
+    return;
   }
 
   if (trimmedPin.length !== 4) {
-    status.value = '请输入 4 位 PIN。'
-    return
+    status.value = "请输入 4 位 PIN。";
+    return;
   }
 
   if (!newChildAvatarId.value) {
-    status.value = '请选择头像。'
-    return
+    status.value = "请选择头像。";
+    return;
   }
 
-  loading.value = true
-  const { error } = await supabase.from('app_users').insert([
+  loading.value = true;
+  const { error } = await supabase.from("app_users").insert([
     {
       name: trimmedName,
-      role: 'child',
+      role: "child",
       pin: trimmedPin,
-      avatar_id: newChildAvatarId.value
-    }
-  ])
+      avatar_id: newChildAvatarId.value,
+    },
+  ]);
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  newChildName.value = ''
-  newChildPin.value = ''
-  newChildAvatarId.value = childAvatars[0]?.id ?? ''
-  status.value = '孩子用户已创建。'
-  await loadChildUsers()
-  await loadLoginUsers()
-  loading.value = false
-}
+  newChildName.value = "";
+  newChildPin.value = "";
+  newChildAvatarId.value = childAvatars[0]?.id ?? "";
+  status.value = "孩子用户已创建。";
+  await loadChildUsers();
+  await loadLoginUsers();
+  loading.value = false;
+};
 
 const handleDeleteChild = async (childId: string) => {
-  if (!user.value) return
+  if (!user.value) return;
 
-  loading.value = true
+  loading.value = true;
 
   const { data: childAccounts, error: childAccountsError } = await supabase
-    .from('accounts')
-    .select('id')
-    .eq('owner_child_id', childId)
+    .from("accounts")
+    .select("id")
+    .eq("owner_child_id", childId);
 
   if (childAccountsError) {
-    status.value = childAccountsError.message
-    loading.value = false
-    return
+    status.value = childAccountsError.message;
+    loading.value = false;
+    return;
   }
 
-  const accountIds = (childAccounts ?? []).map((account) => account.id)
+  const accountIds = (childAccounts ?? []).map((account) => account.id);
 
   if (accountIds.length > 0) {
     const { error: transactionsError } = await supabase
-      .from('transactions')
+      .from("transactions")
       .delete()
-      .in('account_id', accountIds)
+      .in("account_id", accountIds);
 
     if (transactionsError) {
-      status.value = transactionsError.message
-      loading.value = false
-      return
+      status.value = transactionsError.message;
+      loading.value = false;
+      return;
     }
 
     const { error: accountsError } = await supabase
-      .from('accounts')
+      .from("accounts")
       .delete()
-      .in('id', accountIds)
+      .in("id", accountIds);
 
     if (accountsError) {
-      status.value = accountsError.message
-      loading.value = false
-      return
+      status.value = accountsError.message;
+      loading.value = false;
+      return;
     }
   }
 
-  const { error: childError } = await supabase.from('app_users').delete().eq('id', childId)
+  const { error: childError } = await supabase
+    .from("app_users")
+    .delete()
+    .eq("id", childId);
 
   if (childError) {
-    status.value = childError.message
-    loading.value = false
-    return
+    status.value = childError.message;
+    loading.value = false;
+    return;
   }
 
-  await loadChildUsers()
-  await loadAccounts(user.value)
-  await loadLoginUsers()
-  status.value = '已删除孩子及关联账户。'
-  loading.value = false
-}
+  await loadChildUsers();
+  await loadAccounts(user.value);
+  await loadLoginUsers();
+  status.value = "已删除孩子及关联账户。";
+  loading.value = false;
+};
 
 const startEditChild = (child: AppUser) => {
-  editingChildId.value = child.id
-  editingChildName.value = child.name
-}
+  editingChildId.value = child.id;
+  editingChildName.value = child.name;
+};
 
 const cancelEditChild = () => {
-  editingChildId.value = null
-  editingChildName.value = ''
-}
+  editingChildId.value = null;
+  editingChildName.value = "";
+};
 
 const handleUpdateChild = async () => {
-  if (!user.value || !editingChildId.value) return
+  if (!user.value || !editingChildId.value) return;
 
-  const trimmedName = editingChildName.value.trim()
+  const trimmedName = editingChildName.value.trim();
   if (!trimmedName) {
-    status.value = '请输入孩子姓名。'
-    return
+    status.value = "请输入孩子姓名。";
+    return;
   }
 
-  loading.value = true
+  loading.value = true;
   const { error } = await supabase
-    .from('app_users')
+    .from("app_users")
     .update({ name: trimmedName })
-    .eq('id', editingChildId.value)
+    .eq("id", editingChildId.value);
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  await loadChildUsers()
-  await loadLoginUsers()
-  status.value = '已更新名称。'
-  cancelEditChild()
-  loading.value = false
-}
+  await loadChildUsers();
+  await loadLoginUsers();
+  status.value = "已更新名称。";
+  cancelEditChild();
+  loading.value = false;
+};
 
 const startEditAccount = (account: Account) => {
-  editingAccountId.value = account.id
-  editingAccountName.value = account.name
-}
+  editingAccountId.value = account.id;
+  editingAccountName.value = account.name;
+};
 
 const cancelEditAccount = () => {
-  editingAccountId.value = null
-  editingAccountName.value = ''
-}
+  editingAccountId.value = null;
+  editingAccountName.value = "";
+};
 
 const handleUpdateAccount = async () => {
-  if (!user.value || !editingAccountId.value) return
+  if (!user.value || !editingAccountId.value) return;
 
-  const trimmedName = editingAccountName.value.trim()
+  const trimmedName = editingAccountName.value.trim();
   if (!trimmedName) {
-    status.value = '请输入账户名称。'
-    return
+    status.value = "请输入账户名称。";
+    return;
   }
 
-  loading.value = true
+  loading.value = true;
   const { error } = await supabase
-    .from('accounts')
+    .from("accounts")
     .update({ name: trimmedName })
-    .eq('id', editingAccountId.value)
+    .eq("id", editingAccountId.value);
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  await loadAccounts(user.value)
-  status.value = '账户名称已更新。'
-  cancelEditAccount()
-  loading.value = false
-}
+  await loadAccounts(user.value);
+  status.value = "账户名称已更新。";
+  cancelEditAccount();
+  loading.value = false;
+};
 
 const handleTransfer = async () => {
-  if (!selectedAccount.value || !user.value) return
+  if (!selectedAccount.value || !user.value) return;
 
-  const amount = Number.parseFloat(transferAmount.value)
+  const amount = Number.parseFloat(transferAmount.value);
   if (Number.isNaN(amount) || amount <= 0) {
-    status.value = '请输入有效转账金额。'
-    return
+    status.value = "请输入有效转账金额。";
+    return;
   }
 
-  const balance = balances.value[selectedAccount.value.id] ?? 0
+  const balance = balances.value[selectedAccount.value.id] ?? 0;
   if (amount > balance) {
-    status.value = '转出金额不能超过当前余额。'
-    return
+    status.value = "转出金额不能超过当前余额。";
+    return;
   }
 
-  const targetAccount = accounts.value.find((account) => account.id === transferTargetId.value)
+  const targetAccount = accounts.value.find(
+    (account) => account.id === transferTargetId.value,
+  );
   if (!targetAccount) {
-    status.value = '请选择转入账户。'
-    return
+    status.value = "请选择转入账户。";
+    return;
   }
 
   if (targetAccount.currency !== selectedAccount.value.currency) {
-    status.value = '只能在相同币种账户之间转账。'
-    return
+    status.value = "只能在相同币种账户之间转账。";
+    return;
   }
 
   const sourceOwnerName =
-    childUsers.value.find((child) => child.id === selectedAccount.value?.owner_child_id)?.name ??
-    selectedAccount.value.name
+    childUsers.value.find(
+      (child) => child.id === selectedAccount.value?.owner_child_id,
+    )?.name ?? selectedAccount.value.name;
   const targetOwnerName =
-    childUsers.value.find((child) => child.id === targetAccount.owner_child_id)?.name ??
-    targetAccount.name
+    childUsers.value.find((child) => child.id === targetAccount.owner_child_id)
+      ?.name ?? targetAccount.name;
 
-  loading.value = true
+  loading.value = true;
   const payload = [
     {
       account_id: selectedAccount.value.id,
-      type: 'transfer_out' as const,
+      type: "transfer_out" as const,
       amount,
       currency: selectedAccount.value.currency,
       note: `转出至 ${targetOwnerName} ${targetAccount.name}`,
       related_account_id: targetAccount.id,
-      created_by: user.value.id
+      created_by: user.value.id,
     },
     {
       account_id: targetAccount.id,
-      type: 'transfer_in' as const,
+      type: "transfer_in" as const,
       amount,
       currency: targetAccount.currency,
       note: `来自 ${sourceOwnerName} ${selectedAccount.value.name}`,
       related_account_id: selectedAccount.value.id,
-      created_by: user.value.id
-    }
-  ]
+      created_by: user.value.id,
+    },
+  ];
 
-  const { data, error } = await supabase.from('transactions').insert(payload).select()
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert(payload)
+    .select();
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  allTransactions.value = [...allTransactions.value, ...(data ?? [])]
-  transferAmount.value = ''
-  transferTargetId.value = ''
-  status.value = '转账完成。'
-  loading.value = false
-}
+  allTransactions.value = [...allTransactions.value, ...(data ?? [])];
+  transferAmount.value = "";
+  transferTargetId.value = "";
+  status.value = "转账完成。";
+  loading.value = false;
+};
 
 const handleInterest = async () => {
-  if (!selectedAccount.value || !user.value || !interestConfig.value) return
-  if (loading.value) return
+  if (!selectedAccount.value || !user.value || !interestConfig.value) return;
+  if (loading.value) return;
 
   if (interestPlan.value.length === 0) {
-    status.value = '暂无可结息月份。'
-    return
+    status.value = "暂无可结息月份。";
+    return;
   }
 
-  loading.value = true
+  loading.value = true;
   const payload = interestPlan.value.map((entry) => ({
     account_id: selectedAccount.value?.id,
-    type: 'interest' as const,
+    type: "interest" as const,
     amount: entry.amount,
-    currency: selectedAccount.value?.currency ?? '',
+    currency: selectedAccount.value?.currency ?? "",
     note: `${monthLabel(entry.year, entry.month)}结息，利率 ${interestConfig.value?.annual_rate}%`,
     related_account_id: null,
-    created_by: user.value?.id ?? ''
-  }))
+    created_by: user.value?.id ?? "",
+  }));
 
-  const { data, error } = await supabase.from('transactions').insert(payload).select()
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert(payload)
+    .select();
 
   if (error) {
-    status.value = error.message
-    loading.value = false
-    return
+    status.value = error.message;
+    loading.value = false;
+    return;
   }
 
-  allTransactions.value = [...allTransactions.value, ...(data ?? [])]
-  status.value = '已完成结息。'
-  loading.value = false
-}
+  allTransactions.value = [...allTransactions.value, ...(data ?? [])];
+  status.value = "已完成结息。";
+  loading.value = false;
+};
 
 const getTransactionNote = (transaction: Transaction) => {
   if (transaction.related_account_id) {
-    const relatedAccount = accounts.value.find((account) => account.id === transaction.related_account_id)
+    const relatedAccount = accounts.value.find(
+      (account) => account.id === transaction.related_account_id,
+    );
 
     if (relatedAccount) {
       const ownerName =
-        childUsers.value.find((child) => child.id === relatedAccount.owner_child_id)?.name ??
-        relatedAccount.name
+        childUsers.value.find(
+          (child) => child.id === relatedAccount.owner_child_id,
+        )?.name ?? relatedAccount.name;
 
-      if (transaction.type === 'transfer_out') {
-        return `转出至 ${ownerName} ${relatedAccount.name}`
+      if (transaction.type === "transfer_out") {
+        return `转出至 ${ownerName} ${relatedAccount.name}`;
       }
 
-      if (transaction.type === 'transfer_in') {
-        return `来自 ${ownerName} ${relatedAccount.name}`
+      if (transaction.type === "transfer_in") {
+        return `来自 ${ownerName} ${relatedAccount.name}`;
       }
     }
   }
 
-  return transaction.note || '—'
-}
+  return transaction.note || "—";
+};
 
 watch([accounts, allTransactions], () => {
-  if (editingAccountId.value && editingAccountId.value !== selectedAccountId.value) {
-    cancelEditAccount()
+  if (
+    editingAccountId.value &&
+    editingAccountId.value !== selectedAccountId.value
+  ) {
+    cancelEditAccount();
   }
-})
+});
 
 watch(selectedAccountId, () => {
-  visibleTransactions.value = 10
-})
+  visibleTransactions.value = 10;
+});
 
 watch([childUsers, selectedChildId], () => {
-  if (user.value?.role !== 'parent') return
+  if (user.value?.role !== "parent") return;
 
   if (childUsers.value.length === 0) {
-    selectedChildId.value = null
-    newAccountOwnerId.value = ''
-    return
+    selectedChildId.value = null;
+    newAccountOwnerId.value = "";
+    return;
   }
 
-    if (!selectedChildId.value || !childUsers.value.some((child) => child.id === selectedChildId.value)) {
-      selectedChildId.value = childUsers.value[0]?.id ?? null
-    }
-
-})
+  if (
+    !selectedChildId.value ||
+    !childUsers.value.some((child) => child.id === selectedChildId.value)
+  ) {
+    selectedChildId.value = childUsers.value[0]?.id ?? null;
+  }
+});
 
 watch([accounts, selectedAccountId, selectedChildId, user], () => {
-  if (user.value?.role !== 'parent') return
+  if (user.value?.role !== "parent") return;
   if (!selectedChildId.value) {
-    selectedAccountId.value = null
-    return
+    selectedAccountId.value = null;
+    return;
   }
 
-  const childAccounts = accounts.value.filter((account) => account.owner_child_id === selectedChildId.value)
+  const childAccounts = accounts.value.filter(
+    (account) => account.owner_child_id === selectedChildId.value,
+  );
   if (childAccounts.length === 0) {
-    selectedAccountId.value = null
-    return
+    selectedAccountId.value = null;
+    return;
   }
 
-  if (!selectedAccountId.value || !childAccounts.some((account) => account.id === selectedAccountId.value)) {
-    selectedAccountId.value = childAccounts[0]?.id ?? null
+  if (
+    !selectedAccountId.value ||
+    !childAccounts.some((account) => account.id === selectedAccountId.value)
+  ) {
+    selectedAccountId.value = childAccounts[0]?.id ?? null;
   }
-})
+});
 
 watch([accounts, selectedAccountId, user], () => {
-  if (!selectedAccountId.value && accounts.value.length > 0 && user.value?.role !== 'parent') {
-    selectedAccountId.value = accounts.value[0]?.id ?? null
+  if (
+    !selectedAccountId.value &&
+    accounts.value.length > 0 &&
+    user.value?.role !== "parent"
+  ) {
+    selectedAccountId.value = accounts.value[0]?.id ?? null;
   }
-})
+});
 
 watch([childUsers, newAccountOwnerId], () => {
   if (!newAccountOwnerId.value && childUsers.value.length > 0) {
-    newAccountOwnerId.value = childUsers.value[0]?.id ?? ''
+    newAccountOwnerId.value = childUsers.value[0]?.id ?? "";
   }
-})
+});
 
 watch(selectedChildId, () => {
   if (selectedChildId.value) {
-    newAccountOwnerId.value = selectedChildId.value
+    newAccountOwnerId.value = selectedChildId.value;
   }
-})
+});
 
 onMounted(async () => {
-  if (!isSupabaseConfigured || user.value) return
+  if (!isSupabaseConfigured || user.value) return;
 
-  await loadLoginUsers()
+  await loadLoginUsers();
 
-  const sessionRaw = sessionStorage.getItem('homebank.session')
-  if (!sessionRaw) return
+  const sessionRaw = sessionStorage.getItem("homebank.session");
+  if (!sessionRaw) return;
 
   try {
-    const session = JSON.parse(sessionRaw) as { userId?: string; expiresAt?: number }
+    const session = JSON.parse(sessionRaw) as {
+      userId?: string;
+      expiresAt?: number;
+    };
     if (!session.userId || !session.expiresAt) {
-      sessionStorage.removeItem('homebank.session')
-      return
+      sessionStorage.removeItem("homebank.session");
+      return;
     }
 
     if (Date.now() > session.expiresAt) {
-      sessionStorage.removeItem('homebank.session')
-      sessionStatus.value = '登录已过期，请重新登录。'
-      return
+      sessionStorage.removeItem("homebank.session");
+      sessionStatus.value = "登录已过期，请重新登录。";
+      return;
     }
 
-    await restoreSession(session.userId)
+    await restoreSession(session.userId);
   } catch {
-    sessionStorage.removeItem('homebank.session')
+    sessionStorage.removeItem("homebank.session");
   }
-})
+});
 
 watch(user, async (currentUser) => {
-  if (!currentUser) return
-  await loadAccounts(currentUser)
-  await loadInterestConfig()
-  if (currentUser.role === 'parent') {
-    await loadChildUsers()
+  if (!currentUser) return;
+  await loadAccounts(currentUser);
+  await loadInterestConfig();
+  if (currentUser.role === "parent") {
+    await loadChildUsers();
   }
-})
+});
 </script>
