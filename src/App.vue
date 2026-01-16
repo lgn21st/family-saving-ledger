@@ -286,10 +286,8 @@
               :avatar-id="child.avatar_id"
               :options="avatarOptions"
               role="child"
-              :class="[
-                'h-16 w-16 shrink-0',
-                selectedChildId === child.id ? 'bg-white/20' : '',
-              ]"
+              class="h-16 w-16 shrink-0"
+              :class="selectedChildId === child.id ? 'bg-white/20' : ''"
             />
             <span
               :class="[
