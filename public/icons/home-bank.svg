@@ -1,5 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#1f5a85"/>
-  <circle cx="256" cy="256" r="168" fill="#ffffff"/>
-  <text x="256" y="288" text-anchor="middle" font-family="Arial, sans-serif" font-size="140" font-weight="700" fill="#1f5a85">HB</text>
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="48" fill="url(#bgGrad)"/>
+
+  <g transform="translate(256, 256)">
+    <rect x="-220" y="-156" width="440" height="312" rx="36" fill="#ffffff"/>
+    <rect x="-220" y="-120" width="440" height="48" fill="#e2e8f0"/>
+    <rect x="-180" y="20" width="360" height="56" rx="14" fill="#1f2937"/>
+    <rect x="-180" y="100" width="280" height="36" rx="10" fill="#cbd5e1"/>
+    <rect x="120" y="-24" width="120" height="72" rx="14" fill="#fbbf24" opacity="0.9"/>
+    <circle cx="-170" cy="-80" r="36" fill="#fbbf24"/>
+    <circle cx="-170" cy="-80" r="18" fill="#fbbf24" stroke="#ffffff" stroke-width="6"/>
+    <circle cx="-100" cy="-80" r="36" fill="#fbbf24"/>
+    <circle cx="-100" cy="-80" r="18" fill="#fbbf24" stroke="#ffffff" stroke-width="6"/>
+  </g>
 </svg>
