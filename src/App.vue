@@ -852,41 +852,6 @@
         <p v-else class="text-sm text-slate-500">暂无账户。</p>
       </section>
     </div>
-
-    <div v-if="childUsers.length > 0" class="mt-4 grid gap-4 sm:grid-cols-2">
-      <button
-        v-for="child in childUsers"
-        :key="child.id"
-        type="button"
-        :class="[
-          'flex flex-col items-center gap-3 rounded-3xl border px-4 py-5 text-center transition',
-          selectedChildId === child.id
-            ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
-            : 'border-slate-200 bg-white text-slate-600 shadow-sm hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md',
-        ]"
-        @click="selectedChildId = child.id"
-      >
-        <Avatar
-          :avatar-id="child.avatar_id"
-          :options="avatarOptions"
-          :role="child.role"
-          :class="[
-            'h-16 w-16 rounded-full transition',
-            selectedChildId === child.id
-              ? 'ring-2 ring-purple-300 ring-offset-2 ring-offset-purple-50'
-              : 'ring-1 ring-slate-200 ring-offset-2 ring-offset-white',
-          ]"
-        />
-        <span
-          :class="[
-            'text-sm font-semibold',
-            selectedChildId === child.id ? 'text-purple-700' : 'text-slate-600',
-          ]"
-        >
-          {{ child.name }}
-        </span>
-      </button>
-    </div>
   </div>
 </template>
 
