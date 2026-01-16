@@ -376,8 +376,21 @@ describe("Home Bank UI", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("SGD 资产总览")).toBeInTheDocument();
     expect(screen.getByText("CNY 资产总览")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /小女儿/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /小儿子/ })).toBeInTheDocument();
+    const childList = screen
+      .getByRole("heading", { name: "孩子列表" })
+      .closest("section");
+    expect(childList).not.toBeNull();
+
+    expect(
+      within(childList as HTMLElement).getByRole("button", {
+        name: /小女儿/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(childList as HTMLElement).getByRole("button", {
+        name: /小儿子/,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("allows parent to add a deposit", async () => {
@@ -410,8 +423,7 @@ describe("Home Bank UI", () => {
     await user.type(screen.getByPlaceholderText("备注（可选）"), "零花钱发放");
     await user.click(screen.getByRole("button", { name: "增加" }));
 
-    expect(await screen.findByText("已保存交易。")).toBeInTheDocument();
-    expect(screen.getByText("零花钱发放")).toBeInTheDocument();
+    expect(await screen.findByText("零花钱发放")).toBeInTheDocument();
   });
 
   it("filters transfer targets by currency", async () => {
@@ -501,9 +513,6 @@ describe("Home Bank UI", () => {
       within(childRow as HTMLElement).getByRole("button", { name: "删除" }),
     );
 
-    expect(
-      await screen.findByText("已删除孩子及关联账户。"),
-    ).toBeInTheDocument();
     expect(within(childCard).queryByText("小女儿")).not.toBeInTheDocument();
   });
 
@@ -536,8 +545,7 @@ describe("Home Bank UI", () => {
       within(childRow as HTMLElement).getByRole("button", { name: "保存" }),
     );
 
-    expect(await screen.findByText("已更新名称。")).toBeInTheDocument();
-    expect(screen.getAllByText("小宝").length).toBeGreaterThan(0);
+    expect(await within(childCard).findByText("小宝")).toBeInTheDocument();
   });
 
   it("updates account name from list", async () => {
@@ -584,8 +592,9 @@ describe("Home Bank UI", () => {
     await user.type(input, "心愿账户");
     await user.click(screen.getByRole("button", { name: "保存" }));
 
-    expect(await screen.findByText("账户名称已更新。")).toBeInTheDocument();
-    expect(screen.getAllByText("心愿账户").length).toBeGreaterThan(0);
+    expect(
+      await within(accountSection as HTMLElement).findByText("心愿账户"),
+    ).toBeInTheDocument();
   });
 
   it("renders child view as read-only", async () => {

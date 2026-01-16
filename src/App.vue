@@ -269,16 +269,16 @@
         <p v-if="childUsers.length === 0" class="mt-3 text-sm text-slate-500">
           暂无孩子，请先创建。
         </p>
-        <div v-else class="mt-4 flex gap-3 overflow-x-auto pb-2">
+        <div v-else class="mt-4 grid grid-cols-2 gap-3">
           <button
             v-for="child in childUsers"
             :key="child.id"
             type="button"
             :class="[
-              'flex min-w-[160px] flex-col items-center gap-3 rounded-3xl border px-4 py-3 text-sm transition',
+              'relative h-28 flex items-center gap-4 rounded-2xl border px-4 transition-all duration-200',
               selectedChildId === child.id
-                ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200'
-                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50',
+                ? 'bg-purple-600 text-white shadow-lg ring-2 ring-purple-300 active:scale-95'
+                : 'border-gray-200 bg-white shadow-sm hover:bg-purple-50 active:scale-95',
             ]"
             @click="selectedChildId = child.id"
           >
@@ -286,11 +286,24 @@
               :avatar-id="child.avatar_id"
               :options="avatarOptions"
               role="child"
-              class="h-16 w-16"
+              :class="[
+                'h-16 w-16 shrink-0',
+                selectedChildId === child.id ? 'bg-white/20' : '',
+              ]"
             />
-            <span class="text-base font-semibold text-slate-700">{{
-              child.name
-            }}</span>
+            <span
+              :class="[
+                'text-lg font-semibold',
+                selectedChildId === child.id ? 'text-white' : 'text-slate-800',
+              ]"
+              >{{ child.name }}</span
+            >
+            <span
+              v-if="selectedChildId === child.id"
+              class="absolute top-2 right-2 rounded-full bg-white/20 px-2 py-0.5 text-xs text-white"
+            >
+              当前
+            </span>
           </button>
         </div>
       </section>
@@ -380,10 +393,10 @@
               v-for="account in selectedChildAccounts"
               :key="account.id"
               :class="[
-                'flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition',
+                'flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition',
                 account.id === selectedAccountId
-                  ? 'bg-brand-100 text-brand-900 ring-2 ring-brand-300'
-                  : 'bg-white text-slate-700 shadow-sm hover:bg-brand-50',
+                  ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
+                  : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md',
               ]"
             >
               <button
@@ -707,20 +720,20 @@
               {{ currency }}
             </h4>
             <div
-              class="mt-2 flex gap-3 overflow-x-auto pb-2 lg:block lg:space-y-2 lg:overflow-visible"
+              class="mt-2 flex flex-col gap-3 sm:flex-row sm:overflow-x-auto sm:pb-2 lg:block lg:space-y-2 lg:overflow-visible"
             >
               <button
                 v-for="account in currencyAccounts"
                 :key="account.id"
-                class="flex w-full flex-1 items-center justify-between rounded-2xl px-3 py-2 text-left text-sm font-medium transition"
+                class="flex w-full min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition sm:min-w-[220px]"
                 :class="
                   account.id === selectedAccountId
-                    ? 'bg-brand-100 text-brand-900 ring-2 ring-brand-300'
-                    : 'bg-white text-slate-700 shadow-sm hover:bg-brand-50'
+                    ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
+                    : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md'
                 "
                 @click="selectAccount(account.id)"
               >
-                <span>{{ account.name }}</span>
+                <span class="flex-1 break-words">{{ account.name }}</span>
                 <span class="text-xs font-semibold text-slate-500">
                   {{
                     formatAmount(balances[account.id] ?? 0, account.currency)
@@ -840,11 +853,39 @@
       </section>
     </div>
 
-    <div
-      v-if="status"
-      class="fixed bottom-6 right-6 rounded-full bg-brand-600 px-4 py-2 text-sm text-white shadow-lg"
-    >
-      {{ status }}
+    <div v-if="childUsers.length > 0" class="mt-4 grid gap-4 sm:grid-cols-2">
+      <button
+        v-for="child in childUsers"
+        :key="child.id"
+        type="button"
+        :class="[
+          'flex flex-col items-center gap-3 rounded-3xl border px-4 py-5 text-center transition',
+          selectedChildId === child.id
+            ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
+            : 'border-slate-200 bg-white text-slate-600 shadow-sm hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md',
+        ]"
+        @click="selectedChildId = child.id"
+      >
+        <Avatar
+          :avatar-id="child.avatar_id"
+          :options="avatarOptions"
+          :role="child.role"
+          :class="[
+            'h-16 w-16 rounded-full transition',
+            selectedChildId === child.id
+              ? 'ring-2 ring-purple-300 ring-offset-2 ring-offset-purple-50'
+              : 'ring-1 ring-slate-200 ring-offset-2 ring-offset-white',
+          ]"
+        />
+        <span
+          :class="[
+            'text-sm font-semibold',
+            selectedChildId === child.id ? 'text-purple-700' : 'text-slate-600',
+          ]"
+        >
+          {{ child.name }}
+        </span>
+      </button>
     </div>
   </div>
 </template>
@@ -983,6 +1024,7 @@ const allTransactions = ref<Transaction[]>([]);
 const selectedAccountId = ref<string | null>(null);
 const status = ref<string | null>(null);
 const loading = ref(false);
+let statusTimeoutId: number | null = null;
 const amountInput = ref("");
 const noteInput = ref("");
 const transferAmount = ref("");
@@ -1393,6 +1435,10 @@ const handleAddTransaction = async (type: "deposit" | "withdrawal") => {
   amountInput.value = "";
   noteInput.value = "";
   status.value = "已保存交易。";
+  if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
+  statusTimeoutId = window.setTimeout(() => {
+    if (status.value === "已保存交易。") status.value = null;
+  }, 1500);
   loading.value = false;
 };
 
@@ -1543,6 +1589,10 @@ const handleDeleteChild = async (childId: string) => {
   await loadAccounts(user.value);
   await loadLoginUsers();
   status.value = "已删除孩子及关联账户。";
+  if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
+  statusTimeoutId = window.setTimeout(() => {
+    if (status.value === "已删除孩子及关联账户。") status.value = null;
+  }, 1500);
   loading.value = false;
 };
 
