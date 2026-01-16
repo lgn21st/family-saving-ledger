@@ -1,0 +1,51 @@
+name: Monthly Interest Calculation
+
+on:
+  schedule:
+    # Run on the 1st of every month at 00:00 UTC
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+    # Allow manual triggering
+    inputs:
+      month:
+        description: "Optional: Month to calculate interest for (YYYY-MM format)"
+        required: false
+        type: string
+
+jobs:
+  calculate-interest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Calculate Interest
+        run: |
+          # Default to current month if not specified
+          MONTH_PARAM=""
+          if [ -n "${{ github.event.inputs.month }}" ]; then
+            MONTH_PARAM="-d '{\"month\": \"${{ github.event.inputs.month }}\"}'"
+          fi
+
+          echo "Triggering monthly interest calculation..."
+
+          # Call the Supabase Edge Function
+          response=$(curl -s -o response.json -w "%{http_code}" \
+            -X POST "${{ vars.SUPABASE_URL }}/functions/v1/monthly-interest" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            $MONTH_PARAM)
+
+          # Check response
+          if [ "$response" -eq 200 ]; then
+            echo "✅ Monthly interest calculation completed successfully"
+            cat response.json
+          else
+            echo "❌ Monthly interest calculation failed with status $response"
+            cat response.json
+            exit 1
+          fi
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

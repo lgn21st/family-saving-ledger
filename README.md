@@ -123,6 +123,7 @@ values
 - `npm run lint` - ESLint
 - `npm run test` - run unit tests
 - `npm run test:watch` - watch tests
+- `./test-interest.sh [month]` - test monthly interest calculation locally
 
 ## Tests
 
@@ -131,6 +132,39 @@ Unit tests use Vitest + Testing Library and mock the Supabase client. Run:
 ```bash
 npm run test
 ```
+
+## Monthly Interest Calculation
+
+The app automatically calculates monthly interest on the 1st of each month. The interest calculation is handled by:
+
+1. **Database Function**: `run_monthly_interest()` in `supabase/schema.sql`
+2. **Edge Function**: `supabase/functions/monthly-interest/` for API access
+3. **GitHub Actions**: `.github/workflows/monthly-interest.yml` for scheduling
+
+### Manual Testing
+
+Test the interest calculation locally:
+
+```bash
+# Calculate interest for current month
+./test-interest.sh
+
+# Calculate interest for specific month
+./test-interest.sh 2024-01
+```
+
+### Production Setup
+
+For production, set up the GitHub Actions workflow by:
+
+1. Go to your GitHub repository Settings → Secrets and variables → Actions
+2. Add these repository secrets:
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_ANON_KEY`: Your Supabase anon key
+3. Add these repository variables:
+   - `SUPABASE_URL`: Your Supabase project URL
+
+The workflow runs automatically on the 1st of each month, or can be triggered manually.
 
 ## PWA Notes
 
