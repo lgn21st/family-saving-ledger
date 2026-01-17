@@ -667,7 +667,10 @@
                       }}</span>
                     </div>
                     <span
-                      :class="['font-semibold', transactionTone(transaction)]"
+                      :class="[
+                        'font-semibold flex-shrink-0 whitespace-nowrap text-right',
+                        transactionTone(transaction),
+                      ]"
                     >
                       {{ formatSignedAmount(transaction) }}
                     </span>
@@ -834,7 +837,10 @@
                         }}</span>
                       </div>
                       <span
-                        :class="['font-semibold', transactionTone(transaction)]"
+                        :class="[
+                          'font-semibold flex-shrink-0 whitespace-nowrap text-right',
+                          transactionTone(transaction),
+                        ]"
                       >
                         {{ formatSignedAmount(transaction) }}
                       </span>
