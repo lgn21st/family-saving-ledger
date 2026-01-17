@@ -100,7 +100,7 @@ settings_row as (
 insert into accounts (name, currency, owner_child_id, created_by)
 values
   (
-    '中国-日常',
+    '中国 - 日常',
     'CNY',
     (select id from children where name = '大女儿'),
     (select id from parents where name = '爸爸')
@@ -134,7 +134,6 @@ values
 - `npm run lint` - ESLint
 - `npm run test` - run unit tests
 - `npm run test:watch` - watch tests
-- `npm run settle-interest` - run monthly interest settlement locally
 
 ## Tests
 
@@ -146,14 +145,14 @@ npm run test
 
 ## Monthly Interest Calculation
 
-Monthly interest is settled by a Supabase cron job that runs at 09:00 Asia/Singapore time on the 1st of each month (configured as `0 1 1 * *` UTC). The settlement logic lives in `run_monthly_interest()` inside `supabase/schema.sql` and uses the `settings` table for the annual rate and timezone.
+Monthly interest is settled by a Supabase cron job that runs on the 1st of each month at 09:00 Asia/Singapore time. The settlement logic lives in `run_monthly_interest()` inside `supabase/schema.sql` and uses the `settings` table for annual rate and timezone.
 
 ### Manual Trigger
 
-Run the settlement locally (requires `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`):
+Execute monthly interest settlement locally:
 
 ```bash
-npm run settle-interest
+npx supabase db shell -c "SELECT run_monthly_interest();"
 ```
 
 ## PWA Notes
@@ -169,7 +168,6 @@ The app includes a web manifest and service worker configuration. Install on iOS
 - `src/App.vue`: main UI and business logic
 - `src/main.ts`: app entry and service worker registration
 - `src/supabaseClient.ts`: Supabase client initialization
-- `scripts/settle-interest.mjs`: local interest settlement task
 - `supabase/schema.sql`: database schema
 - `supabase/migrations/`: database migrations
 - `public/manifest.webmanifest`: PWA manifest
