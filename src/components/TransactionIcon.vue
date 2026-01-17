@@ -1,5 +1,8 @@
 <template>
-  <span :class="wrapperClass" class="text-lg font-semibold leading-none">
+  <span
+    :class="wrapperClass"
+    class="text-xl font-bold leading-none flex items-center justify-center"
+  >
     {{ symbol }}
   </span>
 </template>
@@ -26,11 +29,11 @@ const iconMap: Record<TransactionType, { className: string; symbol: string }> =
   {
     deposit: {
       className: "bg-emerald-100 text-emerald-600",
-      symbol: "+",
+      symbol: "↑",
     },
     withdrawal: {
       className: "bg-rose-100 text-rose-500",
-      symbol: "−",
+      symbol: "↓",
     },
     transfer_in: {
       className: "bg-emerald-100 text-emerald-600",
@@ -42,7 +45,7 @@ const iconMap: Record<TransactionType, { className: string; symbol: string }> =
     },
     interest: {
       className: "bg-emerald-100 text-emerald-600",
-      symbol: "+",
+      symbol: "↑",
     },
   };
 
