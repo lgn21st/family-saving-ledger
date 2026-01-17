@@ -420,7 +420,7 @@ describe("Home Bank UI", () => {
     await selectAccount(user, "零花钱");
 
     await user.type(screen.getByPlaceholderText("金额"), "20");
-    await user.type(screen.getByPlaceholderText("备注（可选）"), "零花钱发放");
+    await user.type(screen.getByPlaceholderText("备注（必填）"), "零花钱发放");
     await user.click(screen.getByRole("button", { name: "增加" }));
 
     expect(await screen.findByText("零花钱发放")).toBeInTheDocument();

@@ -562,7 +562,7 @@
             <input
               v-model="noteInput"
               type="text"
-              placeholder="备注（可选）"
+              placeholder="备注（必填）"
               class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
@@ -612,6 +612,14 @@
                 {{ account.ownerName }} - {{ account.name }}
               </option>
             </select>
+          </div>
+          <div class="mt-3">
+            <input
+              v-model="transferNote"
+              type="text"
+              placeholder="备注（可选）"
+              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            />
           </div>
           <p class="mt-3 text-xs text-slate-500">
             可转账余额：{{
@@ -1052,6 +1060,7 @@ const amountInput = ref("");
 const noteInput = ref("");
 const transferAmount = ref("");
 const transferTargetId = ref("");
+const transferNote = ref("");
 const childUsers = ref<AppUser[]>([]);
 const newAccountName = ref("");
 const newAccountCurrency = ref("SGD");
@@ -1731,13 +1740,21 @@ const handleTransfer = async () => {
       ?.name ?? targetAccount.name;
 
   loading.value = true;
+
+  const sourceNote = `转出至 ${targetOwnerName} ${targetAccount.name}`;
+  const targetNote = `来自 ${sourceOwnerName} ${selectedAccount.value.name}`;
+
+  const noteSuffix = transferNote.value.trim()
+    ? ` - ${transferNote.value.trim()}`
+    : " （无备注）";
+
   const payload = [
     {
       account_id: selectedAccount.value.id,
       type: "transfer_out" as const,
       amount,
       currency: selectedAccount.value.currency,
-      note: `转出至 ${targetOwnerName} ${targetAccount.name}`,
+      note: sourceNote + noteSuffix,
       related_account_id: targetAccount.id,
       created_by: user.value.id,
     },
@@ -1746,7 +1763,7 @@ const handleTransfer = async () => {
       type: "transfer_in" as const,
       amount,
       currency: targetAccount.currency,
-      note: `来自 ${sourceOwnerName} ${selectedAccount.value.name}`,
+      note: targetNote + noteSuffix,
       related_account_id: selectedAccount.value.id,
       created_by: user.value.id,
     },
@@ -1766,11 +1783,16 @@ const handleTransfer = async () => {
   allTransactions.value = [...allTransactions.value, ...(data ?? [])];
   transferAmount.value = "";
   transferTargetId.value = "";
+  transferNote.value = "";
   status.value = "转账完成。";
   loading.value = false;
 };
 
 const getTransactionNote = (transaction: Transaction) => {
+  if (transaction.note) {
+    return transaction.note;
+  }
+
   if (transaction.related_account_id) {
     const relatedAccount = accounts.value.find(
       (account) => account.id === transaction.related_account_id,
@@ -1792,7 +1814,7 @@ const getTransactionNote = (transaction: Transaction) => {
     }
   }
 
-  return transaction.note || "—";
+  return "—";
 };
 
 watch([accounts, allTransactions], () => {
