@@ -47,7 +47,6 @@ Create `.env.local` in the project root:
 ```bash
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
 ### 4) Run the app
