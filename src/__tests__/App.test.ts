@@ -440,6 +440,27 @@ function createSupabaseMock() {
         return Promise.resolve({ data: [sourceRow, targetRow], error: null });
       }
 
+      if (fnName === "get_balance_before_date") {
+        const accountId = String(payload.p_account_id);
+        const before = String(payload.p_before);
+        const total = dataStore.transactions
+          .filter(
+            (transaction) =>
+              transaction.account_id === accountId &&
+              transaction.created_at < before,
+          )
+          .reduce((sum, transaction) => {
+            const delta =
+              transaction.type === "withdrawal" ||
+              transaction.type === "transfer_out"
+                ? -transaction.amount
+                : transaction.amount;
+            return sum + delta;
+          }, 0);
+
+        return Promise.resolve({ data: Number(total.toFixed(2)), error: null });
+      }
+
       return Promise.resolve({
         data: null,
         error: { message: "Unsupported rpc" },
@@ -1010,7 +1031,7 @@ describe("Home Bank UI", () => {
     await user.type(screen.getByPlaceholderText("备注（必填）"), "测试扣减");
     await user.click(screen.getByRole("button", { name: "减少" }));
 
-    expect(await screen.findByText("Insufficient balance")).toBeInTheDocument();
+    expect(await screen.findByText("余额不足。")).toBeInTheDocument();
     expect(screen.queryByText("测试扣减")).not.toBeInTheDocument();
   });
 });

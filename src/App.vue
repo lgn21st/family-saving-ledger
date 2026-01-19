@@ -123,18 +123,7 @@
         </button>
       </div>
     </header>
-    <div v-if="status" class="px-6 pt-4">
-      <div
-        :class="[
-          'rounded-2xl border px-4 py-3 text-sm',
-          statusTone === 'success'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-            : 'border-rose-200 bg-rose-50 text-rose-700',
-        ]"
-      >
-        {{ status }}
-      </div>
-    </div>
+    <StatusBanner :message="status" :tone="statusTone" />
 
     <main v-if="user.role === 'parent'" class="flex-1 space-y-6 px-6 py-6">
       <section
@@ -650,59 +639,17 @@
           </button>
         </section>
 
-        <section
-          class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-        >
-          <h4 class="text-sm font-semibold text-slate-700">交易记录</h4>
-          <p
-            v-if="selectedTransactions.length === 0"
-            class="mt-3 text-sm text-slate-500"
-          >
-            暂无交易。
-          </p>
-          <template v-else>
-            <ul class="mt-4 space-y-3">
-              <li
-                v-for="transaction in pagedTransactions"
-                :key="transaction.id"
-                class="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-slate-700"
-              >
-                <TransactionIcon :type="transaction.type" />
-                <div class="flex-1">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <span class="font-semibold">{{
-                        transactionLabels[transaction.type]
-                      }}</span>
-                      <span class="ml-2 text-slate-500">{{
-                        getTransactionNote(transaction)
-                      }}</span>
-                    </div>
-                    <span
-                      :class="[
-                        'font-semibold flex-shrink-0 whitespace-nowrap text-right',
-                        transactionTone(transaction),
-                      ]"
-                    >
-                      {{ formatSignedAmount(transaction) }}
-                    </span>
-                  </div>
-                  <div class="mt-2 text-xs text-slate-400">
-                    {{ formatTimestamp(transaction.created_at) }}
-                  </div>
-                </div>
-              </li>
-            </ul>
-            <button
-              v-if="hasMoreTransactions"
-              class="mt-4 w-full rounded-2xl border border-brand-200 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50"
-              :disabled="transactionLoading"
-              @click="handleLoadMoreTransactions"
-            >
-              加载更多
-            </button>
-          </template>
-        </section>
+        <TransactionsList
+          :transactions="pagedTransactions"
+          :has-more="hasMoreTransactions"
+          :loading="transactionLoading"
+          :transaction-labels="transactionLabels"
+          :format-signed-amount="formatSignedAmount"
+          :transaction-tone="transactionTone"
+          :get-transaction-note="getTransactionNote"
+          :format-timestamp="formatTimestamp"
+          :on-load-more="handleLoadMoreTransactions"
+        />
       </template>
       <p v-else class="text-sm text-slate-500">暂无账户。</p>
     </main>
@@ -821,59 +768,17 @@
             </div>
           </div>
 
-          <div
-            class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-          >
-            <h4 class="text-sm font-semibold text-slate-700">交易记录</h4>
-            <p
-              v-if="selectedTransactions.length === 0"
-              class="mt-3 text-sm text-slate-500"
-            >
-              暂无交易。
-            </p>
-            <template v-else>
-              <ul class="mt-4 space-y-3">
-                <li
-                  v-for="transaction in pagedTransactions"
-                  :key="transaction.id"
-                  class="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-slate-700"
-                >
-                  <TransactionIcon :type="transaction.type" />
-                  <div class="flex-1">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <span class="font-semibold">{{
-                          transactionLabels[transaction.type]
-                        }}</span>
-                        <span class="ml-2 text-slate-500">{{
-                          getTransactionNote(transaction)
-                        }}</span>
-                      </div>
-                      <span
-                        :class="[
-                          'font-semibold flex-shrink-0 whitespace-nowrap text-right',
-                          transactionTone(transaction),
-                        ]"
-                      >
-                        {{ formatSignedAmount(transaction) }}
-                      </span>
-                    </div>
-                    <div class="mt-2 text-xs text-slate-400">
-                      {{ formatTimestamp(transaction.created_at) }}
-                    </div>
-                  </div>
-                </li>
-              </ul>
-              <button
-                v-if="hasMoreTransactions"
-                class="mt-4 w-full rounded-2xl border border-brand-200 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50"
-                :disabled="transactionLoading"
-                @click="handleLoadMoreTransactions"
-              >
-                加载更多
-              </button>
-            </template>
-          </div>
+          <TransactionsList
+            :transactions="pagedTransactions"
+            :has-more="hasMoreTransactions"
+            :loading="transactionLoading"
+            :transaction-labels="transactionLabels"
+            :format-signed-amount="formatSignedAmount"
+            :transaction-tone="transactionTone"
+            :get-transaction-note="getTransactionNote"
+            :format-timestamp="formatTimestamp"
+            :on-load-more="handleLoadMoreTransactions"
+          />
         </template>
         <p v-else class="text-sm text-slate-500">暂无账户。</p>
       </section>
@@ -885,7 +790,8 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import Avatar from "./components/Avatar.vue";
-import TransactionIcon from "./components/TransactionIcon.vue";
+import StatusBanner from "./components/StatusBanner.vue";
+import TransactionsList from "./components/TransactionsList.vue";
 
 type Role = "parent" | "child";
 
@@ -1056,13 +962,6 @@ const signedAmount = (transaction: Transaction) => {
   return direction * transaction.amount;
 };
 
-const computeBalance = (transactions: Transaction[]) => {
-  return transactions.reduce(
-    (total, transaction) => total + signedAmount(transaction),
-    0,
-  );
-};
-
 const transactionTone = (transaction: Transaction) => {
   return signedAmount(transaction) >= 0 ? "text-emerald-600" : "text-rose-500";
 };
@@ -1077,6 +976,23 @@ const formatTimestamp = (value: string) => {
   return new Date(value).toLocaleString();
 };
 
+const mapErrorMessage = (message: string) => {
+  if (message.includes("Insufficient balance")) return "余额不足。";
+  if (message.includes("Account not found or inactive")) return "账户不可用。";
+  if (message.includes("Transfer currency mismatch"))
+    return "只能在相同币种账户之间转账。";
+  if (message.includes("Amount must be positive")) return "请输入有效金额。";
+  if (message.includes("Source and target accounts must differ"))
+    return "请选择不同的账户。";
+  if (message.includes("Unsupported transaction type"))
+    return "交易类型不支持。";
+  return message;
+};
+
+const setErrorStatus = (message: string) => {
+  status.value = mapErrorMessage(message);
+};
+
 const user = ref<AppUser | null>(null);
 const loginPin = ref("");
 const loginUsers = ref<AppUser[]>([]);
@@ -1085,6 +1001,7 @@ const accounts = ref<Account[]>([]);
 const balances = ref<Record<string, number>>({});
 const transactions = ref<Transaction[]>([]);
 const chartTransactions = ref<Transaction[]>([]);
+const chartBaseBalance = ref(0);
 const transactionTotal = ref(0);
 const transactionPage = ref(0);
 const transactionLoading = ref(false);
@@ -1228,12 +1145,7 @@ const chartPoints = computed<ChartPoint[]>(() => {
         left.effectiveDate.getTime() - right.effectiveDate.getTime(),
     );
 
-  const netRecent = accountTransactions.reduce(
-    (total, entry) => total + signedAmount(entry.transaction),
-    0,
-  );
-  const currentBalance = balances.value[selectedAccount.value.id] ?? 0;
-  let runningBalance = currentBalance - netRecent;
+  let runningBalance = chartBaseBalance.value;
 
   let index = 0;
   const points: ChartPoint[] = [];
@@ -1306,7 +1218,7 @@ const loadBalances = async (loadedAccounts: Account[]) => {
     .in("account_id", accountIds);
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     return;
   }
 
@@ -1331,7 +1243,7 @@ const loadTransactionsPage = async (accountId: string, page: number) => {
     .range(start, end);
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     transactionLoading.value = false;
     return;
   }
@@ -1349,6 +1261,19 @@ const loadChartTransactions = async (accountId: string) => {
   startDate.setDate(endDate.getDate() - 29);
   startDate.setHours(0, 0, 0, 0);
 
+  const { data: baseData, error: baseError } = await supabase.rpc(
+    "get_balance_before_date",
+    {
+      p_account_id: accountId,
+      p_before: startDate.toISOString(),
+    },
+  );
+
+  if (baseError) {
+    setErrorStatus(baseError.message);
+    return;
+  }
+
   const { data, error } = await supabase
     .from("transactions")
     .select("*")
@@ -1357,10 +1282,11 @@ const loadChartTransactions = async (accountId: string) => {
     .order("created_at", { ascending: true });
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     return;
   }
 
+  chartBaseBalance.value = Number(baseData ?? 0);
   chartTransactions.value = data ?? [];
 };
 
@@ -1391,7 +1317,7 @@ const loadAccounts = async (currentUser: AppUser) => {
       : await query.eq("owner_child_id", currentUser.id).order("created_at");
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     loading.value = false;
     return;
   }
@@ -1410,7 +1336,7 @@ const loadChildUsers = async () => {
     .order("created_at");
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     return;
   }
 
@@ -1424,7 +1350,7 @@ const loadLoginUsers = async () => {
     .order("created_at");
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     return;
   }
 
@@ -1552,7 +1478,7 @@ const handleAddTransaction = async (type: "deposit" | "withdrawal") => {
   });
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     loading.value = false;
     return;
   }
@@ -1601,7 +1527,7 @@ const handleCreateAccount = async () => {
   ]);
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     loading.value = false;
     return;
   }
@@ -1644,7 +1570,7 @@ const handleCreateChild = async () => {
   ]);
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     loading.value = false;
     return;
   }
@@ -1669,7 +1595,7 @@ const handleDeleteChild = async (childId: string) => {
     .eq("owner_child_id", childId);
 
   if (childAccountsError) {
-    status.value = childAccountsError.message;
+    setErrorStatus(childAccountsError.message);
     loading.value = false;
     return;
   }
@@ -1683,7 +1609,7 @@ const handleDeleteChild = async (childId: string) => {
       .in("account_id", accountIds);
 
     if (transactionsError) {
-      status.value = transactionsError.message;
+      setErrorStatus(transactionsError.message);
       loading.value = false;
       return;
     }
@@ -1694,7 +1620,7 @@ const handleDeleteChild = async (childId: string) => {
       .in("id", accountIds);
 
     if (accountsError) {
-      status.value = accountsError.message;
+      setErrorStatus(accountsError.message);
       loading.value = false;
       return;
     }
@@ -1706,7 +1632,7 @@ const handleDeleteChild = async (childId: string) => {
     .eq("id", childId);
 
   if (childError) {
-    status.value = childError.message;
+    setErrorStatus(childError.message);
     loading.value = false;
     return;
   }
@@ -1748,7 +1674,7 @@ const handleUpdateChild = async () => {
     .eq("id", editingChildId.value);
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     loading.value = false;
     return;
   }
@@ -1786,7 +1712,7 @@ const handleUpdateAccount = async () => {
     .eq("id", editingAccountId.value);
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     loading.value = false;
     return;
   }
@@ -1835,7 +1761,7 @@ const handleTransfer = async () => {
   });
 
   if (error) {
-    status.value = error.message;
+    setErrorStatus(error.message);
     loading.value = false;
     return;
   }
