@@ -27,9 +27,13 @@ export type Transaction = {
   currency: string;
   note: string | null;
   related_account_id: string | null;
+  transfer_group_id?: string | null;
   created_by: string;
   created_at: string;
   interest_month?: string | null;
+  is_void?: boolean;
+  voided_at?: string | null;
+  voided_by?: string | null;
 };
 
 export type TransferTarget = Account & { ownerName: string };

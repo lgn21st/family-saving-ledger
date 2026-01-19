@@ -30,12 +30,14 @@
       :transactions="pagedTransactions"
       :has-more="hasMoreTransactions"
       :loading="transactionLoading"
+      :can-void="canVoid"
       :transaction-labels="transactionLabels"
       :format-signed-amount="formatSignedAmount"
       :transaction-tone="transactionTone"
       :get-transaction-note="getTransactionNote"
       :format-timestamp="formatTimestamp"
       :on-load-more="onLoadMore"
+      :on-void-transaction="onVoidTransaction"
     />
   </template>
   <p v-else class="text-sm text-slate-500">暂无账户。</p>
@@ -65,6 +67,7 @@ const props = defineProps<{
   pagedTransactions: Transaction[];
   hasMoreTransactions: boolean;
   transactionLoading: boolean;
+  canVoid: boolean;
   transactionLabels: Record<Transaction["type"], string>;
   formatSignedAmount: (transaction: Transaction) => string;
   transactionTone: (transaction: Transaction) => string;
@@ -73,6 +76,7 @@ const props = defineProps<{
   onAddTransaction: (type: "deposit" | "withdrawal") => void;
   onTransfer: () => void;
   onLoadMore: () => void;
+  onVoidTransaction: (transaction: Transaction) => void;
 }>();
 
 const emit = defineEmits<{

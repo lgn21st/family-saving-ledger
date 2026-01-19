@@ -82,6 +82,7 @@
       :paged-transactions="pagedTransactions"
       :has-more-transactions="hasMoreTransactions"
       :transaction-loading="transactionLoading"
+      :can-void="canEdit"
       :transaction-labels="transactionLabels"
       :format-signed-amount="formatSignedAmount"
       :transaction-tone="transactionTone"
@@ -90,6 +91,7 @@
       :on-add-transaction="onAddTransaction"
       :on-transfer="onTransfer"
       :on-load-more="onLoadMore"
+      :on-void-transaction="onVoidTransaction"
     />
   </main>
 </template>
@@ -163,6 +165,7 @@ const props = defineProps<{
   onAddTransaction: (type: "deposit" | "withdrawal") => void;
   onTransfer: () => void;
   onLoadMore: () => void;
+  onVoidTransaction: (transaction: Transaction) => void;
 }>();
 
 const emit = defineEmits<{

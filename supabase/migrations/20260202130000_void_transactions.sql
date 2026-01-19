@@ -1,63 +1,15 @@
-create table if not exists app_users (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  role text not null check (role in ('parent', 'child')),
-  pin text not null check (pin ~ '^[0-9]{4}$'),
-  avatar_id text,
-  created_at timestamp with time zone default now()
-);
+alter table if exists transactions
+  add column if not exists transfer_group_id uuid,
+  add column if not exists is_void boolean not null default false,
+  add column if not exists voided_at timestamp with time zone,
+  add column if not exists voided_by uuid references app_users(id);
 
-create table if not exists accounts (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  currency text not null check (currency ~ '^[A-Z]{3}$'),
-  owner_child_id uuid not null references app_users(id),
-  created_by uuid not null references app_users(id),
-  is_active boolean not null default true,
-  created_at timestamp with time zone default now()
-);
-
-create table if not exists transactions (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id),
-  type text not null check (type in ('deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'interest')),
-  amount numeric(12, 2) not null check (amount > 0),
-  currency text not null,
-  note text,
-  related_account_id uuid references accounts(id),
-  transfer_group_id uuid,
-  created_by uuid not null references app_users(id),
-  created_at timestamp with time zone default now(),
-  interest_month date,
-  is_void boolean not null default false,
-  voided_at timestamp with time zone,
-  voided_by uuid references app_users(id)
-);
-
-create table if not exists settings (
-  id uuid primary key default gen_random_uuid(),
-  annual_rate numeric(5, 2) not null,
-  timezone text not null default 'Asia/Singapore',
-  updated_at timestamp with time zone default now()
-);
-
-create table if not exists interest_log (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id) on delete cascade,
-  month date not null,
-  annual_rate numeric(5, 2) not null,
-  interest_amount numeric(12, 2) not null,
-  created_at timestamp with time zone default now(),
-  unique (account_id, month)
-);
-
+drop index if exists transactions_interest_unique_idx;
 create unique index if not exists transactions_interest_unique_idx
   on transactions (account_id, interest_month)
   where type = 'interest' and interest_month is not null and is_void = false;
 
-create index if not exists transactions_account_created_at_idx
-  on transactions (account_id, created_at desc);
-
+drop view if exists account_balances;
 create or replace view account_balances as
 select
   account_id,
@@ -358,11 +310,7 @@ begin
 end;
 $$;
 
-drop function if exists run_monthly_interest(date);
-
-drop function if exists run_monthly_interest();
-
-create function run_monthly_interest()
+create or replace function run_monthly_interest()
 returns void
 language plpgsql
 as $$
@@ -514,10 +462,3 @@ begin
   end loop;
 end;
 $$;
-
-insert into settings (id, annual_rate, timezone)
-values ('00000000-0000-0000-0000-000000000001', 10.00, 'Asia/Singapore')
-on conflict (id) do update
-set annual_rate = excluded.annual_rate,
-    timezone = excluded.timezone,
-    updated_at = now();

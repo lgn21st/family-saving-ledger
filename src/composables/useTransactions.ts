@@ -1,13 +1,14 @@
-import { computed, ref } from "vue";
+import { computed, ref, type Ref } from "vue";
 import type { SupabaseClient, Transaction } from "../types";
 
 const PAGE_SIZE = 10;
 
 export const useTransactions = (params: {
   supabase: SupabaseClient;
+  includeVoided: Ref<boolean>;
   setErrorStatus: (message: string) => void;
 }) => {
-  const { supabase, setErrorStatus } = params;
+  const { supabase, includeVoided, setErrorStatus } = params;
 
   const transactions = ref<Transaction[]>([]);
   const chartTransactions = ref<Transaction[]>([]);
@@ -29,14 +30,19 @@ export const useTransactions = (params: {
     transactionLoading.value = false;
   };
 
+  const applyVoidFilter = (query: any) => {
+    return includeVoided.value ? query : query.eq("is_void", false);
+  };
+
   const loadTransactionsPage = async (accountId: string, page: number) => {
     transactionLoading.value = true;
     const start = (page - 1) * PAGE_SIZE;
     const end = page * PAGE_SIZE - 1;
-    const { data, error, count } = await supabase
+    const baseQuery = supabase
       .from("transactions")
       .select("*", { count: "exact" })
-      .eq("account_id", accountId)
+      .eq("account_id", accountId);
+    const { data, error, count } = await applyVoidFilter(baseQuery)
       .order("created_at", { ascending: false })
       .range(start, end);
 
@@ -74,12 +80,15 @@ export const useTransactions = (params: {
       return;
     }
 
-    const { data, error } = await supabase
+    const chartQuery = supabase
       .from("transactions")
       .select("*")
       .eq("account_id", accountId)
-      .gte("created_at", startDate.toISOString())
-      .order("created_at", { ascending: true });
+      .eq("is_void", false)
+      .gte("created_at", startDate.toISOString());
+    const { data, error } = await chartQuery.order("created_at", {
+      ascending: true,
+    });
 
     if (error) {
       setErrorStatus(error.message);

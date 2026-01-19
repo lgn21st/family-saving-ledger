@@ -9,23 +9,45 @@
         <li
           v-for="transaction in transactions"
           :key="transaction.id"
-          class="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-slate-700"
+          :class="[
+            'flex items-start gap-3 rounded-2xl px-4 py-3 text-sm',
+            transaction.is_void ? 'bg-slate-50 text-slate-400' : 'bg-amber-50 text-slate-700',
+          ]"
+          @pointerdown="startLongPress(transaction, $event)"
+          @pointerup="cancelLongPress"
+          @pointercancel="cancelLongPress"
+          @pointerleave="cancelLongPress"
+          @pointermove="handlePointerMove($event)"
         >
           <TransactionIcon :type="transaction.type" />
           <div class="flex-1">
             <div class="flex items-center justify-between">
               <div>
-                <span class="font-semibold">{{
-                  transactionLabels[transaction.type]
-                }}</span>
-                <span class="ml-2 text-slate-500">{{
-                  getTransactionNote(transaction)
-                }}</span>
+                <span
+                  :class="['font-semibold', transaction.is_void ? 'line-through' : '']"
+                >
+                  {{ transactionLabels[transaction.type] }}
+                </span>
+                <span
+                  :class="[
+                    'ml-2',
+                    transaction.is_void ? 'line-through text-slate-400' : 'text-slate-500',
+                  ]"
+                >
+                  {{ getTransactionNote(transaction) }}
+                </span>
+                <span
+                  v-if="transaction.is_void"
+                  class="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600"
+                >
+                  已作废
+                </span>
               </div>
               <span
                 :class="[
                   'font-semibold flex-shrink-0 whitespace-nowrap text-right',
                   transactionTone(transaction),
+                  transaction.is_void ? 'line-through text-slate-400' : '',
                 ]"
               >
                 {{ formatSignedAmount(transaction) }}
@@ -50,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs } from "vue";
+import { ref, toRefs } from "vue";
 import TransactionIcon from "./TransactionIcon.vue";
 import type { Transaction } from "../types";
 
@@ -58,23 +80,72 @@ const props = defineProps<{
   transactions: Transaction[];
   hasMore: boolean;
   loading: boolean;
+  canVoid?: boolean;
   transactionLabels: Record<Transaction["type"], string>;
   formatSignedAmount: (transaction: Transaction) => string;
   transactionTone: (transaction: Transaction) => string;
   getTransactionNote: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
+  onVoidTransaction?: (transaction: Transaction) => void;
 }>();
 
 const {
   transactions,
   hasMore,
   loading,
+  canVoid,
   transactionLabels,
   formatSignedAmount,
   transactionTone,
   getTransactionNote,
   formatTimestamp,
   onLoadMore,
+  onVoidTransaction,
 } = toRefs(props);
+
+const LONG_PRESS_MS = 600;
+const MOVE_THRESHOLD = 10;
+const pressTimer = ref<number | null>(null);
+const pressTargetId = ref<string | null>(null);
+const startX = ref(0);
+const startY = ref(0);
+
+const clearPressTimer = () => {
+  if (pressTimer.value === null) return;
+  window.clearTimeout(pressTimer.value);
+  pressTimer.value = null;
+};
+
+const startLongPress = (transaction: Transaction, event: PointerEvent) => {
+  if (!canVoid?.value || transaction.is_void) return;
+
+  pressTargetId.value = transaction.id;
+  startX.value = event.clientX;
+  startY.value = event.clientY;
+  clearPressTimer();
+
+  pressTimer.value = window.setTimeout(() => {
+    pressTimer.value = null;
+    if (pressTargetId.value !== transaction.id) return;
+    const confirmed = window.confirm("确认撤销这笔交易？");
+    if (confirmed && onVoidTransaction?.value) {
+      onVoidTransaction.value(transaction);
+    }
+  }, LONG_PRESS_MS);
+};
+
+const cancelLongPress = () => {
+  clearPressTimer();
+  pressTargetId.value = null;
+};
+
+const handlePointerMove = (event: PointerEvent) => {
+  if (pressTimer.value === null) return;
+  const deltaX = Math.abs(event.clientX - startX.value);
+  const deltaY = Math.abs(event.clientY - startY.value);
+  if (deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) {
+    cancelLongPress();
+  }
+};
 </script>

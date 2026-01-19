@@ -36,6 +36,7 @@ describe("AccountDetailPanel", () => {
         pagedTransactions: [],
         hasMoreTransactions: false,
         transactionLoading: false,
+        canVoid: false,
         transactionLabels,
         formatSignedAmount,
         transactionTone,
@@ -44,6 +45,7 @@ describe("AccountDetailPanel", () => {
         onAddTransaction: vi.fn(),
         onTransfer: vi.fn(),
         onLoadMore: vi.fn(),
+        onVoidTransaction: vi.fn(),
       },
     });
 
@@ -72,6 +74,7 @@ describe("AccountDetailPanel", () => {
         pagedTransactions: [],
         hasMoreTransactions: false,
         transactionLoading: false,
+        canVoid: true,
         transactionLabels,
         formatSignedAmount,
         transactionTone,
@@ -80,6 +83,7 @@ describe("AccountDetailPanel", () => {
         onAddTransaction: vi.fn(),
         onTransfer: vi.fn(),
         onLoadMore: vi.fn(),
+        onVoidTransaction: vi.fn(),
         "onUpdate:amountInput": onUpdateAmount,
         "onUpdate:noteInput": onUpdateNote,
       },

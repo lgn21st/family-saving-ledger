@@ -73,6 +73,7 @@ describe("ParentDashboard", () => {
         onAddTransaction: vi.fn(),
         onTransfer: vi.fn(),
         onLoadMore: vi.fn(),
+        onVoidTransaction: vi.fn(),
       },
     });
 

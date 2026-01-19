@@ -92,6 +92,7 @@
       :on-add-transaction="handleAddTransaction"
       :on-transfer="handleTransfer"
       :on-load-more="handleLoadMoreForSelected"
+      :on-void-transaction="handleVoidTransaction"
     />
 
     <ChildDashboard
@@ -144,6 +145,7 @@ import { useTransactions } from "./composables/useTransactions";
 import { useUsers } from "./composables/useUsers";
 import type {
   AppUser,
+  Transaction,
   SupabaseClient,
   SupabaseFromClient,
   SupabaseRpcClient,
@@ -162,6 +164,9 @@ const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus } =
 const supabaseFrom = supabase as unknown as SupabaseFromClient;
 const supabaseRpc = supabase as unknown as SupabaseRpcClient;
 const supabaseClient = supabase as unknown as SupabaseClient;
+const includeVoidedTransactions = computed(
+  () => user.value?.role === "parent",
+);
 const { childUsers, loginUsers, loadChildUsers, loadLoginUsers } = useUsers({
   supabase: supabaseFrom,
   setErrorStatus,
@@ -217,6 +222,7 @@ const {
   handleLoadMoreTransactions,
 } = useTransactions({
   supabase: supabaseClient,
+  includeVoided: includeVoidedTransactions,
   setErrorStatus,
 });
 
@@ -375,6 +381,25 @@ const { handleAddTransaction } = useTransactionActions({
   refreshAccountData,
 });
 
+const handleVoidTransaction = async (transaction: Transaction) => {
+  if (!user.value || transaction.is_void) return;
+
+  loading.value = true;
+  const { error } = await supabaseRpc.rpc("void_transaction", {
+    p_transaction_id: transaction.id,
+    p_voided_by: user.value.id,
+  });
+
+  if (error) {
+    setErrorStatus(error.message);
+    loading.value = false;
+    return;
+  }
+
+  setSuccessStatus("交易已作废。");
+  await refreshAccountData();
+  loading.value = false;
+};
 const { handleLoadMoreForSelected } = useTransactionPaging({
   selectedAccount,
   handleLoadMoreTransactions,
