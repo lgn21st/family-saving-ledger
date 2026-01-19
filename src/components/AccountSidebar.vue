@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="order-2 border-t border-white/60 bg-white/80 px-6 py-5 backdrop-blur lg:order-1 lg:w-72 lg:border-t-0 lg:border-r"
+    class="order-2 border-t border-white/60 bg-white/80 px-6 py-5 backdrop-blur sticky top-0 z-40 max-h-screen overflow-y-auto lg:static lg:order-1 lg:z-auto lg:max-h-none lg:overflow-visible lg:w-72 lg:border-t-0 lg:border-r"
   >
     <h3 class="text-sm font-semibold text-slate-600">账户</h3>
     <div class="mt-4 space-y-4">

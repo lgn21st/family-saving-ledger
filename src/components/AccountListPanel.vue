@@ -1,5 +1,7 @@
 <template>
-  <section class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
+  <section
+    class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur sticky top-0 z-40 max-h-screen overflow-y-auto lg:static lg:z-auto lg:max-h-none lg:overflow-visible"
+  >
     <div class="flex items-center justify-between">
       <h4 class="text-sm font-semibold text-slate-700">账户列表</h4>
       <span v-if="selectedChildName" class="text-xs font-semibold text-slate-400">
