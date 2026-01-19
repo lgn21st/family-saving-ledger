@@ -123,6 +123,18 @@
         </button>
       </div>
     </header>
+    <div v-if="status" class="px-6 pt-4">
+      <div
+        :class="[
+          'rounded-2xl border px-4 py-3 text-sm',
+          statusTone === 'success'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : 'border-rose-200 bg-rose-50 text-rose-700',
+        ]"
+      >
+        {{ status }}
+      </div>
+    </div>
 
     <main v-if="user.role === 'parent'" class="flex-1 space-y-6 px-6 py-6">
       <section
@@ -684,7 +696,8 @@
             <button
               v-if="hasMoreTransactions"
               class="mt-4 w-full rounded-2xl border border-brand-200 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50"
-              @click="visibleTransactions += 10"
+              :disabled="transactionLoading"
+              @click="handleLoadMoreTransactions"
             >
               加载更多
             </button>
@@ -854,7 +867,8 @@
               <button
                 v-if="hasMoreTransactions"
                 class="mt-4 w-full rounded-2xl border border-brand-200 bg-white/80 px-4 py-2 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50"
-                @click="visibleTransactions += 10"
+                :disabled="transactionLoading"
+                @click="handleLoadMoreTransactions"
               >
                 加载更多
               </button>
@@ -921,6 +935,7 @@ type ChartPoint = {
 };
 
 const supportedCurrencies = ["SGD", "CNY"];
+const PAGE_SIZE = 10;
 
 const avatarOptions: AvatarOption[] = [
   {
@@ -1005,6 +1020,16 @@ const transactionLabels: Record<Transaction["type"], string> = {
   interest: "利息",
 };
 
+const successMessages = new Set([
+  "已保存交易。",
+  "账户已创建。",
+  "孩子用户已创建。",
+  "已删除孩子及关联账户。",
+  "已更新名称。",
+  "账户名称已更新。",
+  "转账完成。",
+]);
+
 const childAvatars = avatarOptions.filter((avatar) => avatar.role === "child");
 
 const sanitizePin = (value: string) => value.replace(/\D/g, "");
@@ -1057,7 +1082,12 @@ const loginPin = ref("");
 const loginUsers = ref<AppUser[]>([]);
 const selectedLoginUserId = ref<string | null>(null);
 const accounts = ref<Account[]>([]);
-const allTransactions = ref<Transaction[]>([]);
+const balances = ref<Record<string, number>>({});
+const transactions = ref<Transaction[]>([]);
+const chartTransactions = ref<Transaction[]>([]);
+const transactionTotal = ref(0);
+const transactionPage = ref(0);
+const transactionLoading = ref(false);
 const selectedAccountId = ref<string | null>(null);
 const status = ref<string | null>(null);
 const loading = ref(false);
@@ -1074,7 +1104,6 @@ const newAccountOwnerId = ref("");
 const newChildName = ref("");
 const newChildPin = ref("");
 const newChildAvatarId = ref(childAvatars[0]?.id ?? "");
-const visibleTransactions = ref(10);
 const editingChildId = ref<string | null>(null);
 const editingChildName = ref("");
 const editingAccountId = ref<string | null>(null);
@@ -1125,16 +1154,6 @@ const selectedChild = computed(() => {
   return null;
 });
 
-const balances = computed(() => {
-  return accounts.value.reduce<Record<string, number>>((result, account) => {
-    const accountTransactions = allTransactions.value.filter(
-      (transaction) => transaction.account_id === account.id,
-    );
-    result[account.id] = computeBalance(accountTransactions);
-    return result;
-  }, {});
-});
-
 const groupedAccounts = computed(() => currencyGroups(accounts.value));
 
 const currencyTotals = computed(() => {
@@ -1174,35 +1193,32 @@ const transferTargets = computed(() => {
 
 const selectedTransactions = computed(() => {
   if (!selectedAccount.value) return [];
-  return allTransactions.value
-    .filter(
-      (transaction) => transaction.account_id === selectedAccount.value?.id,
-    )
-    .sort(
-      (left, right) =>
-        new Date(right.created_at).getTime() -
-        new Date(left.created_at).getTime(),
-    );
+  return transactions.value;
 });
 
 const pagedTransactions = computed(() => {
-  return selectedTransactions.value.slice(0, visibleTransactions.value);
+  return selectedTransactions.value;
 });
 
 const hasMoreTransactions = computed(() => {
-  return selectedTransactions.value.length > visibleTransactions.value;
+  return selectedTransactions.value.length < transactionTotal.value;
+});
+
+const statusTone = computed(() => {
+  if (!status.value) return "error";
+  return successMessages.has(status.value) ? "success" : "error";
 });
 
 const chartPoints = computed<ChartPoint[]>(() => {
   if (!selectedAccount.value) return [];
-  if (selectedTransactions.value.length === 0) return [];
+  if (chartTransactions.value.length === 0) return [];
 
   const now = new Date(Date.now());
   const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startDate = new Date(endDate);
   startDate.setDate(endDate.getDate() - 29);
 
-  const accountTransactions = selectedTransactions.value
+  const accountTransactions = chartTransactions.value
     .map((transaction) => ({
       transaction,
       effectiveDate: new Date(transaction.created_at),
@@ -1212,7 +1228,13 @@ const chartPoints = computed<ChartPoint[]>(() => {
         left.effectiveDate.getTime() - right.effectiveDate.getTime(),
     );
 
-  let runningBalance = 0;
+  const netRecent = accountTransactions.reduce(
+    (total, entry) => total + signedAmount(entry.transaction),
+    0,
+  );
+  const currentBalance = balances.value[selectedAccount.value.id] ?? 0;
+  let runningBalance = currentBalance - netRecent;
+
   let index = 0;
   const points: ChartPoint[] = [];
 
@@ -1271,16 +1293,16 @@ const selectAccount = (accountId: string) => {
   selectedAccountId.value = accountId;
 };
 
-const loadTransactions = async (loadedAccounts: Account[]) => {
+const loadBalances = async (loadedAccounts: Account[]) => {
   if (loadedAccounts.length === 0) {
-    allTransactions.value = [];
+    balances.value = {};
     return;
   }
 
   const accountIds = loadedAccounts.map((account) => account.id);
   const { data, error } = await supabase
-    .from("transactions")
-    .select("*")
+    .from("account_balances")
+    .select("account_id, balance")
     .in("account_id", accountIds);
 
   if (error) {
@@ -1288,7 +1310,75 @@ const loadTransactions = async (loadedAccounts: Account[]) => {
     return;
   }
 
-  allTransactions.value = data ?? [];
+  balances.value = (data ?? []).reduce<Record<string, number>>(
+    (result, row) => {
+      result[row.account_id] = Number(row.balance ?? 0);
+      return result;
+    },
+    {},
+  );
+};
+
+const loadTransactionsPage = async (accountId: string, page: number) => {
+  transactionLoading.value = true;
+  const start = (page - 1) * PAGE_SIZE;
+  const end = page * PAGE_SIZE - 1;
+  const { data, error, count } = await supabase
+    .from("transactions")
+    .select("*", { count: "exact" })
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: false })
+    .range(start, end);
+
+  if (error) {
+    status.value = error.message;
+    transactionLoading.value = false;
+    return;
+  }
+
+  transactionTotal.value = count ?? data?.length ?? 0;
+  transactionPage.value = page;
+  transactions.value =
+    page === 1 ? data ?? [] : [...transactions.value, ...(data ?? [])];
+  transactionLoading.value = false;
+};
+
+const loadChartTransactions = async (accountId: string) => {
+  const endDate = new Date(Date.now());
+  const startDate = new Date(endDate);
+  startDate.setDate(endDate.getDate() - 29);
+  startDate.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("account_id", accountId)
+    .gte("created_at", startDate.toISOString())
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    status.value = error.message;
+    return;
+  }
+
+  chartTransactions.value = data ?? [];
+};
+
+const resetSelectedAccountData = async () => {
+  if (!selectedAccount.value) return;
+  await loadTransactionsPage(selectedAccount.value.id, 1);
+  await loadChartTransactions(selectedAccount.value.id);
+};
+
+const refreshAccountData = async () => {
+  await loadBalances(accounts.value);
+  await resetSelectedAccountData();
+};
+
+const handleLoadMoreTransactions = async () => {
+  if (!selectedAccount.value || transactionLoading.value) return;
+  if (!hasMoreTransactions.value) return;
+  await loadTransactionsPage(selectedAccount.value.id, transactionPage.value + 1);
 };
 
 const loadAccounts = async (currentUser: AppUser) => {
@@ -1308,7 +1398,7 @@ const loadAccounts = async (currentUser: AppUser) => {
 
   const loadedAccounts = data ?? [];
   accounts.value = loadedAccounts;
-  await loadTransactions(loadedAccounts);
+  await loadBalances(loadedAccounts);
   loading.value = false;
 };
 
@@ -1421,7 +1511,12 @@ const handleLogin = async () => {
 const handleLogout = () => {
   user.value = null;
   accounts.value = [];
-  allTransactions.value = [];
+  balances.value = {};
+  transactions.value = [];
+  chartTransactions.value = [];
+  transactionTotal.value = 0;
+  transactionPage.value = 0;
+  transactionLoading.value = false;
   selectedAccountId.value = null;
   status.value = null;
   loginPin.value = "";
@@ -1448,20 +1543,13 @@ const handleAddTransaction = async (type: "deposit" | "withdrawal") => {
   }
 
   loading.value = true;
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert([
-      {
-        account_id: selectedAccount.value.id,
-        type,
-        amount,
-        currency: selectedAccount.value.currency,
-        note: trimmedNote,
-        related_account_id: null,
-        created_by: user.value.id,
-      },
-    ])
-    .select();
+  const { error } = await supabase.rpc("apply_transaction", {
+    p_account_id: selectedAccount.value.id,
+    p_type: type,
+    p_amount: amount,
+    p_note: trimmedNote,
+    p_created_by: user.value.id,
+  });
 
   if (error) {
     status.value = error.message;
@@ -1469,10 +1557,10 @@ const handleAddTransaction = async (type: "deposit" | "withdrawal") => {
     return;
   }
 
-  allTransactions.value = [...allTransactions.value, ...(data ?? [])];
   amountInput.value = "";
   noteInput.value = "";
   status.value = "已保存交易。";
+  await refreshAccountData();
   if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
   statusTimeoutId = window.setTimeout(() => {
     if (status.value === "已保存交易。") status.value = null;
@@ -1737,48 +1825,14 @@ const handleTransfer = async () => {
     return;
   }
 
-  const sourceOwnerName =
-    childUsers.value.find(
-      (child) => child.id === selectedAccount.value?.owner_child_id,
-    )?.name ?? selectedAccount.value.name;
-  const targetOwnerName =
-    childUsers.value.find((child) => child.id === targetAccount.owner_child_id)
-      ?.name ?? targetAccount.name;
-
   loading.value = true;
-
-  const sourceNote = `转出至 ${targetOwnerName} ${targetAccount.name}`;
-  const targetNote = `来自 ${sourceOwnerName} ${selectedAccount.value.name}`;
-
-  const noteSuffix = transferNote.value.trim()
-    ? ` - ${transferNote.value.trim()}`
-    : " （无备注）";
-
-  const payload = [
-    {
-      account_id: selectedAccount.value.id,
-      type: "transfer_out" as const,
-      amount,
-      currency: selectedAccount.value.currency,
-      note: sourceNote + noteSuffix,
-      related_account_id: targetAccount.id,
-      created_by: user.value.id,
-    },
-    {
-      account_id: targetAccount.id,
-      type: "transfer_in" as const,
-      amount,
-      currency: targetAccount.currency,
-      note: targetNote + noteSuffix,
-      related_account_id: selectedAccount.value.id,
-      created_by: user.value.id,
-    },
-  ];
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert(payload)
-    .select();
+  const { error } = await supabase.rpc("transfer_between_accounts", {
+    p_source_account_id: selectedAccount.value.id,
+    p_target_account_id: targetAccount.id,
+    p_amount: amount,
+    p_note: transferNote.value.trim(),
+    p_created_by: user.value.id,
+  });
 
   if (error) {
     status.value = error.message;
@@ -1786,11 +1840,11 @@ const handleTransfer = async () => {
     return;
   }
 
-  allTransactions.value = [...allTransactions.value, ...(data ?? [])];
   transferAmount.value = "";
   transferTargetId.value = "";
   transferNote.value = "";
   status.value = "转账完成。";
+  await refreshAccountData();
   loading.value = false;
 };
 
@@ -1823,7 +1877,7 @@ const getTransactionNote = (transaction: Transaction) => {
   return "—";
 };
 
-watch([accounts, allTransactions], () => {
+watch([accounts, transactions], () => {
   if (
     editingAccountId.value &&
     editingAccountId.value !== selectedAccountId.value
@@ -1832,8 +1886,24 @@ watch([accounts, allTransactions], () => {
   }
 });
 
-watch(selectedAccountId, () => {
-  visibleTransactions.value = 10;
+watch(status, (nextStatus) => {
+  if (!nextStatus) return;
+  if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
+  const timeoutMs = successMessages.has(nextStatus) ? 1500 : 3000;
+  statusTimeoutId = window.setTimeout(() => {
+    if (status.value === nextStatus) status.value = null;
+  }, timeoutMs);
+});
+
+watch(selectedAccountId, async () => {
+  if (!selectedAccount.value) {
+    transactions.value = [];
+    chartTransactions.value = [];
+    transactionTotal.value = 0;
+    transactionPage.value = 0;
+    return;
+  }
+  await resetSelectedAccountData();
 });
 
 watch([childUsers, selectedChildId], () => {

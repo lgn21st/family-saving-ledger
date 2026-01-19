@@ -1,51 +1,24 @@
-create table if not exists app_users (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  role text not null check (role in ('parent', 'child')),
-  pin text not null check (pin ~ '^[0-9]{4}$'),
-  avatar_id text,
-  created_at timestamp with time zone default now()
-);
+alter table app_users
+  add constraint app_users_pin_format check (pin ~ '^[0-9]{4}$');
 
-create table if not exists accounts (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  currency text not null check (currency ~ '^[A-Z]{3}$'),
-  owner_child_id uuid not null references app_users(id),
-  created_by uuid not null references app_users(id),
-  is_active boolean not null default true,
-  created_at timestamp with time zone default now()
-);
+alter table accounts
+  add constraint accounts_currency_format check (currency ~ '^[A-Z]{3}$');
 
-create table if not exists transactions (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id),
-  type text not null check (type in ('deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'interest')),
-  amount numeric(12, 2) not null check (amount > 0),
-  currency text not null,
-  note text,
-  related_account_id uuid references accounts(id),
-  created_by uuid not null references app_users(id),
-  created_at timestamp with time zone default now(),
-  interest_month date
-);
+alter table transactions
+  add constraint transactions_amount_positive check (amount > 0);
 
-create table if not exists settings (
-  id uuid primary key default gen_random_uuid(),
-  annual_rate numeric(5, 2) not null,
-  timezone text not null default 'Asia/Singapore',
-  updated_at timestamp with time zone default now()
-);
+alter table transactions
+  add column if not exists interest_month date;
 
-create table if not exists interest_log (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id) on delete cascade,
-  month date not null,
-  annual_rate numeric(5, 2) not null,
-  interest_amount numeric(12, 2) not null,
-  created_at timestamp with time zone default now(),
-  unique (account_id, month)
-);
+update transactions
+set interest_month = make_date(
+  substring(note from '([0-9]{4})')::int,
+  substring(note from '年([0-9]{1,2})月结息')::int,
+  1
+)
+where type = 'interest'
+  and interest_month is null
+  and note ~ '^[0-9]{4}年[0-9]{1,2}月结息';
 
 create unique index if not exists transactions_interest_unique_idx
   on transactions (account_id, interest_month)
@@ -273,11 +246,7 @@ begin
 end;
 $$;
 
-drop function if exists run_monthly_interest(date);
-
-drop function if exists run_monthly_interest();
-
-create function run_monthly_interest()
+create or replace function run_monthly_interest()
 returns void
 language plpgsql
 as $$
@@ -318,7 +287,7 @@ begin
     return;
   end if;
 
-  select max(make_date(parsed.year_value, parsed.month_value, 1))
+  select max(interest_month)
   into latest_settled_month
   from transactions
   where type = 'interest'
@@ -399,7 +368,16 @@ begin
       on conflict (account_id, month) do nothing
       returning account_id, interest_amount
     )
-    insert into transactions (account_id, type, amount, currency, note, related_account_id, created_by, interest_month)
+    insert into transactions (
+      account_id,
+      type,
+      amount,
+      currency,
+      note,
+      related_account_id,
+      created_by,
+      interest_month
+    )
     select
       inserted_logs.account_id,
       'interest',
@@ -422,10 +400,3 @@ begin
   end loop;
 end;
 $$;
-
-insert into settings (id, annual_rate, timezone)
-values ('00000000-0000-0000-0000-000000000001', 10.00, 'Asia/Singapore')
-on conflict (id) do update
-set annual_rate = excluded.annual_rate,
-    timezone = excluded.timezone,
-    updated_at = now();
