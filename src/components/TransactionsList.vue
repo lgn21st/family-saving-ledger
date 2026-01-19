@@ -68,6 +68,32 @@
         {{ loading ? "加载中..." : "加载更多" }}
       </button>
     </template>
+
+    <div
+      v-if="confirmingTransaction"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+    >
+      <div class="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+        <h5 class="text-base font-semibold text-slate-800">撤销交易</h5>
+        <p class="mt-2 text-sm text-slate-600">
+          确认撤销这笔交易？该操作会影响当前余额。
+        </p>
+        <div class="mt-4 flex justify-end gap-2">
+          <button
+            class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            @click="cancelConfirm"
+          >
+            取消
+          </button>
+          <button
+            class="rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600"
+            @click="confirmVoid"
+          >
+            确认撤销
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -110,6 +136,7 @@ const pressTimer = ref<number | null>(null);
 const pressTargetId = ref<string | null>(null);
 const startX = ref(0);
 const startY = ref(0);
+const confirmingTransaction = ref<Transaction | null>(null);
 
 const clearPressTimer = () => {
   if (pressTimer.value === null) return;
@@ -128,10 +155,7 @@ const startLongPress = (transaction: Transaction, event: PointerEvent) => {
   pressTimer.value = window.setTimeout(() => {
     pressTimer.value = null;
     if (pressTargetId.value !== transaction.id) return;
-    const confirmed = window.confirm("确认撤销这笔交易？");
-    if (confirmed && onVoidTransaction?.value) {
-      onVoidTransaction.value(transaction);
-    }
+    confirmingTransaction.value = transaction;
   }, LONG_PRESS_MS);
 };
 
@@ -147,5 +171,16 @@ const handlePointerMove = (event: PointerEvent) => {
   if (deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) {
     cancelLongPress();
   }
+};
+
+const cancelConfirm = () => {
+  confirmingTransaction.value = null;
+};
+
+const confirmVoid = () => {
+  if (confirmingTransaction.value && onVoidTransaction?.value) {
+    onVoidTransaction.value(confirmingTransaction.value);
+  }
+  confirmingTransaction.value = null;
 };
 </script>
