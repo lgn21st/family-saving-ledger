@@ -1,12 +1,8 @@
 import type { Ref } from "vue";
-import type { Account, AppUser } from "../types";
-
-type SupabaseClient = {
-  from: (...args: unknown[]) => any;
-};
+import type { Account, AppUser, SupabaseFromClient } from "../types";
 
 export const useAccountEditor = (params: {
-  supabase: SupabaseClient;
+  supabase: SupabaseFromClient;
   user: Ref<AppUser | null>;
   supportedCurrencies: string[];
   loading: Ref<boolean>;

@@ -1,4 +1,5 @@
 import { computed, getCurrentInstance, onBeforeUnmount, ref, watch } from "vue";
+import type { StatusTone } from "../types";
 
 const successMessages = new Set([
   "已保存交易。",
@@ -27,7 +28,7 @@ export const useStatus = () => {
   const status = ref<string | null>(null);
   let statusTimeoutId: number | null = null;
 
-  const statusTone = computed<"success" | "error">(() => {
+  const statusTone = computed<StatusTone>(() => {
     if (!status.value) return "error";
     return successMessages.has(status.value) ? "success" : "error";
   });

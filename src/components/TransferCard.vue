@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import type { TransferTarget } from "../types";
 
-const props = defineProps<{
+defineProps<{
   canEdit: boolean;
   transferAmount: string;
   transferTargetId: string;

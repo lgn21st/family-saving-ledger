@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   canEdit: boolean;
   selectedChildName: string | null;
   selectedAccountName: string | null;

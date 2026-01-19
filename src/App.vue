@@ -1,7 +1,7 @@
 <template>
-  <LoginPanel
+  <LoginPage
     v-if="!user"
-    v-model:loginPin="loginPin"
+    v-model:login-pin="loginPin"
     :is-supabase-configured="isSupabaseConfigured"
     :login-users="loginUsers"
     :selected-login-user-id="selectedLoginUserId"
@@ -15,551 +15,115 @@
     :on-login="handleLogin"
   />
 
-  <div v-else class="flex min-h-screen flex-col">
-    <header
-      class="flex flex-wrap items-center justify-between gap-4 bg-brand-600 px-6 py-4 text-white shadow-lg"
-    >
-      <div class="flex items-center gap-4">
-        <Avatar
-          :avatar-id="user.avatar_id"
-          :options="avatarOptions"
-          :role="user.role"
-          class="h-16 w-16"
-        />
-        <div>
-          <h2 class="text-xl font-semibold">{{ user.name }}</h2>
-          <span class="text-sm text-white/80">Home Bank</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-3">
-        <button
-          v-if="canEdit"
-          type="button"
-          class="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold text-white transition hover:bg-white/30"
-          @click="showChildManager = !showChildManager"
-        >
-          {{ showChildManager ? "关闭孩子管理" : "管理孩子" }}
-        </button>
-        <span class="rounded-full bg-white/30 px-3 py-1 text-xs font-semibold">
-          {{ user.role === "parent" ? "家长" : "孩子" }}
-        </span>
-        <button
-          class="rounded-full bg-white px-4 py-1 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-100"
-          @click="handleLogout"
-        >
-          退出
-        </button>
-      </div>
-    </header>
-    <StatusBanner :message="status" :tone="statusTone" />
+  <AppShell
+    v-else
+    :user="user"
+    :avatar-options="avatarOptions"
+    :can-edit="canEdit"
+    :show-child-manager="showChildManager"
+    :on-toggle-child-manager="toggleChildManager"
+    :on-logout="handleLogout"
+    :status="status"
+    :status-tone="statusTone"
+  >
+    <ParentDashboard
+      v-if="user.role === 'parent'"
+      v-model:new-child-name="newChildName"
+      v-model:new-child-pin="newChildPin"
+      v-model:new-child-avatar-id="newChildAvatarId"
+      v-model:editing-child-name="editingChildName"
+      v-model:new-account-name="newAccountName"
+      v-model:new-account-currency="newAccountCurrency"
+      v-model:new-account-owner-id="newAccountOwnerId"
+      v-model:show-account-creator="showAccountCreator"
+      v-model:editing-account-name="editingAccountName"
+      v-model:amount-input="amountInput"
+      v-model:note-input="noteInput"
+      v-model:transfer-amount="transferAmount"
+      v-model:transfer-target-id="transferTargetId"
+      v-model:transfer-note="transferNote"
+      :show-child-manager="showChildManager"
+      :child-users="childUsers"
+      :child-avatars="childAvatars"
+      :avatar-options="avatarOptions"
+      :editing-child-id="editingChildId"
+      :loading="loading"
+      :sanitize-pin="sanitizePin"
+      :on-create-child="handleCreateChild"
+      :on-start-edit-child="startEditChild"
+      :on-update-child="handleUpdateChild"
+      :on-cancel-edit-child="cancelEditChild"
+      :on-delete-child="handleDeleteChild"
+      :currency-totals="currencyTotals"
+      :format-amount="formatAmount"
+      :selected-child-id="selectedChildId"
+      :selected-child-name="selectedChild?.name ?? null"
+      :on-select-child="selectChild"
+      :selected-child-accounts="selectedChildAccounts"
+      :selected-account-id="selectedAccountId"
+      :balances="balances"
+      :supported-currencies="supportedCurrencies"
+      :editing-account-id="editingAccountId"
+      :on-create-account="handleCreateAccount"
+      :on-select-account="selectAccount"
+      :on-start-edit-account="startEditAccount"
+      :on-update-account="handleUpdateAccount"
+      :on-cancel-edit-account="cancelEditAccount"
+      :selected-account="selectedAccount"
+      :can-edit="canEdit"
+      :chart-path="chartPath"
+      :transfer-targets="transferTargets"
+      :selected-account-balance="
+        selectedAccount
+          ? formatAmount(
+              balances[selectedAccount.id] ?? 0,
+              selectedAccount.currency,
+            )
+          : '0.00'
+      "
+      :paged-transactions="pagedTransactions"
+      :has-more-transactions="hasMoreTransactions"
+      :transaction-loading="transactionLoading"
+      :transaction-labels="transactionLabels"
+      :format-signed-amount="formatSignedAmount"
+      :transaction-tone="transactionTone"
+      :get-transaction-note="getTransactionNote"
+      :format-timestamp="formatTimestamp"
+      :on-add-transaction="handleAddTransaction"
+      :on-transfer="handleTransfer"
+      :on-load-more="handleLoadMoreForSelected"
+    />
 
-    <main v-if="user.role === 'parent'" class="flex-1 space-y-6 px-6 py-6">
-      <section
-        v-if="showChildManager"
-        class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-        data-testid="child-card"
-      >
-        <h4 class="text-sm font-semibold text-slate-700">孩子管理</h4>
-        <div class="mt-4 flex flex-col gap-3 lg:flex-row">
-          <input
-            v-model="newChildName"
-            type="text"
-            placeholder="孩子姓名"
-            class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-          <input
-            v-model="newChildPin"
-            type="password"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            maxlength="4"
-            placeholder="PIN（4 位）"
-            class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-center text-sm tracking-[0.25em] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            @input="newChildPin = sanitizePin(newChildPin)"
-          />
-        </div>
-        <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          <button
-            v-for="avatar in childAvatars"
-            :key="avatar.id"
-            type="button"
-            :class="[
-              'flex flex-col items-center gap-3 rounded-3xl border px-4 py-3 text-sm transition',
-              avatar.id === newChildAvatarId
-                ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200'
-                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50',
-            ]"
-            @click="newChildAvatarId = avatar.id"
-          >
-            <Avatar
-              :avatar-id="avatar.id"
-              :options="avatarOptions"
-              role="child"
-              class="h-16 w-16"
-            />
-            <span class="text-slate-600">{{ avatar.label }}</span>
-          </button>
-        </div>
-        <button
-          class="mt-4 rounded-2xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="loading"
-          @click="handleCreateChild"
-        >
-          创建孩子
-        </button>
-        <ul
-          v-if="childUsers.length > 0"
-          class="mt-4 space-y-2 text-sm text-slate-700"
-        >
-          <li
-            v-for="child in childUsers"
-            :key="child.id"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3"
-          >
-            <div class="flex items-center gap-4">
-              <Avatar
-                :avatar-id="child.avatar_id"
-                :options="avatarOptions"
-                role="child"
-                class="h-16 w-16"
-              />
-              <input
-                v-if="editingChildId === child.id"
-                v-model="editingChildName"
-                type="text"
-                class="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              />
-              <span v-else class="text-base font-semibold">{{
-                child.name
-              }}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <template v-if="editingChildId === child.id">
-                <button
-                  type="button"
-                  class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-200"
-                  :disabled="loading"
-                  @click="handleUpdateChild"
-                >
-                  保存
-                </button>
-                <button
-                  type="button"
-                  class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-300"
-                  :disabled="loading"
-                  @click="cancelEditChild"
-                >
-                  取消
-                </button>
-              </template>
-              <button
-                v-else
-                type="button"
-                class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
-                :disabled="loading"
-                @click="startEditChild(child)"
-              >
-                编辑
-              </button>
-              <button
-                type="button"
-                class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-200"
-                :disabled="loading"
-                @click="handleDeleteChild(child.id)"
-              >
-                删除
-              </button>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div
-          v-for="(total, currency) in currencyTotals"
-          :key="currency"
-          class="rounded-3xl bg-white/90 p-5 text-center shadow-lg backdrop-blur"
-        >
-          <p
-            class="text-xs font-semibold uppercase tracking-wide text-slate-400"
-          >
-            {{ currency }} 资产总览
-          </p>
-          <p class="mt-3 text-3xl font-semibold text-slate-800">
-            {{ formatAmount(total, currency) }}
-          </p>
-        </div>
-      </div>
-
-      <section
-        class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-      >
-        <h4 class="text-sm font-semibold text-slate-700">孩子列表</h4>
-        <p v-if="childUsers.length === 0" class="mt-3 text-sm text-slate-500">
-          暂无孩子，请先创建。
-        </p>
-        <div v-else class="mt-4 grid grid-cols-2 gap-3">
-          <button
-            v-for="child in childUsers"
-            :key="child.id"
-            type="button"
-            :class="[
-              'relative h-28 flex items-center gap-4 rounded-2xl border px-4 transition-all duration-200',
-              selectedChildId === child.id
-                ? 'bg-purple-600 text-white shadow-lg ring-2 ring-purple-300 active:scale-95'
-                : 'border-gray-200 bg-white shadow-sm hover:bg-purple-50 active:scale-95',
-            ]"
-            @click="selectedChildId = child.id"
-          >
-            <Avatar
-              :avatar-id="child.avatar_id"
-              :options="avatarOptions"
-              role="child"
-              class="h-16 w-16 shrink-0"
-              :class="selectedChildId === child.id ? 'bg-white/20' : ''"
-            />
-            <span
-              :class="[
-                'text-lg font-semibold',
-                selectedChildId === child.id ? 'text-white' : 'text-slate-800',
-              ]"
-              >{{ child.name }}</span
-            >
-            <span
-              v-if="selectedChildId === child.id"
-              class="absolute top-2 right-2 rounded-full bg-white/20 px-2 py-0.5 text-xs text-white"
-            >
-              当前
-            </span>
-          </button>
-        </div>
-      </section>
-
-      <section
-        class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-      >
-        <div class="flex items-center justify-between">
-          <h4 class="text-sm font-semibold text-slate-700">账户列表</h4>
-          <span
-            v-if="selectedChild"
-            class="text-xs font-semibold text-slate-400"
-          >
-            {{ selectedChild?.name }}
-          </span>
-        </div>
-
-        <div
-          v-if="selectedChildId"
-          class="mt-4 rounded-2xl border border-dashed border-brand-200 bg-white/70 p-4"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <h5 class="text-sm font-semibold text-slate-600">创建账户</h5>
-            <button
-              type="button"
-              class="rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-700"
-              @click="showAccountCreator = !showAccountCreator"
-            >
-              {{ showAccountCreator ? "收起" : "创建账户" }}
-            </button>
-          </div>
-          <div v-if="showAccountCreator" class="mt-4">
-            <div class="flex flex-col gap-3 lg:flex-row">
-              <input
-                v-model="newAccountName"
-                type="text"
-                placeholder="账户名称"
-                class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              />
-              <select
-                v-model="newAccountCurrency"
-                class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              >
-                <option
-                  v-for="currency in supportedCurrencies"
-                  :key="currency"
-                  :value="currency"
-                >
-                  {{ currency }}
-                </option>
-              </select>
-            </div>
-            <div class="mt-3 flex flex-col gap-3 lg:flex-row">
-              <select
-                v-model="newAccountOwnerId"
-                class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 sm:w-40"
-              >
-                <option value="">选择孩子</option>
-                <option
-                  v-for="child in childUsers"
-                  :key="child.id"
-                  :value="child.id"
-                >
-                  {{ child.name }}
-                </option>
-              </select>
-              <button
-                class="min-w-[96px] rounded-2xl bg-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="loading"
-                @click="handleCreateAccount"
-              >
-                创建
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <template v-if="selectedChildId">
-          <p
-            v-if="selectedChildAccounts.length === 0"
-            class="mt-4 text-sm text-slate-500"
-          >
-            该孩子暂无账户。
-          </p>
-          <div v-else class="mt-4 grid gap-3 md:grid-cols-2">
-            <div
-              v-for="account in selectedChildAccounts"
-              :key="account.id"
-              :class="[
-                'flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition',
-                account.id === selectedAccountId
-                  ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
-                  : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md',
-              ]"
-            >
-              <button
-                type="button"
-                class="flex flex-1 flex-col text-left"
-                @click="selectAccount(account.id)"
-              >
-                <input
-                  v-if="editingAccountId === account.id"
-                  v-model="editingAccountName"
-                  type="text"
-                  class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-                <template v-else>
-                  <p>{{ account.name }}</p>
-                  <p class="text-xs text-slate-400">{{ account.currency }}</p>
-                </template>
-              </button>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-slate-500">
-                  {{
-                    formatAmount(balances[account.id] ?? 0, account.currency)
-                  }}
-                </span>
-                <template v-if="editingAccountId === account.id">
-                  <button
-                    type="button"
-                    class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-200"
-                    :disabled="loading"
-                    @click="handleUpdateAccount"
-                  >
-                    保存
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-300"
-                    :disabled="loading"
-                    @click="cancelEditAccount"
-                  >
-                    取消
-                  </button>
-                </template>
-                <button
-                  v-else
-                  type="button"
-                  class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
-                  :disabled="loading"
-                  @click="startEditAccount(account)"
-                >
-                  编辑
-                </button>
-              </div>
-            </div>
-          </div>
-        </template>
-        <p v-else class="mt-3 text-sm text-slate-500">请选择孩子查看账户。</p>
-      </section>
-
-      <template v-if="selectedAccount">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <template v-if="editingAccountId === selectedAccount.id">
-              <div class="flex flex-col gap-2">
-                <input
-                  v-model="editingAccountName"
-                  type="text"
-                  class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-base font-semibold text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                />
-                <div class="flex gap-2">
-                  <button
-                    type="button"
-                    class="rounded-full bg-emerald-100 px-4 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-200"
-                    :disabled="loading"
-                    @click="handleUpdateAccount"
-                  >
-                    保存名称
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-full bg-slate-200 px-4 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-300"
-                    :disabled="loading"
-                    @click="cancelEditAccount"
-                  >
-                    取消
-                  </button>
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <h3 class="text-lg font-semibold text-slate-800">
-                {{ selectedAccount.name }}
-              </h3>
-              <p class="text-sm text-slate-500">
-                币种 {{ selectedAccount.currency }} · 余额
-                {{
-                  formatAmount(
-                    balances[selectedAccount.id] ?? 0,
-                    selectedAccount.currency,
-                  )
-                }}
-              </p>
-            </template>
-          </div>
-        </div>
-      </template>
-
-      <AccountDetailPanel
-        :selected-account="selectedAccount"
-        :selected-child-name="selectedChild?.name ?? null"
-        :can-edit="canEdit"
-        :chart-path="chartPath"
-        v-model:amount-input="amountInput"
-        v-model:note-input="noteInput"
-        v-model:transfer-amount="transferAmount"
-        v-model:transfer-target-id="transferTargetId"
-        v-model:transfer-note="transferNote"
-        :transfer-targets="transferTargets"
-        :formatted-balance="
-          selectedAccount
-            ? formatAmount(
-                balances[selectedAccount.id] ?? 0,
-                selectedAccount.currency,
-              )
-            : '0.00'
-        "
-        :loading="loading"
-        :paged-transactions="pagedTransactions"
-        :has-more-transactions="hasMoreTransactions"
-        :transaction-loading="transactionLoading"
-        :transaction-labels="transactionLabels"
-        :format-signed-amount="formatSignedAmount"
-        :transaction-tone="transactionTone"
-        :get-transaction-note="getTransactionNote"
-        :format-timestamp="formatTimestamp"
-        :on-add-transaction="handleAddTransaction"
-        :on-transfer="handleTransfer"
-        :on-load-more="handleLoadMoreForSelected"
-      />
-    </main>
-
-    <div v-else class="flex flex-1 flex-col lg:flex-row">
-      <div class="order-1 space-y-6 px-6 py-6">
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div
-            v-for="(total, currency) in currencyTotals"
-            :key="currency"
-            class="rounded-3xl bg-white/90 p-5 text-center shadow-lg backdrop-blur"
-          >
-            <p
-              class="text-xs font-semibold uppercase tracking-wide text-slate-400"
-            >
-              {{ currency }} 资产总览
-            </p>
-            <p class="mt-3 text-3xl font-semibold text-slate-800">
-              {{ formatAmount(total, currency) }}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <aside
-        class="order-2 border-t border-white/60 bg-white/80 px-6 py-5 backdrop-blur lg:order-1 lg:w-72 lg:border-t-0 lg:border-r"
-      >
-        <h3 class="text-sm font-semibold text-slate-600">账户</h3>
-        <div class="mt-4 space-y-4">
-          <div
-            v-for="(currencyAccounts, currency) in groupedAccounts"
-            :key="currency"
-          >
-            <h4
-              class="text-xs font-semibold uppercase tracking-wide text-slate-400"
-            >
-              {{ currency }}
-            </h4>
-            <div
-              class="mt-2 flex flex-col gap-3 sm:flex-row sm:overflow-x-auto sm:pb-2 lg:block lg:space-y-2 lg:overflow-visible"
-            >
-              <button
-                v-for="account in currencyAccounts"
-                :key="account.id"
-                class="flex w-full min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition sm:min-w-[220px]"
-                :class="
-                  account.id === selectedAccountId
-                    ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
-                    : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md'
-                "
-                @click="selectAccount(account.id)"
-              >
-                <span class="flex-1 break-words">{{ account.name }}</span>
-                <span class="text-xs font-semibold text-slate-500">
-                  {{
-                    formatAmount(balances[account.id] ?? 0, account.currency)
-                  }}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <section class="order-3 flex-1 space-y-6 px-6 py-6 lg:order-2">
-        <AccountOverviewPanel
-          :selected-account="selectedAccount"
-          :formatted-balance="
-            selectedAccount
-              ? formatAmount(
-                  balances[selectedAccount.id] ?? 0,
-                  selectedAccount.currency,
-                )
-              : '0.00'
-          "
-          :chart-path="chartPath"
-          :paged-transactions="pagedTransactions"
-          :has-more-transactions="hasMoreTransactions"
-          :transaction-loading="transactionLoading"
-          :transaction-labels="transactionLabels"
-          :format-signed-amount="formatSignedAmount"
-          :transaction-tone="transactionTone"
-          :get-transaction-note="getTransactionNote"
-          :format-timestamp="formatTimestamp"
-          :on-load-more="handleLoadMoreForSelected"
-        />
-      </section>
-    </div>
-  </div>
+    <ChildDashboard
+      v-else
+      :grouped-accounts="groupedAccounts"
+      :selected-account-id="selectedAccountId"
+      :selected-account="selectedAccount"
+      :balances="balances"
+      :format-amount="formatAmount"
+      :on-select-account="selectAccount"
+      :chart-path="chartPath"
+      :paged-transactions="pagedTransactions"
+      :has-more-transactions="hasMoreTransactions"
+      :transaction-loading="transactionLoading"
+      :transaction-labels="transactionLabels"
+      :format-signed-amount="formatSignedAmount"
+      :transaction-tone="transactionTone"
+      :get-transaction-note="getTransactionNote"
+      :format-timestamp="formatTimestamp"
+      :on-load-more="handleLoadMoreForSelected"
+    />
+  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
-import Avatar from "./components/Avatar.vue";
-import AccountDetailPanel from "./components/AccountDetailPanel.vue";
-import AccountOverviewPanel from "./components/AccountOverviewPanel.vue";
-import LoginPanel from "./components/LoginPanel.vue";
-import StatusBanner from "./components/StatusBanner.vue";
-import { avatarOptions, type AvatarOption, supportedCurrencies } from "./config";
+import AppShell from "./components/AppShell.vue";
+import ChildDashboard from "./components/ChildDashboard.vue";
+import ParentDashboard from "./components/ParentDashboard.vue";
+import LoginPage from "./components/LoginPage.vue";
+import { avatarOptions, supportedCurrencies } from "./config";
 import { useAccounts } from "./composables/useAccounts";
 import { useAccountEditor } from "./composables/useAccountEditor";
 import { useAccountSelection } from "./composables/useAccountSelection";
@@ -578,7 +142,12 @@ import { useTransactionPaging } from "./composables/useTransactionPaging";
 import { useTransfers } from "./composables/useTransfers";
 import { useTransactions } from "./composables/useTransactions";
 import { useUsers } from "./composables/useUsers";
-import type { Account, AppUser, Transaction } from "./types";
+import type {
+  AppUser,
+  SupabaseClient,
+  SupabaseFromClient,
+  SupabaseRpcClient,
+} from "./types";
 import { sanitizePin } from "./utils/formatting";
 
 const childAvatars = avatarOptions.filter((avatar) => avatar.role === "child");
@@ -589,12 +158,16 @@ const selectedLoginUserId = ref<string | null>(null);
 const selectedAccountId = ref<string | null>(null);
 const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus } =
   useStatus();
+
+const supabaseFrom = supabase as unknown as SupabaseFromClient;
+const supabaseRpc = supabase as unknown as SupabaseRpcClient;
+const supabaseClient = supabase as unknown as SupabaseClient;
 const { childUsers, loginUsers, loadChildUsers, loadLoginUsers } = useUsers({
-  supabase,
+  supabase: supabaseFrom,
   setErrorStatus,
 });
 const { accounts, balances, loadAccounts, loadBalances } = useAccounts({
-  supabase,
+  supabase: supabaseFrom,
   setErrorStatus,
 });
 const { groupedAccounts, currencyTotals, formatAmount } = useCurrencyDisplay({
@@ -643,7 +216,7 @@ const {
   resetSelectedAccountData,
   handleLoadMoreTransactions,
 } = useTransactions({
-  supabase,
+  supabase: supabaseClient,
   setErrorStatus,
 });
 
@@ -662,25 +235,32 @@ const {
   selectedChildId,
 });
 
-const { selectedLoginUser, selectedTransactions, pagedTransactions } =
-  useDerivedViews({
-    loginUsers,
-    selectedLoginUserId,
-    selectedAccount,
-    transactions,
-  });
+const { selectedLoginUser, pagedTransactions } = useDerivedViews({
+  loginUsers,
+  selectedLoginUserId,
+  selectedAccount,
+  transactions,
+});
 
-const { chartPoints, chartPath } = useChartData({
+const { chartPath } = useChartData({
   selectedAccount,
   chartTransactions,
   chartBaseBalance,
   signedAmount,
 });
 
+const selectChild = (childId: string) => {
+  selectedChildId.value = childId;
+};
+
+const toggleChildManager = () => {
+  showChildManager.value = !showChildManager.value;
+};
+
 const currentUserId = computed(() => user.value?.id ?? null);
 
 const { handleLogin, checkSession } = useAuth({
-  supabase,
+  supabase: supabaseFrom,
   user,
   loginPin,
   selectedLoginUserId,
@@ -724,7 +304,7 @@ const {
 
 const { handleCreateChild, handleDeleteChild, handleUpdateChild } =
   useChildren({
-    supabase,
+    supabase: supabaseFrom,
     user,
     loading,
     newChildName,
@@ -746,7 +326,7 @@ const { handleCreateChild, handleDeleteChild, handleUpdateChild } =
   });
 
 const { handleTransfer } = useTransfers({
-  supabase,
+  supabase: supabaseRpc,
   userId: currentUserId,
   selectedAccountId,
   transferAmount,
@@ -763,7 +343,7 @@ const { handleTransfer } = useTransfers({
 
 const { handleCreateAccount, handleUpdateAccount, startEditAccount } =
   useAccountEditor({
-    supabase,
+    supabase: supabaseFrom,
     user,
     supportedCurrencies,
     loading,
@@ -783,7 +363,7 @@ const { handleCreateAccount, handleUpdateAccount, startEditAccount } =
   });
 
 const { handleAddTransaction } = useTransactionActions({
-  supabase,
+  supabase: supabaseRpc,
   userId: currentUserId,
   selectedAccountId,
   amountInput,

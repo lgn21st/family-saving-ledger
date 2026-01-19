@@ -1,12 +1,8 @@
 import type { Ref } from "vue";
-import type { AppUser } from "../types";
-
-type SupabaseClient = {
-  from: (...args: unknown[]) => any;
-};
+import type { AppUser, SupabaseFromClient } from "../types";
 
 export const useChildren = (params: {
-  supabase: SupabaseClient;
+  supabase: SupabaseFromClient;
   user: Ref<AppUser | null>;
   loading: Ref<boolean>;
   newChildName: Ref<string>;

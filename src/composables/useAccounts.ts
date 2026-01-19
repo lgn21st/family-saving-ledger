@@ -1,12 +1,8 @@
 import { ref } from "vue";
-import type { Account, AppUser } from "../types";
-
-type SupabaseBalancesClient = {
-  from: (...args: unknown[]) => any;
-};
+import type { Account, AppUser, SupabaseFromClient } from "../types";
 
 export const useAccounts = (params: {
-  supabase: SupabaseBalancesClient;
+  supabase: SupabaseFromClient;
   setErrorStatus: (message: string) => void;
 }) => {
   const { supabase, setErrorStatus } = params;
@@ -53,7 +49,7 @@ export const useAccounts = (params: {
       return;
     }
 
-    const loadedAccounts = data ?? [];
+    const loadedAccounts = (data ?? []) as Account[];
     accounts.value = loadedAccounts;
     await loadBalances(loadedAccounts);
   };

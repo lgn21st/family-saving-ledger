@@ -1,12 +1,8 @@
 import type { Ref } from "vue";
-import type { AppUser } from "../types";
-
-type SupabaseClient = {
-  from: (...args: unknown[]) => any;
-};
+import type { AppUser, SupabaseFromClient } from "../types";
 
 export const useAuth = (params: {
-  supabase: SupabaseClient;
+  supabase: SupabaseFromClient;
   user: Ref<AppUser | null>;
   loginPin: Ref<string>;
   selectedLoginUserId: Ref<string | null>;
@@ -53,19 +49,20 @@ export const useAuth = (params: {
       .eq("pin", loginPin.value)
       .maybeSingle();
 
-    if (error || !data) {
+    const resolvedUser = data as AppUser | null;
+    if (error || !resolvedUser) {
       setStatus("PIN 无效，请重试。");
       loading.value = false;
       return;
     }
 
-    user.value = data;
+    user.value = resolvedUser;
     loginPin.value = "";
 
     const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 30;
     sessionStorage.setItem(
       "homebank.session",
-      JSON.stringify({ userId: data.id, expiresAt }),
+      JSON.stringify({ userId: resolvedUser.id, expiresAt }),
     );
     loading.value = false;
   };
@@ -78,13 +75,14 @@ export const useAuth = (params: {
       .eq("id", userId)
       .maybeSingle();
 
-    if (error || !data) {
+    const resolvedUser = data as AppUser | null;
+    if (error || !resolvedUser) {
       sessionStorage.removeItem("homebank.session");
       loading.value = false;
       return;
     }
 
-    user.value = data;
+    user.value = resolvedUser;
     loading.value = false;
   };
 

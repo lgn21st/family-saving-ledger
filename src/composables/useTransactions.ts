@@ -1,16 +1,5 @@
 import { computed, ref } from "vue";
-import type { Transaction } from "../types";
-
-type RpcOptions = {
-  head?: boolean;
-  get?: boolean;
-  count?: "exact" | "planned" | "estimated";
-};
-
-type SupabaseClient = {
-  from: (...args: unknown[]) => any;
-  rpc: (fn: string, args?: Record<string, unknown>, options?: RpcOptions) => any;
-};
+import type { SupabaseClient, Transaction } from "../types";
 
 const PAGE_SIZE = 10;
 
@@ -57,9 +46,10 @@ export const useTransactions = (params: {
       return;
     }
 
-    transactionTotal.value = count ?? data?.length ?? 0;
+    const resolvedData = (data ?? []) as Transaction[];
+    transactionTotal.value = count ?? resolvedData.length ?? 0;
     transactionPage.value = page;
-    const nextData = data ?? [];
+    const nextData = resolvedData;
     transactions.value =
       page === 1 ? nextData : [...transactions.value, ...nextData];
     transactionLoading.value = false;
@@ -97,7 +87,7 @@ export const useTransactions = (params: {
     }
 
     chartBaseBalance.value = Number(baseData ?? 0);
-    chartTransactions.value = data ?? [];
+    chartTransactions.value = (data ?? []) as Transaction[];
   };
 
   const resetSelectedAccountData = async (accountId: string) => {

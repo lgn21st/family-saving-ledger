@@ -10,7 +10,7 @@ const createSupabaseMock = () => {
   }));
 
   return {
-    from: (_table: string) => ({
+    from: () => ({
       insert,
       update,
     }),

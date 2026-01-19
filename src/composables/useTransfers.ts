@@ -1,18 +1,8 @@
 import type { Ref } from "vue";
-import type { Account } from "../types";
-
-type RpcOptions = {
-  head?: boolean;
-  get?: boolean;
-  count?: "exact" | "planned" | "estimated";
-};
-
-type SupabaseClient = {
-  rpc: (fn: string, args?: Record<string, unknown>, options?: RpcOptions) => any;
-};
+import type { Account, SupabaseRpcClient } from "../types";
 
 export const useTransfers = (params: {
-  supabase: SupabaseClient;
+  supabase: SupabaseRpcClient;
   userId: Ref<string | null>;
   selectedAccountId: Ref<string | null>;
   transferAmount: Ref<string>;

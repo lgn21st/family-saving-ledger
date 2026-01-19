@@ -8,8 +8,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-
-type StatusTone = "success" | "error";
+import type { StatusTone } from "../types";
 
 const props = defineProps<{
   message: string | null;

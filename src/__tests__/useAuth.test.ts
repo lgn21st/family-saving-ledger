@@ -12,10 +12,10 @@ type AppUser = {
 
 const createSupabaseMock = (user: AppUser | null) => {
   return {
-    from: (_table: string) => ({
+    from: () => ({
       select: () => ({
-        eq: (_field: string, _value: unknown) => ({
-          eq: (_field2: string, _value2: unknown) => ({
+        eq: () => ({
+          eq: () => ({
             maybeSingle: () => Promise.resolve({ data: user, error: null }),
           }),
           maybeSingle: () => Promise.resolve({ data: user, error: null }),

@@ -22,29 +22,36 @@ const createSupabaseMock = (params: {
   const { transactions, chartTransactions, baseBalance } = params;
 
   return {
-    from: (_table: string) => ({
-      select: (_columns?: string, options?: { count?: "exact" }) => ({
-        eq: (_field: string, _value: string) => ({
-          order: (_fieldName: string, _options?: { ascending?: boolean }) => ({
-            range: (from: number, to: number) =>
-              Promise.resolve({
-                data: transactions.slice(from, to + 1),
-                error: null,
-                count: options?.count ? transactions.length : null,
+    from: () => ({
+      select: (...args: [string?, { count?: "exact" }?]) => {
+        const options = args[1];
+        return {
+          eq: (...eqArgs: [string, string]) => {
+            const accountId = eqArgs[1];
+            return {
+              order: () => ({
+                range: (from: number, to: number) =>
+                  Promise.resolve({
+                    data: transactions
+                      .filter((row) => row.account_id === accountId)
+                      .slice(from, to + 1),
+                    error: null,
+                    count: options?.count ? transactions.length : null,
+                  }),
               }),
-          }),
-          gte: (_fieldName: string, _valueName: string) => ({
-            order: (_fieldName: string, _options?: { ascending?: boolean }) =>
-              Promise.resolve({
-                data: chartTransactions,
-                error: null,
+              gte: () => ({
+                order: () =>
+                  Promise.resolve({
+                    data: chartTransactions,
+                    error: null,
+                  }),
               }),
-          }),
-        }),
-      }),
+            };
+          },
+        };
+      },
     }),
-    rpc: (_fnName: string, _payload: Record<string, unknown>) =>
-      Promise.resolve({ data: baseBalance, error: null }),
+    rpc: () => Promise.resolve({ data: baseBalance, error: null }),
   };
 };
 

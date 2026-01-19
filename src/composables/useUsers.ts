@@ -1,12 +1,8 @@
 import { ref } from "vue";
-import type { AppUser } from "../types";
-
-type SupabaseClient = {
-  from: (...args: unknown[]) => any;
-};
+import type { AppUser, SupabaseFromClient } from "../types";
 
 export const useUsers = (params: {
-  supabase: SupabaseClient;
+  supabase: SupabaseFromClient;
   setErrorStatus: (message: string) => void;
 }) => {
   const { supabase, setErrorStatus } = params;
@@ -26,7 +22,7 @@ export const useUsers = (params: {
       return;
     }
 
-    childUsers.value = data ?? [];
+    childUsers.value = (data ?? []) as AppUser[];
   };
 
   const loadLoginUsers = async () => {

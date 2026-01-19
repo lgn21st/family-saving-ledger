@@ -50,7 +50,7 @@ describe("useChartData", () => {
       selectedAccount: ref({ id: "acc-1" }),
       chartTransactions: ref([]),
       chartBaseBalance: ref(0),
-      signedAmount: (_transaction) => 0,
+      signedAmount: () => 0,
     });
 
     expect(chartPath.value).toBe("");

@@ -12,15 +12,18 @@ type AppUser = {
 
 const createSupabaseMock = (users: AppUser[]) => {
   return {
-    from: (_table: string) => ({
+    from: () => ({
       select: () => ({
-        eq: (_field: string, value: unknown) => ({
-          order: () =>
-            Promise.resolve({
-              data: users.filter((user) => user.role === value),
-              error: null,
-            }),
-        }),
+        eq: (...args: [string, unknown]) => {
+          const value = args[1];
+          return {
+            order: () =>
+              Promise.resolve({
+                data: users.filter((user) => user.role === value),
+                error: null,
+              }),
+          };
+        },
         order: () => Promise.resolve({ data: users, error: null }),
       }),
     }),
