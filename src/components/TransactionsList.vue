@@ -52,18 +52,7 @@
 <script setup lang="ts">
 import { toRefs } from "vue";
 import TransactionIcon from "./TransactionIcon.vue";
-
-type Transaction = {
-  id: string;
-  account_id: string;
-  type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "interest";
-  amount: number;
-  currency: string;
-  note: string | null;
-  related_account_id: string | null;
-  created_by: string;
-  created_at: string;
-};
+import type { Transaction } from "../types";
 
 const props = defineProps<{
   transactions: Transaction[];

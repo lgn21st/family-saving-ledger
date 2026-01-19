@@ -1,91 +1,19 @@
 <template>
-  <main
+  <LoginPanel
     v-if="!user"
-    class="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-500 px-4"
-  >
-    <div
-      class="w-full max-w-2xl rounded-3xl bg-white/90 p-8 text-center shadow-2xl backdrop-blur"
-    >
-      <h1 class="text-2xl font-semibold text-slate-900">Home Bank</h1>
-      <p class="mt-2 text-sm text-slate-600">请选择用户并输入 PIN。</p>
-      <span
-        v-if="!isSupabaseConfigured"
-        class="mt-6 block text-sm text-rose-600"
-      >
-        请先配置 Supabase 连接。
-      </span>
-      <span
-        v-else-if="loginUsers.length === 0"
-        class="mt-6 block text-sm text-slate-500"
-      >
-        暂无用户，请先创建家庭成员。
-      </span>
-      <template v-else>
-        <div class="mt-6 grid gap-4 sm:grid-cols-2">
-          <button
-            v-for="entry in loginUsers"
-            :key="entry.id"
-            type="button"
-            :aria-label="entry.name"
-            :class="[
-              'flex items-center gap-4 rounded-3xl border px-4 py-3 text-left transition',
-              entry.id === selectedLoginUserId
-                ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200'
-                : 'border-white/60 bg-white shadow-sm hover:bg-brand-50',
-            ]"
-            @click="selectLoginUser(entry.id)"
-          >
-            <Avatar
-              :avatar-id="entry.avatar_id"
-              :options="avatarOptions"
-              :role="entry.role"
-              class="h-16 w-16"
-            />
-            <div>
-              <p class="text-lg font-semibold text-slate-800">
-                {{ entry.name }}
-              </p>
-              <p class="text-sm text-slate-500">
-                {{ entry.role === "parent" ? "家长" : "孩子" }}
-              </p>
-            </div>
-          </button>
-        </div>
-
-        <form class="mt-6 space-y-4" @submit.prevent="handleLogin">
-          <input
-            v-model="loginPin"
-            type="password"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            maxlength="4"
-            placeholder="PIN"
-            class="w-full rounded-2xl border border-white/60 bg-white px-4 py-3 text-center text-2xl tracking-[0.3em] text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200"
-            @input="loginPin = sanitizePin(loginPin)"
-          />
-          <button
-            type="submit"
-            :disabled="loading"
-            class="w-full rounded-2xl bg-brand-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {{
-              loading
-                ? "登录中..."
-                : selectedLoginUser
-                  ? `登录 ${selectedLoginUser.name}`
-                  : "登录"
-            }}
-          </button>
-        </form>
-      </template>
-      <span
-        v-if="sessionStatus || status"
-        class="mt-3 block text-sm text-rose-600"
-      >
-        {{ sessionStatus ?? status }}
-      </span>
-    </div>
-  </main>
+    v-model:loginPin="loginPin"
+    :is-supabase-configured="isSupabaseConfigured"
+    :login-users="loginUsers"
+    :selected-login-user-id="selectedLoginUserId"
+    :loading="loading"
+    :selected-login-user="selectedLoginUser"
+    :session-status="sessionStatus"
+    :status="status"
+    :avatar-options="avatarOptions"
+    :sanitize-pin="sanitizePin"
+    :on-select-login-user="selectLoginUser"
+    :on-login="handleLogin"
+  />
 
   <div v-else class="flex min-h-screen flex-col">
     <header
@@ -500,158 +428,40 @@
             </template>
           </div>
         </div>
+      </template>
 
-        <div
-          class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-        >
-          <div class="flex items-center justify-between">
-            <div>
-              <h4 class="text-sm font-semibold text-slate-700">
-                近 30 天余额趋势
-              </h4>
-              <p class="text-xs text-slate-400">按日累计余额</p>
-            </div>
-            <span class="text-xs font-semibold text-brand-600">{{
-              selectedAccount.currency
-            }}</span>
-          </div>
-          <div class="mt-4 h-32">
-            <svg v-if="chartPath" viewBox="0 0 100 100" class="h-full w-full">
-              <path
-                :d="chartPath"
-                fill="none"
-                stroke="url(#sparkline)"
-                stroke-width="3"
-                stroke-linecap="round"
-              />
-              <defs>
-                <linearGradient id="sparkline" x1="0" x2="1" y1="0" y2="0">
-                  <stop offset="0%" stop-color="#f97316" />
-                  <stop offset="50%" stop-color="#a855f7" />
-                  <stop offset="100%" stop-color="#38bdf8" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <p v-else class="text-sm text-slate-400">暂无数据</p>
-          </div>
-        </div>
-
-        <section
-          v-if="canEdit"
-          class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <h4 class="text-sm font-semibold text-slate-700">新增/扣减</h4>
-            <span
-              v-if="selectedChild"
-              class="text-xs font-semibold text-slate-400"
-            >
-              当前：{{ selectedChild.name }} ·
-              {{ selectedAccount?.name ?? "未选择账户" }}
-            </span>
-          </div>
-
-          <div class="mt-4 flex flex-col gap-3 lg:flex-row">
-            <input
-              v-model="amountInput"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="金额"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-            <input
-              v-model="noteInput"
-              type="text"
-              placeholder="备注（必填）"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-          <div class="mt-3 flex flex-wrap gap-3">
-            <button
-              class="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="loading"
-              @click="handleAddTransaction('deposit')"
-            >
-              增加
-            </button>
-            <button
-              class="rounded-2xl bg-rose-400 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="loading"
-              @click="handleAddTransaction('withdrawal')"
-            >
-              减少
-            </button>
-          </div>
-        </section>
-
-        <section
-          v-if="canEdit"
-          class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-          data-testid="transfer-card"
-        >
-          <h4 class="text-sm font-semibold text-slate-700">同币种转账</h4>
-          <div class="mt-4 flex flex-col gap-3 lg:flex-row">
-            <input
-              v-model="transferAmount"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="转账金额"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-            <select
-              v-model="transferTargetId"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            >
-              <option value="">选择转入账户</option>
-              <option
-                v-for="account in transferTargets"
-                :key="account.id"
-                :value="account.id"
-              >
-                {{ account.ownerName }} - {{ account.name }}
-              </option>
-            </select>
-          </div>
-          <div class="mt-3">
-            <input
-              v-model="transferNote"
-              type="text"
-              placeholder="备注（可选）"
-              class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </div>
-          <p class="mt-3 text-xs text-slate-500">
-            可转账余额：{{
-              formatAmount(
+      <AccountDetailPanel
+        :selected-account="selectedAccount"
+        :selected-child-name="selectedChild?.name ?? null"
+        :can-edit="canEdit"
+        :chart-path="chartPath"
+        v-model:amount-input="amountInput"
+        v-model:note-input="noteInput"
+        v-model:transfer-amount="transferAmount"
+        v-model:transfer-target-id="transferTargetId"
+        v-model:transfer-note="transferNote"
+        :transfer-targets="transferTargets"
+        :formatted-balance="
+          selectedAccount
+            ? formatAmount(
                 balances[selectedAccount.id] ?? 0,
                 selectedAccount.currency,
               )
-            }}
-          </p>
-          <button
-            class="mt-3 rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-            :disabled="loading"
-            @click="handleTransfer"
-          >
-            确认转账
-          </button>
-        </section>
-
-        <TransactionsList
-          :transactions="pagedTransactions"
-          :has-more="hasMoreTransactions"
-          :loading="transactionLoading"
-          :transaction-labels="transactionLabels"
-          :format-signed-amount="formatSignedAmount"
-          :transaction-tone="transactionTone"
-          :get-transaction-note="getTransactionNote"
-          :format-timestamp="formatTimestamp"
-          :on-load-more="handleLoadMoreTransactions"
-        />
-      </template>
-      <p v-else class="text-sm text-slate-500">暂无账户。</p>
+            : '0.00'
+        "
+        :loading="loading"
+        :paged-transactions="pagedTransactions"
+        :has-more-transactions="hasMoreTransactions"
+        :transaction-loading="transactionLoading"
+        :transaction-labels="transactionLabels"
+        :format-signed-amount="formatSignedAmount"
+        :transaction-tone="transactionTone"
+        :get-transaction-note="getTransactionNote"
+        :format-timestamp="formatTimestamp"
+        :on-add-transaction="handleAddTransaction"
+        :on-transfer="handleTransfer"
+        :on-load-more="handleLoadMoreForSelected"
+      />
     </main>
 
     <div v-else class="flex flex-1 flex-col lg:flex-row">
@@ -715,72 +525,27 @@
       </aside>
 
       <section class="order-3 flex-1 space-y-6 px-6 py-6 lg:order-2">
-        <template v-if="selectedAccount">
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h3 class="text-lg font-semibold text-slate-800">
-                {{ selectedAccount.name }}
-              </h3>
-              <p class="text-sm text-slate-500">
-                币种 {{ selectedAccount.currency }} · 余额
-                {{
-                  formatAmount(
-                    balances[selectedAccount.id] ?? 0,
-                    selectedAccount.currency,
-                  )
-                }}
-              </p>
-            </div>
-          </div>
-
-          <div
-            class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-          >
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="text-sm font-semibold text-slate-700">
-                  近 30 天余额趋势
-                </h4>
-                <p class="text-xs text-slate-400">按日累计余额</p>
-              </div>
-              <span class="text-xs font-semibold text-brand-600">{{
-                selectedAccount.currency
-              }}</span>
-            </div>
-            <div class="mt-4 h-32">
-              <svg v-if="chartPath" viewBox="0 0 100 100" class="h-full w-full">
-                <path
-                  :d="chartPath"
-                  fill="none"
-                  stroke="url(#sparkline)"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                />
-                <defs>
-                  <linearGradient id="sparkline" x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0%" stop-color="#f97316" />
-                    <stop offset="50%" stop-color="#a855f7" />
-                    <stop offset="100%" stop-color="#38bdf8" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <p v-else class="text-sm text-slate-400">暂无数据</p>
-            </div>
-          </div>
-
-          <TransactionsList
-            :transactions="pagedTransactions"
-            :has-more="hasMoreTransactions"
-            :loading="transactionLoading"
-            :transaction-labels="transactionLabels"
-            :format-signed-amount="formatSignedAmount"
-            :transaction-tone="transactionTone"
-            :get-transaction-note="getTransactionNote"
-            :format-timestamp="formatTimestamp"
-            :on-load-more="handleLoadMoreTransactions"
-          />
-        </template>
-        <p v-else class="text-sm text-slate-500">暂无账户。</p>
+        <AccountOverviewPanel
+          :selected-account="selectedAccount"
+          :formatted-balance="
+            selectedAccount
+              ? formatAmount(
+                  balances[selectedAccount.id] ?? 0,
+                  selectedAccount.currency,
+                )
+              : '0.00'
+          "
+          :chart-path="chartPath"
+          :paged-transactions="pagedTransactions"
+          :has-more-transactions="hasMoreTransactions"
+          :transaction-loading="transactionLoading"
+          :transaction-labels="transactionLabels"
+          :format-signed-amount="formatSignedAmount"
+          :transaction-tone="transactionTone"
+          :get-transaction-note="getTransactionNote"
+          :format-timestamp="formatTimestamp"
+          :on-load-more="handleLoadMoreForSelected"
+        />
       </section>
     </div>
   </div>
@@ -790,231 +555,69 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import Avatar from "./components/Avatar.vue";
+import AccountDetailPanel from "./components/AccountDetailPanel.vue";
+import AccountOverviewPanel from "./components/AccountOverviewPanel.vue";
+import LoginPanel from "./components/LoginPanel.vue";
 import StatusBanner from "./components/StatusBanner.vue";
-import TransactionsList from "./components/TransactionsList.vue";
-
-type Role = "parent" | "child";
-
-type AppUser = {
-  id: string;
-  name: string;
-  role: Role;
-  pin: string;
-  avatar_id?: string | null;
-  created_at?: string;
-};
-
-type Account = {
-  id: string;
-  name: string;
-  currency: string;
-  owner_child_id: string;
-  created_by: string;
-  is_active: boolean;
-  created_at?: string;
-};
-
-type Transaction = {
-  id: string;
-  account_id: string;
-  type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "interest";
-  amount: number;
-  currency: string;
-  note: string | null;
-  related_account_id: string | null;
-  created_by: string;
-  created_at: string;
-};
-
-type AvatarOption = {
-  id: string;
-  label: string;
-  role: Role;
-  imagePath: string;
-};
-
-type TransferTarget = Account & { ownerName: string };
-
-type ChartPoint = {
-  date: Date;
-  balance: number;
-};
-
-const supportedCurrencies = ["SGD", "CNY"];
-const PAGE_SIZE = 10;
-
-const avatarOptions: AvatarOption[] = [
-  {
-    id: "parent-1",
-    label: "爸爸微笑",
-    role: "parent",
-    imagePath: "/avatars/01.png",
-  },
-  {
-    id: "parent-2",
-    label: "爸爸认真",
-    role: "parent",
-    imagePath: "/avatars/02.png",
-  },
-  {
-    id: "parent-3",
-    label: "妈妈温柔",
-    role: "parent",
-    imagePath: "/avatars/03.png",
-  },
-  {
-    id: "parent-4",
-    label: "妈妈开心",
-    role: "parent",
-    imagePath: "/avatars/04.png",
-  },
-  {
-    id: "child-1",
-    label: "小可爱",
-    role: "child",
-    imagePath: "/avatars/05.png",
-  },
-  {
-    id: "child-2",
-    label: "小天使",
-    role: "child",
-    imagePath: "/avatars/06.png",
-  },
-  {
-    id: "child-3",
-    label: "小公主",
-    role: "child",
-    imagePath: "/avatars/07.png",
-  },
-  {
-    id: "child-4",
-    label: "小萌宝",
-    role: "child",
-    imagePath: "/avatars/08.png",
-  },
-  {
-    id: "child-5",
-    label: "小花仙",
-    role: "child",
-    imagePath: "/avatars/09.png",
-  },
-  {
-    id: "child-6",
-    label: "小画家",
-    role: "child",
-    imagePath: "/avatars/10.png",
-  },
-  {
-    id: "child-7",
-    label: "小学霸",
-    role: "child",
-    imagePath: "/avatars/11.png",
-  },
-  {
-    id: "child-8",
-    label: "小音乐家",
-    role: "child",
-    imagePath: "/avatars/12.png",
-  },
-];
-
-const transactionLabels: Record<Transaction["type"], string> = {
-  deposit: "增加",
-  withdrawal: "减少",
-  transfer_in: "转入",
-  transfer_out: "转出",
-  interest: "利息",
-};
-
-const successMessages = new Set([
-  "已保存交易。",
-  "账户已创建。",
-  "孩子用户已创建。",
-  "已删除孩子及关联账户。",
-  "已更新名称。",
-  "账户名称已更新。",
-  "转账完成。",
-]);
+import { avatarOptions, type AvatarOption, supportedCurrencies } from "./config";
+import { useAccounts } from "./composables/useAccounts";
+import { useAccountEditor } from "./composables/useAccountEditor";
+import { useAccountSelection } from "./composables/useAccountSelection";
+import { useChildren } from "./composables/useChildren";
+import { useAuth } from "./composables/useAuth";
+import { useAppBootstrap } from "./composables/useAppBootstrap";
+import { useChartData } from "./composables/useChartData";
+import { useCurrencyDisplay } from "./composables/useCurrencyDisplay";
+import { useDerivedViews } from "./composables/useDerivedViews";
+import { useSelectionSync } from "./composables/useSelectionSync";
+import { useSessionActions } from "./composables/useSessionActions";
+import { useStatus } from "./composables/useStatus";
+import { useTransactionActions } from "./composables/useTransactionActions";
+import { useTransactionDisplay } from "./composables/useTransactionDisplay";
+import { useTransactionPaging } from "./composables/useTransactionPaging";
+import { useTransfers } from "./composables/useTransfers";
+import { useTransactions } from "./composables/useTransactions";
+import { useUsers } from "./composables/useUsers";
+import type { Account, AppUser, Transaction } from "./types";
+import { sanitizePin } from "./utils/formatting";
 
 const childAvatars = avatarOptions.filter((avatar) => avatar.role === "child");
 
-const sanitizePin = (value: string) => value.replace(/\D/g, "");
-
-const currencyGroups = (accounts: Account[]) => {
-  return accounts.reduce<Record<string, Account[]>>((grouped, account) => {
-    if (!grouped[account.currency]) {
-      grouped[account.currency] = [];
-    }
-    grouped[account.currency]?.push(account);
-    return grouped;
-  }, {});
-};
-
-const formatAmount = (amount: number, currency: string) => {
-  return `${amount.toFixed(2)} ${currency}`;
-};
-
-const signedAmount = (transaction: Transaction) => {
-  const direction =
-    transaction.type === "withdrawal" || transaction.type === "transfer_out"
-      ? -1
-      : 1;
-  return direction * transaction.amount;
-};
-
-const transactionTone = (transaction: Transaction) => {
-  return signedAmount(transaction) >= 0 ? "text-emerald-600" : "text-rose-500";
-};
-
-const formatSignedAmount = (transaction: Transaction) => {
-  const amount = signedAmount(transaction);
-  const sign = amount >= 0 ? "+" : "-";
-  return `${sign}${Math.abs(amount).toFixed(2)} ${transaction.currency}`;
-};
-
-const formatTimestamp = (value: string) => {
-  return new Date(value).toLocaleString();
-};
-
-const mapErrorMessage = (message: string) => {
-  if (message.includes("Insufficient balance")) return "余额不足。";
-  if (message.includes("Account not found or inactive")) return "账户不可用。";
-  if (message.includes("Transfer currency mismatch"))
-    return "只能在相同币种账户之间转账。";
-  if (message.includes("Amount must be positive")) return "请输入有效金额。";
-  if (message.includes("Source and target accounts must differ"))
-    return "请选择不同的账户。";
-  if (message.includes("Unsupported transaction type"))
-    return "交易类型不支持。";
-  return message;
-};
-
-const setErrorStatus = (message: string) => {
-  status.value = mapErrorMessage(message);
-};
-
 const user = ref<AppUser | null>(null);
 const loginPin = ref("");
-const loginUsers = ref<AppUser[]>([]);
 const selectedLoginUserId = ref<string | null>(null);
-const accounts = ref<Account[]>([]);
-const balances = ref<Record<string, number>>({});
-const transactions = ref<Transaction[]>([]);
-const chartTransactions = ref<Transaction[]>([]);
-const chartBaseBalance = ref(0);
-const transactionTotal = ref(0);
-const transactionPage = ref(0);
-const transactionLoading = ref(false);
 const selectedAccountId = ref<string | null>(null);
-const status = ref<string | null>(null);
+const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus } =
+  useStatus();
+const { childUsers, loginUsers, loadChildUsers, loadLoginUsers } = useUsers({
+  supabase,
+  setErrorStatus,
+});
+const { accounts, balances, loadAccounts, loadBalances } = useAccounts({
+  supabase,
+  setErrorStatus,
+});
+const { groupedAccounts, currencyTotals, formatAmount } = useCurrencyDisplay({
+  accounts,
+  balances,
+});
+const {
+  transactionLabels,
+  signedAmount,
+  transactionTone,
+  formatSignedAmount,
+  formatTimestamp,
+  getTransactionNote,
+} = useTransactionDisplay({
+  accounts,
+  childUsers,
+});
 const loading = ref(false);
-let statusTimeoutId: number | null = null;
 const amountInput = ref("");
 const noteInput = ref("");
 const transferAmount = ref("");
 const transferTargetId = ref("");
 const transferNote = ref("");
-const childUsers = ref<AppUser[]>([]);
 const newAccountName = ref("");
 const newAccountCurrency = ref("SGD");
 const newAccountOwnerId = ref("");
@@ -1030,623 +633,172 @@ const selectedChildId = ref<string | null>(null);
 const showChildManager = ref(false);
 const showAccountCreator = ref(false);
 
-watch(selectedChildId, (nextChildId, previousChildId) => {
-  if (!nextChildId || nextChildId === previousChildId) return;
-  showAccountCreator.value = false;
-  newAccountName.value = "";
-  newAccountCurrency.value = supportedCurrencies[0] ?? "SGD";
+const {
+  transactions,
+  chartTransactions,
+  chartBaseBalance,
+  transactionLoading,
+  hasMoreTransactions,
+  clearTransactions,
+  resetSelectedAccountData,
+  handleLoadMoreTransactions,
+} = useTransactions({
+  supabase,
+  setErrorStatus,
 });
 
-watch(selectedChildId, () => {
-  if (selectedChildId.value) {
-    newAccountOwnerId.value = selectedChildId.value;
-  }
-});
-const selectedLoginUser = computed(() => {
-  return (
-    loginUsers.value.find((entry) => entry.id === selectedLoginUserId.value) ??
-    null
-  );
-});
-
-const selectedAccount = computed(() => {
-  return (
-    accounts.value.find((account) => account.id === selectedAccountId.value) ??
-    null
-  );
+const {
+  selectAccount,
+  selectedAccount,
+  selectedChild,
+  selectedChildAccounts,
+  canEdit,
+  transferTargets,
+} = useAccountSelection({
+  user,
+  accounts,
+  childUsers,
+  selectedAccountId,
+  selectedChildId,
 });
 
-const selectedChild = computed(() => {
-  if (user.value?.role === "parent") {
-    return (
-      childUsers.value.find((child) => child.id === selectedChildId.value) ??
-      null
-    );
-  }
-
-  if (user.value?.role === "child") {
-    return user.value;
-  }
-
-  return null;
-});
-
-const groupedAccounts = computed(() => currencyGroups(accounts.value));
-
-const currencyTotals = computed(() => {
-  return accounts.value.reduce<Record<string, number>>((result, account) => {
-    result[account.currency] =
-      (result[account.currency] ?? 0) + (balances.value[account.id] ?? 0);
-    return result;
-  }, {});
-});
-
-const selectedChildAccounts = computed(() => {
-  if (!selectedChildId.value) return [];
-  return accounts.value
-    .filter((account) => account.owner_child_id === selectedChildId.value)
-    .sort((left, right) =>
-      (left.created_at ?? "").localeCompare(right.created_at ?? ""),
-    );
-});
-
-const canEdit = computed(() => user.value?.role === "parent");
-
-const transferTargets = computed(() => {
-  if (!selectedAccount.value) return [] as TransferTarget[];
-  return accounts.value
-    .filter(
-      (account) =>
-        account.currency === selectedAccount.value?.currency &&
-        account.id !== selectedAccount.value?.id,
-    )
-    .map((account) => ({
-      ...account,
-      ownerName:
-        childUsers.value.find((child) => child.id === account.owner_child_id)
-          ?.name ?? account.name,
-    }));
-});
-
-const selectedTransactions = computed(() => {
-  if (!selectedAccount.value) return [];
-  return transactions.value;
-});
-
-const pagedTransactions = computed(() => {
-  return selectedTransactions.value;
-});
-
-const hasMoreTransactions = computed(() => {
-  return selectedTransactions.value.length < transactionTotal.value;
-});
-
-const statusTone = computed(() => {
-  if (!status.value) return "error";
-  return successMessages.has(status.value) ? "success" : "error";
-});
-
-const chartPoints = computed<ChartPoint[]>(() => {
-  if (!selectedAccount.value) return [];
-  if (chartTransactions.value.length === 0) return [];
-
-  const now = new Date(Date.now());
-  const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startDate = new Date(endDate);
-  startDate.setDate(endDate.getDate() - 29);
-
-  const accountTransactions = chartTransactions.value
-    .map((transaction) => ({
-      transaction,
-      effectiveDate: new Date(transaction.created_at),
-    }))
-    .sort(
-      (left, right) =>
-        left.effectiveDate.getTime() - right.effectiveDate.getTime(),
-    );
-
-  let runningBalance = chartBaseBalance.value;
-
-  let index = 0;
-  const points: ChartPoint[] = [];
-
-  for (let day = 0; day < 30; day += 1) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + day);
-    const dayEnd = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      23,
-      59,
-      59,
-      999,
-    );
-
-    while (index < accountTransactions.length) {
-      const entry = accountTransactions[index];
-      if (!entry || entry.effectiveDate > dayEnd) break;
-      runningBalance += signedAmount(entry.transaction);
-      index += 1;
-    }
-
-    points.push({
-      date,
-      balance: Number(runningBalance.toFixed(2)),
-    });
-  }
-
-  return points;
-});
-
-const chartPath = computed(() => {
-  if (chartPoints.value.length < 2) return "";
-
-  const balances = chartPoints.value.map((point) => point.balance);
-  const minBalance = Math.min(...balances);
-  const maxBalance = Math.max(...balances);
-  const range = maxBalance - minBalance || 1;
-
-  return chartPoints.value
-    .map((point, index) => {
-      const x = (index / (chartPoints.value.length - 1)) * 100;
-      const y = 100 - ((point.balance - minBalance) / range) * 100;
-      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
-    })
-    .join(" ");
-});
-
-const selectLoginUser = (userId: string) => {
-  selectedLoginUserId.value = userId;
-  loginPin.value = "";
-};
-
-const selectAccount = (accountId: string) => {
-  selectedAccountId.value = accountId;
-};
-
-const loadBalances = async (loadedAccounts: Account[]) => {
-  if (loadedAccounts.length === 0) {
-    balances.value = {};
-    return;
-  }
-
-  const accountIds = loadedAccounts.map((account) => account.id);
-  const { data, error } = await supabase
-    .from("account_balances")
-    .select("account_id, balance")
-    .in("account_id", accountIds);
-
-  if (error) {
-    setErrorStatus(error.message);
-    return;
-  }
-
-  balances.value = (data ?? []).reduce<Record<string, number>>(
-    (result, row) => {
-      result[row.account_id] = Number(row.balance ?? 0);
-      return result;
-    },
-    {},
-  );
-};
-
-const loadTransactionsPage = async (accountId: string, page: number) => {
-  transactionLoading.value = true;
-  const start = (page - 1) * PAGE_SIZE;
-  const end = page * PAGE_SIZE - 1;
-  const { data, error, count } = await supabase
-    .from("transactions")
-    .select("*", { count: "exact" })
-    .eq("account_id", accountId)
-    .order("created_at", { ascending: false })
-    .range(start, end);
-
-  if (error) {
-    setErrorStatus(error.message);
-    transactionLoading.value = false;
-    return;
-  }
-
-  transactionTotal.value = count ?? data?.length ?? 0;
-  transactionPage.value = page;
-  transactions.value =
-    page === 1 ? data ?? [] : [...transactions.value, ...(data ?? [])];
-  transactionLoading.value = false;
-};
-
-const loadChartTransactions = async (accountId: string) => {
-  const endDate = new Date(Date.now());
-  const startDate = new Date(endDate);
-  startDate.setDate(endDate.getDate() - 29);
-  startDate.setHours(0, 0, 0, 0);
-
-  const { data: baseData, error: baseError } = await supabase.rpc(
-    "get_balance_before_date",
-    {
-      p_account_id: accountId,
-      p_before: startDate.toISOString(),
-    },
-  );
-
-  if (baseError) {
-    setErrorStatus(baseError.message);
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("account_id", accountId)
-    .gte("created_at", startDate.toISOString())
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    setErrorStatus(error.message);
-    return;
-  }
-
-  chartBaseBalance.value = Number(baseData ?? 0);
-  chartTransactions.value = data ?? [];
-};
-
-const resetSelectedAccountData = async () => {
-  if (!selectedAccount.value) return;
-  await loadTransactionsPage(selectedAccount.value.id, 1);
-  await loadChartTransactions(selectedAccount.value.id);
-};
-
-const refreshAccountData = async () => {
-  await loadBalances(accounts.value);
-  await resetSelectedAccountData();
-};
-
-const handleLoadMoreTransactions = async () => {
-  if (!selectedAccount.value || transactionLoading.value) return;
-  if (!hasMoreTransactions.value) return;
-  await loadTransactionsPage(selectedAccount.value.id, transactionPage.value + 1);
-};
-
-const loadAccounts = async (currentUser: AppUser) => {
-  loading.value = true;
-  status.value = null;
-  const query = supabase.from("accounts").select("*").eq("is_active", true);
-  const { data, error } =
-    currentUser.role === "parent"
-      ? await query.order("created_at")
-      : await query.eq("owner_child_id", currentUser.id).order("created_at");
-
-  if (error) {
-    setErrorStatus(error.message);
-    loading.value = false;
-    return;
-  }
-
-  const loadedAccounts = data ?? [];
-  accounts.value = loadedAccounts;
-  await loadBalances(loadedAccounts);
-  loading.value = false;
-};
-
-const loadChildUsers = async () => {
-  const { data, error } = await supabase
-    .from("app_users")
-    .select("*")
-    .eq("role", "child")
-    .order("created_at");
-
-  if (error) {
-    setErrorStatus(error.message);
-    return;
-  }
-
-  childUsers.value = data ?? [];
-};
-
-const loadLoginUsers = async () => {
-  const { data, error } = await supabase
-    .from("app_users")
-    .select("*")
-    .order("created_at");
-
-  if (error) {
-    setErrorStatus(error.message);
-    return;
-  }
-
-  const parents = (data ?? [])
-    .filter((user) => user.role === "parent")
-    .sort((left, right) => left.name.localeCompare(right.name));
-  const children = (data ?? [])
-    .filter((user) => user.role === "child")
-    .sort((left, right) =>
-      (left.created_at ?? "").localeCompare(right.created_at ?? ""),
-    );
-
-  const sorted = [...parents, ...children];
-
-  loginUsers.value = sorted;
-  if (!selectedLoginUserId.value && sorted.length > 0) {
-    selectedLoginUserId.value = sorted[0].id;
-  }
-};
-
-const restoreSession = async (userId: string) => {
-  loading.value = true;
-  const { data, error } = await supabase
-    .from("app_users")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error || !data) {
-    sessionStorage.removeItem("homebank.session");
-    loading.value = false;
-    return;
-  }
-
-  user.value = data;
-  loading.value = false;
-};
-
-const handleLogin = async () => {
-  status.value = null;
-  sessionStatus.value = null;
-
-  if (!isSupabaseConfigured) {
-    status.value = "请先配置 Supabase 环境变量。";
-    return;
-  }
-
-  if (!selectedLoginUserId.value) {
-    status.value = "请选择登录用户。";
-    return;
-  }
-
-  if (loginPin.value.length !== 4) {
-    status.value = "请输入 4 位 PIN。";
-    return;
-  }
-
-  loading.value = true;
-  const { data, error } = await supabase
-    .from("app_users")
-    .select("*")
-    .eq("id", selectedLoginUserId.value)
-    .eq("pin", loginPin.value)
-    .maybeSingle();
-
-  if (error || !data) {
-    status.value = "PIN 无效，请重试。";
-    loading.value = false;
-    return;
-  }
-
-  user.value = data;
-  loginPin.value = "";
-
-  const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 30;
-  sessionStorage.setItem(
-    "homebank.session",
-    JSON.stringify({ userId: data.id, expiresAt }),
-  );
-
-  loading.value = false;
-};
-
-const handleLogout = () => {
-  user.value = null;
-  accounts.value = [];
-  balances.value = {};
-  transactions.value = [];
-  chartTransactions.value = [];
-  transactionTotal.value = 0;
-  transactionPage.value = 0;
-  transactionLoading.value = false;
-  selectedAccountId.value = null;
-  status.value = null;
-  loginPin.value = "";
-  selectedLoginUserId.value = null;
-  selectedChildId.value = null;
-  showChildManager.value = false;
-  showAccountCreator.value = false;
-  sessionStorage.removeItem("homebank.session");
-};
-
-const handleAddTransaction = async (type: "deposit" | "withdrawal") => {
-  if (!selectedAccount.value || !user.value) return;
-
-  const amount = Number.parseFloat(amountInput.value);
-  if (Number.isNaN(amount) || amount <= 0) {
-    status.value = "请输入有效金额。";
-    return;
-  }
-
-  const trimmedNote = noteInput.value.trim();
-  if (!trimmedNote) {
-    status.value = "请输入备注。";
-    return;
-  }
-
-  loading.value = true;
-  const { error } = await supabase.rpc("apply_transaction", {
-    p_account_id: selectedAccount.value.id,
-    p_type: type,
-    p_amount: amount,
-    p_note: trimmedNote,
-    p_created_by: user.value.id,
+const { selectedLoginUser, selectedTransactions, pagedTransactions } =
+  useDerivedViews({
+    loginUsers,
+    selectedLoginUserId,
+    selectedAccount,
+    transactions,
   });
 
-  if (error) {
-    setErrorStatus(error.message);
-    loading.value = false;
-    return;
-  }
+const { chartPoints, chartPath } = useChartData({
+  selectedAccount,
+  chartTransactions,
+  chartBaseBalance,
+  signedAmount,
+});
 
-  amountInput.value = "";
-  noteInput.value = "";
-  status.value = "已保存交易。";
-  await refreshAccountData();
-  if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
-  statusTimeoutId = window.setTimeout(() => {
-    if (status.value === "已保存交易。") status.value = null;
-  }, 1500);
-  loading.value = false;
-};
+const currentUserId = computed(() => user.value?.id ?? null);
 
-const handleCreateAccount = async () => {
-  if (!user.value) return;
+const { handleLogin, checkSession } = useAuth({
+  supabase,
+  user,
+  loginPin,
+  selectedLoginUserId,
+  isSupabaseConfigured,
+  sessionStatus,
+  loading,
+  setStatus,
+});
 
-  const trimmedName = newAccountName.value.trim();
-  const trimmedCurrency = newAccountCurrency.value.trim().toUpperCase();
+const { loadLoginUsersAndSelect, bootstrap } = useAppBootstrap({
+  isSupabaseConfigured,
+  user,
+  loginUsers,
+  selectedLoginUserId,
+  loadLoginUsers,
+  checkSession,
+  loadAccounts,
+  loadChildUsers,
+});
 
-  if (!trimmedName) {
-    status.value = "请输入账户名称。";
-    return;
-  }
+const {
+  selectLoginUser,
+  refreshAccountData,
+  handleLogout,
+} = useSessionActions({
+  user,
+  accounts,
+  balances,
+  loginPin,
+  selectedLoginUserId,
+  selectedAccountId,
+  selectedChildId,
+  showChildManager,
+  showAccountCreator,
+  clearTransactions,
+  setStatus,
+  loadBalances,
+  resetSelectedAccountData,
+  selectedAccount,
+});
 
-  if (!supportedCurrencies.includes(trimmedCurrency)) {
-    status.value = "请选择有效币种。";
-    return;
-  }
-
-  if (!newAccountOwnerId.value) {
-    status.value = "请选择孩子账户归属。";
-    return;
-  }
-
-  loading.value = true;
-  const { error } = await supabase.from("accounts").insert([
-    {
-      name: trimmedName,
-      currency: trimmedCurrency,
-      owner_child_id: newAccountOwnerId.value,
-      created_by: user.value.id,
-      is_active: true,
+const { handleCreateChild, handleDeleteChild, handleUpdateChild } =
+  useChildren({
+    supabase,
+    user,
+    loading,
+    newChildName,
+    newChildPin,
+    newChildAvatarId,
+    defaultAvatarId: childAvatars[0]?.id ?? "",
+    editingChildId,
+    editingChildName,
+    cancelEditChild: () => {
+      editingChildId.value = null;
+      editingChildName.value = "";
     },
-  ]);
+    setStatus,
+    setErrorStatus,
+    setSuccessStatus,
+    loadChildUsers,
+    loadLoginUsersAndSelect,
+    loadAccounts,
+  });
 
-  if (error) {
-    setErrorStatus(error.message);
-    loading.value = false;
-    return;
-  }
+const { handleTransfer } = useTransfers({
+  supabase,
+  userId: currentUserId,
+  selectedAccountId,
+  transferAmount,
+  transferTargetId,
+  transferNote,
+  accounts,
+  balances,
+  loading,
+  setStatus,
+  setErrorStatus,
+  setSuccessStatus,
+  refreshAccountData,
+});
 
-  newAccountName.value = "";
-  status.value = "账户已创建。";
-  await loadAccounts(user.value);
-  loading.value = false;
-};
-
-const handleCreateChild = async () => {
-  if (!user.value) return;
-
-  const trimmedName = newChildName.value.trim();
-  const trimmedPin = newChildPin.value.trim();
-
-  if (!trimmedName) {
-    status.value = "请输入孩子姓名。";
-    return;
-  }
-
-  if (trimmedPin.length !== 4) {
-    status.value = "请输入 4 位 PIN。";
-    return;
-  }
-
-  if (!newChildAvatarId.value) {
-    status.value = "请选择头像。";
-    return;
-  }
-
-  loading.value = true;
-  const { error } = await supabase.from("app_users").insert([
-    {
-      name: trimmedName,
-      role: "child",
-      pin: trimmedPin,
-      avatar_id: newChildAvatarId.value,
+const { handleCreateAccount, handleUpdateAccount, startEditAccount } =
+  useAccountEditor({
+    supabase,
+    user,
+    supportedCurrencies,
+    loading,
+    newAccountName,
+    newAccountCurrency,
+    newAccountOwnerId,
+    editingAccountId,
+    editingAccountName,
+    setStatus,
+    setErrorStatus,
+    setSuccessStatus,
+    loadAccounts,
+    cancelEditAccount: () => {
+      editingAccountId.value = null;
+      editingAccountName.value = "";
     },
-  ]);
+  });
 
-  if (error) {
-    setErrorStatus(error.message);
-    loading.value = false;
-    return;
-  }
+const { handleAddTransaction } = useTransactionActions({
+  supabase,
+  userId: currentUserId,
+  selectedAccountId,
+  amountInput,
+  noteInput,
+  loading,
+  setStatus,
+  setErrorStatus,
+  setSuccessStatus,
+  refreshAccountData,
+});
 
-  newChildName.value = "";
-  newChildPin.value = "";
-  newChildAvatarId.value = childAvatars[0]?.id ?? "";
-  status.value = "孩子用户已创建。";
-  await loadChildUsers();
-  await loadLoginUsers();
-  loading.value = false;
-};
-
-const handleDeleteChild = async (childId: string) => {
-  if (!user.value) return;
-
-  loading.value = true;
-
-  const { data: childAccounts, error: childAccountsError } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("owner_child_id", childId);
-
-  if (childAccountsError) {
-    setErrorStatus(childAccountsError.message);
-    loading.value = false;
-    return;
-  }
-
-  const accountIds = (childAccounts ?? []).map((account) => account.id);
-
-  if (accountIds.length > 0) {
-    const { error: transactionsError } = await supabase
-      .from("transactions")
-      .delete()
-      .in("account_id", accountIds);
-
-    if (transactionsError) {
-      setErrorStatus(transactionsError.message);
-      loading.value = false;
-      return;
-    }
-
-    const { error: accountsError } = await supabase
-      .from("accounts")
-      .delete()
-      .in("id", accountIds);
-
-    if (accountsError) {
-      setErrorStatus(accountsError.message);
-      loading.value = false;
-      return;
-    }
-  }
-
-  const { error: childError } = await supabase
-    .from("app_users")
-    .delete()
-    .eq("id", childId);
-
-  if (childError) {
-    setErrorStatus(childError.message);
-    loading.value = false;
-    return;
-  }
-
-  await loadChildUsers();
-  await loadAccounts(user.value);
-  await loadLoginUsers();
-  status.value = "已删除孩子及关联账户。";
-  if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
-  statusTimeoutId = window.setTimeout(() => {
-    if (status.value === "已删除孩子及关联账户。") status.value = null;
-  }, 1500);
-  loading.value = false;
-};
+const { handleLoadMoreForSelected } = useTransactionPaging({
+  selectedAccount,
+  handleLoadMoreTransactions,
+});
 
 const startEditChild = (child: AppUser) => {
   editingChildId.value = child.id;
@@ -1658,277 +810,31 @@ const cancelEditChild = () => {
   editingChildName.value = "";
 };
 
-const handleUpdateChild = async () => {
-  if (!user.value || !editingChildId.value) return;
-
-  const trimmedName = editingChildName.value.trim();
-  if (!trimmedName) {
-    status.value = "请输入孩子姓名。";
-    return;
-  }
-
-  loading.value = true;
-  const { error } = await supabase
-    .from("app_users")
-    .update({ name: trimmedName })
-    .eq("id", editingChildId.value);
-
-  if (error) {
-    setErrorStatus(error.message);
-    loading.value = false;
-    return;
-  }
-
-  await loadChildUsers();
-  await loadLoginUsers();
-  status.value = "已更新名称。";
-  cancelEditChild();
-  loading.value = false;
-};
-
-const startEditAccount = (account: Account) => {
-  editingAccountId.value = account.id;
-  editingAccountName.value = account.name;
-};
-
 const cancelEditAccount = () => {
   editingAccountId.value = null;
   editingAccountName.value = "";
 };
 
-const handleUpdateAccount = async () => {
-  if (!user.value || !editingAccountId.value) return;
-
-  const trimmedName = editingAccountName.value.trim();
-  if (!trimmedName) {
-    status.value = "请输入账户名称。";
-    return;
-  }
-
-  loading.value = true;
-  const { error } = await supabase
-    .from("accounts")
-    .update({ name: trimmedName })
-    .eq("id", editingAccountId.value);
-
-  if (error) {
-    setErrorStatus(error.message);
-    loading.value = false;
-    return;
-  }
-
-  await loadAccounts(user.value);
-  status.value = "账户名称已更新。";
-  cancelEditAccount();
-  loading.value = false;
-};
-
-const handleTransfer = async () => {
-  if (!selectedAccount.value || !user.value) return;
-
-  const amount = Number.parseFloat(transferAmount.value);
-  if (Number.isNaN(amount) || amount <= 0) {
-    status.value = "请输入有效转账金额。";
-    return;
-  }
-
-  const balance = balances.value[selectedAccount.value.id] ?? 0;
-  if (amount > balance) {
-    status.value = "转出金额不能超过当前余额。";
-    return;
-  }
-
-  const targetAccount = accounts.value.find(
-    (account) => account.id === transferTargetId.value,
-  );
-  if (!targetAccount) {
-    status.value = "请选择转入账户。";
-    return;
-  }
-
-  if (targetAccount.currency !== selectedAccount.value.currency) {
-    status.value = "只能在相同币种账户之间转账。";
-    return;
-  }
-
-  loading.value = true;
-  const { error } = await supabase.rpc("transfer_between_accounts", {
-    p_source_account_id: selectedAccount.value.id,
-    p_target_account_id: targetAccount.id,
-    p_amount: amount,
-    p_note: transferNote.value.trim(),
-    p_created_by: user.value.id,
-  });
-
-  if (error) {
-    setErrorStatus(error.message);
-    loading.value = false;
-    return;
-  }
-
-  transferAmount.value = "";
-  transferTargetId.value = "";
-  transferNote.value = "";
-  status.value = "转账完成。";
-  await refreshAccountData();
-  loading.value = false;
-};
-
-const getTransactionNote = (transaction: Transaction) => {
-  if (transaction.note) {
-    return transaction.note;
-  }
-
-  if (transaction.related_account_id) {
-    const relatedAccount = accounts.value.find(
-      (account) => account.id === transaction.related_account_id,
-    );
-
-    if (relatedAccount) {
-      const ownerName =
-        childUsers.value.find(
-          (child) => child.id === relatedAccount.owner_child_id,
-        )?.name ?? relatedAccount.name;
-
-      if (transaction.type === "transfer_out") {
-        return `转出至 ${ownerName} ${relatedAccount.name}`;
-      }
-
-      if (transaction.type === "transfer_in") {
-        return `来自 ${ownerName} ${relatedAccount.name}`;
-      }
-    }
-  }
-
-  return "—";
-};
-
-watch([accounts, transactions], () => {
-  if (
-    editingAccountId.value &&
-    editingAccountId.value !== selectedAccountId.value
-  ) {
-    cancelEditAccount();
-  }
-});
-
-watch(status, (nextStatus) => {
-  if (!nextStatus) return;
-  if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
-  const timeoutMs = successMessages.has(nextStatus) ? 1500 : 3000;
-  statusTimeoutId = window.setTimeout(() => {
-    if (status.value === nextStatus) status.value = null;
-  }, timeoutMs);
-});
-
-watch(selectedAccountId, async () => {
-  if (!selectedAccount.value) {
-    transactions.value = [];
-    chartTransactions.value = [];
-    transactionTotal.value = 0;
-    transactionPage.value = 0;
-    return;
-  }
-  await resetSelectedAccountData();
-});
-
-watch([childUsers, selectedChildId], () => {
-  if (user.value?.role !== "parent") return;
-
-  if (childUsers.value.length === 0) {
-    selectedChildId.value = null;
-    newAccountOwnerId.value = "";
-    return;
-  }
-
-  if (
-    !selectedChildId.value ||
-    !childUsers.value.some((child) => child.id === selectedChildId.value)
-  ) {
-    selectedChildId.value = childUsers.value[0]?.id ?? null;
-  }
-});
-
-watch([accounts, selectedAccountId, selectedChildId, user], () => {
-  if (user.value?.role !== "parent") return;
-  if (!selectedChildId.value) {
-    selectedAccountId.value = null;
-    return;
-  }
-
-  const childAccounts = accounts.value.filter(
-    (account) => account.owner_child_id === selectedChildId.value,
-  );
-  if (childAccounts.length === 0) {
-    selectedAccountId.value = null;
-    return;
-  }
-
-  if (
-    !selectedAccountId.value ||
-    !childAccounts.some((account) => account.id === selectedAccountId.value)
-  ) {
-    selectedAccountId.value = childAccounts[0]?.id ?? null;
-  }
-});
-
-watch([accounts, selectedAccountId, user], () => {
-  if (
-    !selectedAccountId.value &&
-    accounts.value.length > 0 &&
-    user.value?.role !== "parent"
-  ) {
-    selectedAccountId.value = accounts.value[0]?.id ?? null;
-  }
-});
-
-watch([childUsers, newAccountOwnerId], () => {
-  if (!newAccountOwnerId.value && childUsers.value.length > 0) {
-    newAccountOwnerId.value = childUsers.value[0]?.id ?? "";
-  }
-});
-
-watch(selectedChildId, () => {
-  if (selectedChildId.value) {
-    newAccountOwnerId.value = selectedChildId.value;
-  }
+useSelectionSync({
+  supportedCurrencies,
+  selectedChildId,
+  selectedAccountId,
+  selectedAccount,
+  childUsers,
+  accounts,
+  transactions,
+  user,
+  showAccountCreator,
+  newAccountName,
+  newAccountCurrency,
+  newAccountOwnerId,
+  editingAccountId,
+  cancelEditAccount,
+  clearTransactions,
+  resetSelectedAccountData,
 });
 
 onMounted(async () => {
-  if (!isSupabaseConfigured || user.value) return;
-
-  await loadLoginUsers();
-
-  const sessionRaw = sessionStorage.getItem("homebank.session");
-  if (!sessionRaw) return;
-
-  try {
-    const session = JSON.parse(sessionRaw) as {
-      userId?: string;
-      expiresAt?: number;
-    };
-    if (!session.userId || !session.expiresAt) {
-      sessionStorage.removeItem("homebank.session");
-      return;
-    }
-
-    if (Date.now() > session.expiresAt) {
-      sessionStorage.removeItem("homebank.session");
-      sessionStatus.value = "登录已过期，请重新登录。";
-      return;
-    }
-
-    await restoreSession(session.userId);
-  } catch {
-    sessionStorage.removeItem("homebank.session");
-  }
-});
-
-watch(user, async (currentUser) => {
-  if (!currentUser) return;
-  await loadAccounts(currentUser);
-  if (currentUser.role === "parent") {
-    await loadChildUsers();
-  }
+  await bootstrap();
 });
 </script>
