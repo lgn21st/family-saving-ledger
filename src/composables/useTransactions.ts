@@ -1,3 +1,18 @@
+/**
+ * 交易记录管理
+ * 加载交易列表和图表数据
+ *
+ * 功能：
+ * - 分页加载交易记录（每页 10 条）
+ * - 支持加载更多（无限滚动基础）
+ * - 加载近 30 天交易用于图表展示
+ * - 包含作废交易筛选
+ *
+ * 状态：
+ * - transactions: 当前加载的交易列表
+ * - chartTransactions: 近 30 天交易（用于图表）
+ * - chartBaseBalance: 图表起始余额
+ */
 import { computed, ref, type Ref } from "vue";
 import type { SupabaseClient, Transaction } from "../types";
 

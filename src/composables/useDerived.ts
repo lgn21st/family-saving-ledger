@@ -1,7 +1,7 @@
 import { computed, type Ref } from "vue";
 import type { Account, AppUser, Transaction } from "../types";
 
-export const useDerivedViews = (params: {
+export const useDerived = (params: {
   loginUsers: Ref<AppUser[]>;
   selectedLoginUserId: Ref<string | null>;
   selectedAccount: Ref<Account | null>;
@@ -12,8 +12,9 @@ export const useDerivedViews = (params: {
 
   const selectedLoginUser = computed(() => {
     return (
-      loginUsers.value.find((entry) => entry.id === selectedLoginUserId.value) ??
-      null
+      loginUsers.value.find(
+        (entry) => entry.id === selectedLoginUserId.value,
+      ) ?? null
     );
   });
 

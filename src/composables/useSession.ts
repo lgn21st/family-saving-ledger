@@ -1,7 +1,7 @@
 import type { Ref } from "vue";
 import type { Account, AppUser } from "../types";
 
-export const useSessionActions = (params: {
+export const useSession = (params: {
   user: Ref<AppUser | null>;
   accounts: Ref<Account[]>;
   balances: Ref<Record<string, number>>;

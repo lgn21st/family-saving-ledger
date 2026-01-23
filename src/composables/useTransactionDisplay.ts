@@ -1,7 +1,5 @@
 import type { Ref } from "vue";
-import type { Account, AppUser, Transaction } from "../types";
-
-type TransactionType = Transaction["type"];
+import type { Account, AppUser, Transaction, TransactionType } from "../types";
 
 export const useTransactionDisplay = (params: {
   accounts: Ref<Account[]>;

@@ -1,3 +1,12 @@
+/**
+ * 用户认证管理
+ * 处理 PIN 登录、会话恢复和自动登录验证
+ *
+ * 功能：
+ * - PIN 登录验证
+ * - SessionStorage 会话管理（30天有效期）
+ * - 应用启动时自动恢复会话
+ */
 import type { Ref } from "vue";
 import type { AppUser, SupabaseFromClient } from "../types";
 

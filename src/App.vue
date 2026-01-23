@@ -130,12 +130,12 @@ import { useAccountEditor } from "./composables/useAccountEditor";
 import { useAccountSelection } from "./composables/useAccountSelection";
 import { useChildren } from "./composables/useChildren";
 import { useAuth } from "./composables/useAuth";
-import { useAppBootstrap } from "./composables/useAppBootstrap";
+import { useBootstrap } from "./composables/useBootstrap";
 import { useChartData } from "./composables/useChartData";
-import { useCurrencyDisplay } from "./composables/useCurrencyDisplay";
-import { useDerivedViews } from "./composables/useDerivedViews";
+import { useCurrency } from "./composables/useCurrency";
+import { useDerived } from "./composables/useDerived";
 import { useSelectionSync } from "./composables/useSelectionSync";
-import { useSessionActions } from "./composables/useSessionActions";
+import { useSession } from "./composables/useSession";
 import { useStatus } from "./composables/useStatus";
 import { useTransactionActions } from "./composables/useTransactionActions";
 import { useTransactionDisplay } from "./composables/useTransactionDisplay";
@@ -164,9 +164,7 @@ const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus } =
 const supabaseFrom = supabase as unknown as SupabaseFromClient;
 const supabaseRpc = supabase as unknown as SupabaseRpcClient;
 const supabaseClient = supabase as unknown as SupabaseClient;
-const includeVoidedTransactions = computed(
-  () => user.value?.role === "parent",
-);
+const includeVoidedTransactions = computed(() => user.value?.role === "parent");
 const { childUsers, loginUsers, loadChildUsers, loadLoginUsers } = useUsers({
   supabase: supabaseFrom,
   setErrorStatus,
@@ -175,7 +173,7 @@ const { accounts, balances, loadAccounts, loadBalances } = useAccounts({
   supabase: supabaseFrom,
   setErrorStatus,
 });
-const { groupedAccounts, currencyTotals, formatAmount } = useCurrencyDisplay({
+const { groupedAccounts, currencyTotals, formatAmount } = useCurrency({
   accounts,
   balances,
 });
@@ -241,7 +239,7 @@ const {
   selectedChildId,
 });
 
-const { selectedLoginUser, pagedTransactions } = useDerivedViews({
+const { selectedLoginUser, pagedTransactions } = useDerived({
   loginUsers,
   selectedLoginUserId,
   selectedAccount,
@@ -276,7 +274,7 @@ const { handleLogin, checkSession } = useAuth({
   setStatus,
 });
 
-const { loadLoginUsersAndSelect, bootstrap } = useAppBootstrap({
+const { loadLoginUsersAndSelect, bootstrap } = useBootstrap({
   isSupabaseConfigured,
   user,
   loginUsers,
@@ -287,11 +285,7 @@ const { loadLoginUsersAndSelect, bootstrap } = useAppBootstrap({
   loadChildUsers,
 });
 
-const {
-  selectLoginUser,
-  refreshAccountData,
-  handleLogout,
-} = useSessionActions({
+const { selectLoginUser, refreshAccountData, handleLogout } = useSession({
   user,
   accounts,
   balances,
@@ -308,8 +302,8 @@ const {
   selectedAccount,
 });
 
-const { handleCreateChild, handleDeleteChild, handleUpdateChild } =
-  useChildren({
+const { handleCreateChild, handleDeleteChild, handleUpdateChild } = useChildren(
+  {
     supabase: supabaseFrom,
     user,
     loading,
@@ -329,7 +323,8 @@ const { handleCreateChild, handleDeleteChild, handleUpdateChild } =
     loadChildUsers,
     loadLoginUsersAndSelect,
     loadAccounts,
-  });
+  },
+);
 
 const { handleTransfer } = useTransfers({
   supabase: supabaseRpc,

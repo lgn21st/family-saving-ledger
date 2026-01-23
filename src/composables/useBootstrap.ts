@@ -1,7 +1,7 @@
 import { watch, type Ref } from "vue";
 import type { AppUser } from "../types";
 
-export const useAppBootstrap = (params: {
+export const useBootstrap = (params: {
   isSupabaseConfigured: boolean;
   user: Ref<AppUser | null>;
   loginUsers: Ref<AppUser[]>;

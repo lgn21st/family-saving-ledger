@@ -1,3 +1,16 @@
+/**
+ * 孩子用户管理
+ * 创建、编辑、删除孩子账户
+ *
+ * 功能：
+ * - 创建新孩子用户（需姓名、4位PIN、头像）
+ * - 编辑孩子姓名
+ * - 删除孩子及关联账户（级联删除交易和账户）
+ *
+ * 依赖：
+ * - 需要外部调用 loadChildUsers 刷新列表
+ * - 需要外部调用 loadAccounts 刷新账户
+ */
 import type { Ref } from "vue";
 import type { AppUser, SupabaseFromClient } from "../types";
 

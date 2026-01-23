@@ -9,13 +9,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-
-type TransactionType =
-  | "deposit"
-  | "withdrawal"
-  | "transfer_in"
-  | "transfer_out"
-  | "interest";
+import type { TransactionType } from "../types";
 
 type Props = {
   type: TransactionType;

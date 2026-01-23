@@ -1,14 +1,14 @@
 import { ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
 
-import { useSessionActions } from "../composables/useSessionActions";
+import { useSession } from "../composables/useSession";
 
-describe("useSessionActions", () => {
+describe("useSession", () => {
   it("selects login user and clears pin", () => {
     const loginPin = ref("1234");
     const selectedLoginUserId = ref<string | null>(null);
 
-    const { selectLoginUser } = useSessionActions({
+    const { selectLoginUser } = useSession({
       user: ref(null),
       accounts: ref([]),
       balances: ref({}),
@@ -35,7 +35,7 @@ describe("useSessionActions", () => {
     const resetSelectedAccountData = vi.fn(async () => undefined);
     const selectedAccount = ref({ id: "acc-1" });
 
-    const { refreshAccountData } = useSessionActions({
+    const { refreshAccountData } = useSession({
       user: ref(null),
       accounts: ref([{ id: "acc-1" }]),
       balances: ref({}),
@@ -70,7 +70,7 @@ describe("useSessionActions", () => {
     const clearTransactions = vi.fn();
     const setStatus = vi.fn();
 
-    const { handleLogout } = useSessionActions({
+    const { handleLogout } = useSession({
       user,
       accounts,
       balances,

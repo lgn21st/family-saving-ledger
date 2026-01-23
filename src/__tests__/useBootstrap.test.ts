@@ -1,9 +1,9 @@
 import { nextTick, ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
 
-import { useAppBootstrap } from "../composables/useAppBootstrap";
+import { useBootstrap } from "../composables/useBootstrap";
 
-describe("useAppBootstrap", () => {
+describe("useBootstrap", () => {
   it("selects first login user after loading", async () => {
     const loginUsers = ref([]);
     const selectedLoginUserId = ref<string | null>(null);
@@ -14,7 +14,7 @@ describe("useAppBootstrap", () => {
       ];
     });
 
-    const { loadLoginUsersAndSelect } = useAppBootstrap({
+    const { loadLoginUsersAndSelect } = useBootstrap({
       isSupabaseConfigured: true,
       user: ref(null),
       loginUsers,
@@ -34,7 +34,7 @@ describe("useAppBootstrap", () => {
     const loadLoginUsers = vi.fn(async () => undefined);
     const checkSession = vi.fn(async () => undefined);
 
-    const { bootstrap: skipByConfig } = useAppBootstrap({
+    const { bootstrap: skipByConfig } = useBootstrap({
       isSupabaseConfigured: false,
       user: ref(null),
       loginUsers: ref([]),
@@ -49,7 +49,7 @@ describe("useAppBootstrap", () => {
     expect(loadLoginUsers).not.toHaveBeenCalled();
     expect(checkSession).not.toHaveBeenCalled();
 
-    const { bootstrap: skipByUser } = useAppBootstrap({
+    const { bootstrap: skipByUser } = useBootstrap({
       isSupabaseConfigured: true,
       user: ref({ id: "user-1", role: "parent" }),
       loginUsers: ref([]),
@@ -70,7 +70,7 @@ describe("useAppBootstrap", () => {
     const loadAccounts = vi.fn(async () => undefined);
     const loadChildUsers = vi.fn(async () => undefined);
 
-    useAppBootstrap({
+    useBootstrap({
       isSupabaseConfigured: true,
       user,
       loginUsers: ref([]),

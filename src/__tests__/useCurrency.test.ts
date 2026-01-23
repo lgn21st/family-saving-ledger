@@ -1,9 +1,9 @@
 import { ref } from "vue";
 import { describe, expect, it } from "vitest";
 
-import { useCurrencyDisplay } from "../composables/useCurrencyDisplay";
+import { useCurrency } from "../composables/useCurrency";
 
-describe("useCurrencyDisplay", () => {
+describe("useCurrency", () => {
   it("groups accounts and sums totals by currency", () => {
     const accounts = ref([
       { id: "acc-1", currency: "CNY" },
@@ -16,7 +16,7 @@ describe("useCurrencyDisplay", () => {
       "acc-3": 8,
     });
 
-    const { groupedAccounts, currencyTotals } = useCurrencyDisplay({
+    const { groupedAccounts, currencyTotals } = useCurrency({
       accounts,
       balances,
     });
@@ -28,7 +28,7 @@ describe("useCurrencyDisplay", () => {
   });
 
   it("formats amount with currency", () => {
-    const { formatAmount } = useCurrencyDisplay({
+    const { formatAmount } = useCurrency({
       accounts: ref([]),
       balances: ref({}),
     });

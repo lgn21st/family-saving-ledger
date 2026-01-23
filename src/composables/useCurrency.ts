@@ -3,7 +3,7 @@ import type { Account } from "../types";
 
 type Balances = Record<string, number>;
 
-export const useCurrencyDisplay = (params: {
+export const useCurrency = (params: {
   accounts: Ref<Account[]>;
   balances: Ref<Balances>;
 }) => {

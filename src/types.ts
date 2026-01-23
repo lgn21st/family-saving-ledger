@@ -19,10 +19,19 @@ export type Account = {
   created_at?: string;
 };
 
+export type TransferTarget = Account & { ownerName: string };
+
+export type TransactionType =
+  | "deposit"
+  | "withdrawal"
+  | "transfer_in"
+  | "transfer_out"
+  | "interest";
+
 export type Transaction = {
   id: string;
   account_id: string;
-  type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "interest";
+  type: TransactionType;
   amount: number;
   currency: string;
   note: string | null;
@@ -35,8 +44,6 @@ export type Transaction = {
   voided_at?: string | null;
   voided_by?: string | null;
 };
-
-export type TransferTarget = Account & { ownerName: string };
 
 export type StatusTone = "success" | "error";
 
@@ -86,9 +93,7 @@ export type SupabaseFilterBuilder<T> = {
     onfulfilled?:
       | ((value: SupabaseQueryResult<T>) => TResult1 | PromiseLike<TResult1>)
       | null,
-    onrejected?:
-      | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
-      | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) => PromiseLike<TResult1 | TResult2>;
 };
 
