@@ -52,6 +52,7 @@
       :on-start-edit-account="onStartEditAccount"
       :on-update-account="onUpdateAccount"
       :on-cancel-edit-account="onCancelEditAccount"
+      :on-close-account="onCloseAccount"
     />
 
     <AccountHeader
@@ -144,6 +145,7 @@ const props = defineProps<{
   onStartEditAccount: (account: Account) => void;
   onUpdateAccount: () => void;
   onCancelEditAccount: () => void;
+  onCloseAccount: (account: Account) => void;
   selectedAccount: Account | null;
   canEdit: boolean;
   chartPath: string;

@@ -52,6 +52,7 @@ describe("ParentDashboard", () => {
         onStartEditAccount: vi.fn(),
         onUpdateAccount: vi.fn(),
         onCancelEditAccount: vi.fn(),
+        onCloseAccount: vi.fn(),
         selectedAccount: null,
         canEdit: true,
         chartPath: "",

@@ -113,6 +113,15 @@
               >
                 取消
               </button>
+              <button
+                v-if="isZeroBalance(account.id)"
+                type="button"
+                class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-200"
+                :disabled="loading"
+                @click="onCloseAccount(account)"
+              >
+                关闭账户
+              </button>
             </template>
             <button
               v-else
@@ -156,6 +165,7 @@ const props = defineProps<{
   onStartEditAccount: (account: Account) => void;
   onUpdateAccount: () => void;
   onCancelEditAccount: () => void;
+  onCloseAccount: (account: Account) => void;
 }>();
 
 const emit = defineEmits<{
@@ -190,4 +200,9 @@ const editingAccountNameModel = computed({
   get: () => props.editingAccountName,
   set: (value) => emit("update:editingAccountName", value),
 });
+
+const isZeroBalance = (accountId: string) => {
+  const value = props.balances[accountId] ?? 0;
+  return Math.abs(value) < 0.000001;
+};
 </script>

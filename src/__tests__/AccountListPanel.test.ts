@@ -28,6 +28,7 @@ describe("AccountListPanel", () => {
         onStartEditAccount: vi.fn(),
         onUpdateAccount: vi.fn(),
         onCancelEditAccount: vi.fn(),
+        onCloseAccount: vi.fn(),
       },
     });
 
@@ -41,6 +42,7 @@ describe("AccountListPanel", () => {
     const onStartEditAccount = vi.fn();
     const onUpdateAccount = vi.fn();
     const onCancelEditAccount = vi.fn();
+    const onCloseAccount = vi.fn();
     const onUpdateName = vi.fn();
     const onUpdateCurrency = vi.fn();
     const onUpdateOwnerId = vi.fn();
@@ -78,6 +80,7 @@ describe("AccountListPanel", () => {
         onStartEditAccount,
         onUpdateAccount,
         onCancelEditAccount,
+        onCloseAccount,
         "onUpdate:newAccountName": onUpdateName,
         "onUpdate:newAccountCurrency": onUpdateCurrency,
         "onUpdate:newAccountOwnerId": onUpdateOwnerId,
@@ -119,6 +122,7 @@ describe("AccountListPanel", () => {
       onStartEditAccount,
       onUpdateAccount,
       onCancelEditAccount,
+      onCloseAccount,
       "onUpdate:newAccountName": onUpdateName,
       "onUpdate:newAccountCurrency": onUpdateCurrency,
       "onUpdate:newAccountOwnerId": onUpdateOwnerId,
@@ -174,10 +178,11 @@ describe("AccountListPanel", () => {
         editingAccountName: "零钱",
         formatAmount: () => "10.00 CNY",
         onCreateAccount,
-        onSelectAccount,
-        onStartEditAccount,
-        onUpdateAccount,
-        onCancelEditAccount,
+      onSelectAccount,
+      onStartEditAccount,
+      onUpdateAccount,
+      onCancelEditAccount,
+      onCloseAccount,
         "onUpdate:newAccountName": onUpdateName,
         "onUpdate:newAccountCurrency": onUpdateCurrency,
         "onUpdate:newAccountOwnerId": onUpdateOwnerId,
@@ -194,5 +199,85 @@ describe("AccountListPanel", () => {
 
     await user.click(screen.getByRole("button", { name: "取消" }));
     expect(onCancelEditAccount).toHaveBeenCalled();
+  });
+
+  it("shows close account button only when editing and balance is zero", async () => {
+    const user = userEvent.setup();
+    const onCloseAccount = vi.fn();
+
+    const { rerender } = render(AccountListPanel, {
+      props: {
+        selectedChildId: "child-1",
+        selectedChildName: "小乐",
+        childUsers: [{ id: "child-1", name: "小乐", role: "child" }],
+        selectedChildAccounts: [
+          {
+            id: "acc-1",
+            name: "专项",
+            currency: "CNY",
+            owner_child_id: "child-1",
+            created_by: "parent",
+            is_active: true,
+          },
+        ],
+        selectedAccountId: "acc-1",
+        balances: { "acc-1": 0 },
+        supportedCurrencies: ["CNY"],
+        newAccountName: "",
+        newAccountCurrency: "CNY",
+        newAccountOwnerId: "",
+        showAccountCreator: false,
+        loading: false,
+        editingAccountId: "acc-1",
+        editingAccountName: "专项",
+        formatAmount: () => "0.00 CNY",
+        onCreateAccount: vi.fn(),
+        onSelectAccount: vi.fn(),
+        onStartEditAccount: vi.fn(),
+        onUpdateAccount: vi.fn(),
+        onCancelEditAccount: vi.fn(),
+        onCloseAccount,
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "关闭账户" }));
+    expect(onCloseAccount).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "acc-1" }),
+    );
+
+    await rerender({
+      selectedChildId: "child-1",
+      selectedChildName: "小乐",
+      childUsers: [{ id: "child-1", name: "小乐", role: "child" }],
+      selectedChildAccounts: [
+        {
+          id: "acc-1",
+          name: "专项",
+          currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
+        },
+      ],
+      selectedAccountId: "acc-1",
+      balances: { "acc-1": 0.01 },
+      supportedCurrencies: ["CNY"],
+      newAccountName: "",
+      newAccountCurrency: "CNY",
+      newAccountOwnerId: "",
+      showAccountCreator: false,
+      loading: false,
+      editingAccountId: "acc-1",
+      editingAccountName: "专项",
+      formatAmount: () => "0.01 CNY",
+      onCreateAccount: vi.fn(),
+      onSelectAccount: vi.fn(),
+      onStartEditAccount: vi.fn(),
+      onUpdateAccount: vi.fn(),
+      onCancelEditAccount: vi.fn(),
+      onCloseAccount,
+    });
+
+    expect(screen.queryByRole("button", { name: "关闭账户" })).toBeNull();
   });
 });

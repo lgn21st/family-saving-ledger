@@ -69,6 +69,7 @@
       :on-start-edit-account="startEditAccount"
       :on-update-account="handleUpdateAccount"
       :on-cancel-edit-account="cancelEditAccount"
+      :on-close-account="handleCloseAccount"
       :selected-account="selectedAccount"
       :can-edit="canEdit"
       :chart-path="chartPath"
@@ -413,6 +414,47 @@ const cancelEditChild = () => {
 const cancelEditAccount = () => {
   editingAccountId.value = null;
   editingAccountName.value = "";
+};
+
+const handleCloseAccount = async (account: { id: string; name: string }) => {
+  if (!user.value) return;
+
+  const balance = balances.value[account.id] ?? 0;
+  if (Math.abs(balance) >= 0.000001) {
+    setStatus("请先将账户余额清零后再关闭。");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `确认关闭账户「${account.name}」？\n关闭后将不再显示，且无法继续记账/转账。\n可能影响未结息月份的利息。`,
+  );
+  if (!confirmed) return;
+
+  loading.value = true;
+  const { error } = await supabaseFrom
+    .from("accounts")
+    .update({ is_active: false })
+    .eq("id", account.id);
+
+  if (error) {
+    setErrorStatus(error.message);
+    loading.value = false;
+    return;
+  }
+
+  if (selectedAccountId.value === account.id) {
+    selectedAccountId.value = null;
+    clearTransactions();
+  }
+
+  if (editingAccountId.value === account.id) {
+    editingAccountId.value = null;
+    editingAccountName.value = "";
+  }
+
+  setSuccessStatus("账户已关闭。");
+  await loadAccounts(user.value);
+  loading.value = false;
 };
 
 useSelectionSync({
