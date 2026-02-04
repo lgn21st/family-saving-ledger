@@ -404,7 +404,7 @@ begin
     return;
   end if;
 
-  select max(make_date(parsed.year_value, parsed.month_value, 1))
+  select max(interest_month)
   into latest_settled_month
   from transactions
   where type = 'interest'
