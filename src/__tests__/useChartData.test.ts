@@ -45,14 +45,14 @@ describe("useChartData", () => {
     expect(chartPoints.value[29]?.balance).toBe(105);
   });
 
-  it("returns empty path when less than two points", () => {
-    const { chartPath } = useChartData({
+  it("returns no points when there are no transactions", () => {
+    const { chartPoints } = useChartData({
       selectedAccount: ref({ id: "acc-1" }),
       chartTransactions: ref([]),
       chartBaseBalance: ref(0),
       signedAmount: () => 0,
     });
 
-    expect(chartPath.value).toBe("");
+    expect(chartPoints.value).toEqual([]);
   });
 });

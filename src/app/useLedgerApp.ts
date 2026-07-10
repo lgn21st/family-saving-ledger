@@ -131,7 +131,7 @@ export const useLedgerApp = () => {
         )
       : "0.00",
   );
-  const { chartPath } = useChartData({
+  const { chartPoints } = useChartData({
     selectedAccount,
     chartTransactions,
     chartBaseBalance,
@@ -335,7 +335,7 @@ export const useLedgerApp = () => {
     canEdit,
     cancelEditAccount,
     cancelEditChild,
-    chartPath,
+    chartPoints,
     childAvatars,
     childUsers,
     currencyTotals,

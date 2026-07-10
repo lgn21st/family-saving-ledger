@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import AccountTrendCard from "../components/AccountTrendCard.vue";
 
 describe("AccountTrendCard", () => {
-  it("shows empty state when chart path is missing", () => {
+  it("shows empty state without enough chart points", () => {
     render(AccountTrendCard, {
       props: {
-        chartPath: "",
+        chartPoints: [],
         currency: "CNY",
       },
     });
@@ -16,16 +16,24 @@ describe("AccountTrendCard", () => {
     expect(screen.getByText("CNY")).toBeTruthy();
   });
 
-  it("renders sparkline when chart path is provided", () => {
+  it("renders an accessible step chart and balance summary", () => {
     render(AccountTrendCard, {
       props: {
-        chartPath: "M 0 0 L 10 10",
+        chartPoints: [
+          { date: new Date("2024-01-01T00:00:00Z"), balance: 100 },
+          { date: new Date("2024-01-15T00:00:00Z"), balance: 125 },
+          { date: new Date("2024-01-30T00:00:00Z"), balance: 110 },
+        ],
         currency: "SGD",
       },
     });
 
-    const path = document.querySelector("path");
-    expect(path?.getAttribute("d")).toBe("M 0 0 L 10 10");
-    expect(screen.getByText("SGD")).toBeTruthy();
+    expect(screen.getByText("+10.00")).toBeTruthy();
+    expect(screen.getByText("125.00")).toBeTruthy();
+    expect(screen.getByText("100.00")).toBeTruthy();
+    expect(screen.getByRole("img").getAttribute("aria-label")).toContain(
+      "变化到 110.00 SGD",
+    );
+    expect(document.querySelectorAll("path")).toHaveLength(2);
   });
 });

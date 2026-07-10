@@ -72,7 +72,7 @@
       :on-close-account="handleCloseAccount"
       :selected-account="selectedAccount"
       :can-edit="canEdit"
-      :chart-path="chartPath"
+      :chart-points="chartPoints"
       :transfer-targets="transferTargets"
       :selected-account-balance="selectedAccountBalance"
       :paged-transactions="pagedTransactions"
@@ -97,7 +97,7 @@
       :balances="balances"
       :format-amount="formatAmount"
       :on-select-account="selectAccount"
-      :chart-path="chartPath"
+      :chart-points="chartPoints"
       :paged-transactions="pagedTransactions"
       :has-more-transactions="hasMoreTransactions"
       :transaction-loading="transactionLoading"
@@ -125,7 +125,7 @@ const {
   canEdit,
   cancelEditAccount,
   cancelEditChild,
-  chartPath,
+  chartPoints,
   childAvatars,
   childUsers,
   currencyTotals,

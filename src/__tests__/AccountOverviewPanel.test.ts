@@ -15,7 +15,7 @@ describe("AccountOverviewPanel", () => {
       props: {
         selectedAccount: null,
         formattedBalance: "0.00",
-        chartPath: "",
+        chartPoints: [],
         pagedTransactions: [],
         hasMoreTransactions: false,
         transactionLoading: false,
@@ -49,7 +49,10 @@ describe("AccountOverviewPanel", () => {
           currency: "CNY",
         },
         formattedBalance: "10.00 CNY",
-        chartPath: "M 0 0 L 10 10",
+        chartPoints: [
+          { date: new Date("2024-01-01"), balance: 8 },
+          { date: new Date("2024-01-30"), balance: 10 },
+        ],
         pagedTransactions: [
           {
             id: "t-1",
@@ -81,7 +84,7 @@ describe("AccountOverviewPanel", () => {
     });
 
     expect(screen.getByText("零钱")).toBeTruthy();
-    expect(screen.getByText(/10\.00 CNY/)).toBeTruthy();
+    expect(screen.getByText("10.00 CNY", { exact: true })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "加载更多" }));
     expect(onLoadMore).toHaveBeenCalled();
   });

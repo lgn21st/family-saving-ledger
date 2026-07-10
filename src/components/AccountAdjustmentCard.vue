@@ -1,43 +1,54 @@
 <template>
-  <section
-    v-if="canEdit"
-    class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-  >
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h4 class="text-sm font-semibold text-slate-700">新增/扣减</h4>
-      <span v-if="selectedChildName" class="text-xs font-semibold text-slate-400">
-        当前：{{ selectedChildName }} · {{ selectedAccountName ?? "未选择账户" }}
-      </span>
-    </div>
+  <section v-if="canEdit" class="surface-card h-full p-5 sm:p-6" aria-labelledby="adjustment-title">
+    <p class="section-kicker">快捷操作</p>
+    <h3 id="adjustment-title" class="mt-1 section-title">新增/扣减</h3>
+    <p class="mt-1 truncate text-sm text-slate-500">
+      {{ selectedChildName }} · {{ selectedAccountName ?? "未选择账户" }}
+    </p>
 
-    <div class="mt-4 flex flex-col gap-3 lg:flex-row">
-      <input
-        :value="amountInput"
-        type="number"
-        min="0"
-        step="0.01"
-        placeholder="金额"
-        class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        @input="onAmountInput"
-      />
-      <input
-        :value="noteInput"
-        type="text"
-        placeholder="备注（必填）"
-        class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        @input="onNoteInput"
-      />
+    <div class="mt-5 space-y-3">
+      <div>
+        <label for="transaction-amount" class="field-label">金额</label>
+        <input
+          id="transaction-amount"
+          :value="amountInput"
+          name="transaction-amount"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          autocomplete="off"
+          placeholder="金额"
+          class="app-input numeric"
+          @input="onAmountInput"
+        />
+      </div>
+      <div>
+        <label for="transaction-note" class="field-label">备注</label>
+        <input
+          id="transaction-note"
+          :value="noteInput"
+          name="transaction-note"
+          type="text"
+          autocomplete="off"
+          placeholder="备注（必填）"
+          class="app-input"
+          @input="onNoteInput"
+        />
+      </div>
     </div>
-    <div class="mt-3 flex flex-wrap gap-3">
+    <div class="mt-4 grid grid-cols-2 gap-2.5">
       <button
-        class="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+        type="button"
+        class="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] hover:bg-emerald-700 focus-visible:ring-3 focus-visible:ring-emerald-100 focus-visible:outline-none active:translate-y-px disabled:opacity-55"
         :disabled="loading"
         @click="onAddTransaction('deposit')"
       >
         增加
       </button>
       <button
-        class="rounded-2xl bg-rose-400 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+        type="button"
+        class="inline-flex min-h-11 items-center justify-center rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition-[background-color,transform] hover:bg-rose-100 focus-visible:ring-3 focus-visible:ring-rose-100 focus-visible:outline-none active:translate-y-px disabled:opacity-55"
         :disabled="loading"
         @click="onAddTransaction('withdrawal')"
       >

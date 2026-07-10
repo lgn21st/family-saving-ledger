@@ -45,7 +45,10 @@ describe("ChildDashboard", () => {
         formatAmount: (amount: number, currency: string) =>
           `${amount.toFixed(2)} ${currency}`,
         onSelectAccount,
-        chartPath: "M 0 0 L 10 10",
+        chartPoints: [
+          { date: new Date("2024-01-01"), balance: 8 },
+          { date: new Date("2024-01-30"), balance: 10 },
+        ],
         pagedTransactions: [
           {
             id: "t-1",

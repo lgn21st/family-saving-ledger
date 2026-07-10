@@ -1,32 +1,33 @@
 <template>
-  <aside
-    class="order-2 border-t border-white/60 bg-white/80 px-6 py-5 backdrop-blur sticky top-0 z-40 max-h-screen overflow-y-auto lg:static lg:order-1 lg:z-auto lg:max-h-none lg:overflow-visible lg:w-72 lg:border-t-0 lg:border-r"
-  >
-    <h3 class="text-sm font-semibold text-slate-600">账户</h3>
+  <aside class="surface-card p-4 sm:p-5 lg:sticky lg:top-24" aria-labelledby="my-accounts-title">
+    <p class="section-kicker">我的储蓄</p>
+    <h2 id="my-accounts-title" class="mt-1 text-base font-semibold text-slate-950">账户</h2>
     <div class="mt-4 space-y-4">
-      <div
-        v-for="(currencyAccounts, currency) in groupedAccounts"
-        :key="currency"
-      >
-        <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <div v-for="(currencyAccounts, currency) in groupedAccounts" :key="currency">
+        <h3 class="text-xs font-semibold tracking-[0.12em] text-slate-400 uppercase">
           {{ currency }}
-        </h4>
-        <div
-          class="mt-2 flex flex-col gap-3 sm:flex-row sm:overflow-x-auto sm:pb-2 lg:block lg:space-y-2 lg:overflow-visible"
-        >
+        </h3>
+        <div class="mt-2 flex gap-2.5 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
           <button
             v-for="account in currencyAccounts"
             :key="account.id"
-            class="flex w-full min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition sm:min-w-[220px]"
+            type="button"
+            class="min-w-[230px] rounded-2xl border p-3 text-left transition-[border-color,background-color,box-shadow,transform] focus-visible:ring-3 focus-visible:ring-brand-100 focus-visible:outline-none active:translate-y-px lg:min-w-0"
             :class="
               account.id === selectedAccountId
-                ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
-                : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md'
+                ? 'border-slate-950 bg-slate-950 text-white shadow-md'
+                : 'border-slate-200 bg-white text-slate-800 hover:border-brand-300 hover:bg-brand-50'
             "
+            :aria-current="account.id === selectedAccountId ? 'true' : undefined"
             @click="onSelectAccount(account.id)"
           >
-            <span class="flex-1 break-words">{{ account.name }}</span>
-            <span class="text-xs font-semibold text-slate-500">
+            <span class="block truncate text-sm font-semibold">{{ account.name }}</span>
+            <span
+              :class="[
+                'numeric mt-1 block text-xs',
+                account.id === selectedAccountId ? 'text-slate-300' : 'text-slate-500',
+              ]"
+            >
               {{ formatAmount(balances[account.id] ?? 0, account.currency) }}
             </span>
           </button>

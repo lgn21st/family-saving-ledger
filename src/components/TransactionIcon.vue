@@ -2,6 +2,7 @@
   <span
     :class="wrapperClass"
     class="text-xl font-bold leading-none flex items-center justify-center"
+    aria-hidden="true"
   >
     {{ symbol }}
   </span>

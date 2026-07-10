@@ -1,7 +1,7 @@
 import { computed, type Ref } from "vue";
 import type { Account, Transaction } from "../types";
 
-type ChartPoint = {
+export type ChartPoint = {
   date: Date;
   balance: number;
 };
@@ -68,25 +68,7 @@ export const useChartData = (params: {
     return points;
   });
 
-  const chartPath = computed(() => {
-    if (chartPoints.value.length < 2) return "";
-
-    const balances = chartPoints.value.map((point) => point.balance);
-    const minBalance = Math.min(...balances);
-    const maxBalance = Math.max(...balances);
-    const range = maxBalance - minBalance || 1;
-
-    return chartPoints.value
-      .map((point, index) => {
-        const x = (index / (chartPoints.value.length - 1)) * 100;
-        const y = 100 - ((point.balance - minBalance) / range) * 100;
-        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
-      })
-      .join(" ");
-  });
-
   return {
     chartPoints,
-    chartPath,
   };
 };

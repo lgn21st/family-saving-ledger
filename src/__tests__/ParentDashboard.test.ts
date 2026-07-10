@@ -55,7 +55,7 @@ describe("ParentDashboard", () => {
         onCloseAccount: vi.fn(),
         selectedAccount: null,
         canEdit: true,
-        chartPath: "",
+        chartPoints: [],
         amountInput: "",
         noteInput: "",
         transferAmount: "",
@@ -79,6 +79,6 @@ describe("ParentDashboard", () => {
     });
 
     expect(screen.getByText("孩子管理")).toBeTruthy();
-    expect(screen.getAllByText("暂无账户。").length).toBeGreaterThan(0);
+    expect(screen.getByText("暂无孩子。")).toBeTruthy();
   });
 });

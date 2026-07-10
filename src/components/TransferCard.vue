@@ -1,52 +1,67 @@
 <template>
   <section
     v-if="canEdit"
-    class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
+    class="surface-card h-full p-5 sm:p-6"
     data-testid="transfer-card"
+    aria-labelledby="transfer-title"
   >
-    <h4 class="text-sm font-semibold text-slate-700">同币种转账</h4>
-    <div class="mt-4 flex flex-col gap-3 lg:flex-row">
-      <input
-        :value="transferAmount"
-        type="number"
-        min="0"
-        step="0.01"
-        placeholder="转账金额"
-        class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        @input="onTransferAmountInput"
-      />
-      <select
-        :value="transferTargetId"
-        class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        @change="onTransferTargetChange"
-      >
-        <option value="">选择转入账户</option>
-        <option
-          v-for="account in transferTargets"
-          :key="account.id"
-          :value="account.id"
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="section-kicker">账户之间</p>
+        <h3 id="transfer-title" class="mt-1 section-title">同币种转账</h3>
+      </div>
+      <span class="numeric rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700">
+        可用 {{ formattedBalance }}
+      </span>
+    </div>
+
+    <div class="mt-5 space-y-3">
+      <div>
+        <label for="transfer-amount" class="field-label">转账金额</label>
+        <input
+          id="transfer-amount"
+          :value="transferAmount"
+          name="transfer-amount"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          autocomplete="off"
+          placeholder="转账金额"
+          class="app-input numeric"
+          @input="onTransferAmountInput"
+        />
+      </div>
+      <div>
+        <label for="transfer-target" class="field-label">转入账户</label>
+        <select
+          id="transfer-target"
+          :value="transferTargetId"
+          name="transfer-target"
+          class="app-input"
+          @change="onTransferTargetChange"
         >
-          {{ account.ownerName }} - {{ account.name }}
-        </option>
-      </select>
+          <option value="">选择转入账户</option>
+          <option v-for="account in transferTargets" :key="account.id" :value="account.id">
+            {{ account.ownerName }} - {{ account.name }}
+          </option>
+        </select>
+      </div>
+      <div>
+        <label for="transfer-note" class="field-label">备注（可选）</label>
+        <input
+          id="transfer-note"
+          :value="transferNote"
+          name="transfer-note"
+          type="text"
+          autocomplete="off"
+          placeholder="备注（可选）"
+          class="app-input"
+          @input="onTransferNoteInput"
+        />
+      </div>
     </div>
-    <div class="mt-3">
-      <input
-        :value="transferNote"
-        type="text"
-        placeholder="备注（可选）"
-        class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        @input="onTransferNoteInput"
-      />
-    </div>
-    <p class="mt-3 text-xs text-slate-500">
-      可转账余额：{{ formattedBalance }}
-    </p>
-    <button
-      class="mt-3 rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-      :disabled="loading"
-      @click="onTransfer"
-    >
+    <button type="button" class="button-primary mt-4 w-full" :disabled="loading" @click="onTransfer">
       确认转账
     </button>
   </section>

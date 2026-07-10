@@ -1,134 +1,181 @@
 <template>
-  <section
-    class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur"
-    data-testid="child-card"
-  >
-    <h4 class="text-sm font-semibold text-slate-700">孩子管理</h4>
-    <div class="mt-4 flex flex-col gap-3 lg:flex-row">
-      <input
-        v-model="childNameModel"
-        type="text"
-        placeholder="孩子姓名"
-        class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-      />
-      <input
-        :value="newChildPin"
-        type="password"
-        inputmode="numeric"
-        pattern="[0-9]*"
-        maxlength="4"
-        placeholder="PIN（4 位）"
-        class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-center text-sm tracking-[0.25em] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-        @input="onPinInput"
-      />
+  <section class="surface-card mx-auto max-w-5xl p-5 sm:p-7" data-testid="child-card">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p class="section-kicker">家庭设置</p>
+        <h1 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">孩子管理</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+          新增孩子、设置登录 PIN 或更新名称。归档前需要先将孩子名下所有账户余额清零。
+        </p>
+      </div>
+      <span class="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700">
+        {{ childUsers.length }} 位孩子
+      </span>
     </div>
-    <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-      <button
-        v-for="avatar in childAvatars"
-        :key="avatar.id"
-        type="button"
-        :class="[
-          'flex flex-col items-center gap-3 rounded-3xl border px-4 py-3 text-sm transition',
-          avatar.id === newChildAvatarId
-            ? 'border-brand-400 bg-brand-50 ring-2 ring-brand-200'
-            : 'border-white/60 bg-white shadow-sm hover:bg-brand-50',
-        ]"
-        @click="emit('update:newChildAvatarId', avatar.id)"
-      >
-        <Avatar
-          :avatar-id="avatar.id"
-          :options="avatarOptions"
-          role="child"
-          class="h-16 w-16"
-        />
-        <span class="text-slate-600">{{ avatar.label }}</span>
+
+    <div class="mt-7 rounded-3xl bg-slate-50 p-4 sm:p-5">
+      <h2 class="text-base font-semibold text-slate-950">添加孩子</h2>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="new-child-name" class="field-label">孩子姓名</label>
+          <input
+            id="new-child-name"
+            v-model="childNameModel"
+            name="new-child-name"
+            type="text"
+            autocomplete="off"
+            placeholder="孩子姓名"
+            class="app-input"
+          />
+        </div>
+        <div>
+          <label for="new-child-pin" class="field-label">4 位登录 PIN</label>
+          <input
+            id="new-child-pin"
+            :value="newChildPin"
+            name="new-child-pin"
+            type="password"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="4"
+            autocomplete="new-password"
+            spellcheck="false"
+            placeholder="PIN（4 位）"
+            class="app-input numeric text-center tracking-[0.28em]"
+            @input="onPinInput"
+          />
+        </div>
+      </div>
+
+      <fieldset class="mt-5">
+        <legend class="field-label">选择头像</legend>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          <button
+            v-for="avatar in childAvatars"
+            :key="avatar.id"
+            type="button"
+            :aria-pressed="avatar.id === newChildAvatarId"
+            :class="[
+              'flex min-w-0 flex-col items-center gap-2 rounded-2xl border p-3 text-sm transition-[border-color,background-color,box-shadow,transform] focus-visible:ring-3 focus-visible:ring-brand-100 focus-visible:outline-none active:translate-y-px',
+              avatar.id === newChildAvatarId
+                ? 'border-brand-400 bg-brand-50 ring-1 ring-brand-200'
+                : 'border-slate-200 bg-white hover:border-brand-300',
+            ]"
+            @click="newChildAvatarIdModel = avatar.id"
+          >
+            <Avatar
+              :avatar-id="avatar.id"
+              :options="avatarOptions"
+              role="child"
+              class="h-14 w-14"
+            />
+            <span class="w-full truncate text-xs text-slate-600">{{ avatar.label }}</span>
+          </button>
+        </div>
+      </fieldset>
+      <button class="button-primary mt-5" :disabled="loading" @click="onCreateChild">
+        创建孩子
       </button>
     </div>
-    <button
-      class="mt-4 rounded-2xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-      :disabled="loading"
-      @click="onCreateChild"
-    >
-      创建孩子
-    </button>
-    <ul v-if="childUsers.length > 0" class="mt-4 space-y-2 text-sm text-slate-700">
-      <li
-        v-for="child in childUsers"
-        :key="child.id"
-        class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-3"
-      >
-        <div class="flex items-center gap-4">
-          <Avatar
-            :avatar-id="child.avatar_id"
-            :options="avatarOptions"
-            role="child"
-            class="h-16 w-16"
-          />
-          <input
-            v-if="editingChildId === child.id"
-            v-model="editingChildNameModel"
-            type="text"
-            class="w-40 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-          <span v-else class="text-base font-semibold">{{ child.name }}</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <template v-if="editingChildId === child.id">
+
+    <div class="mt-7">
+      <h2 class="text-base font-semibold text-slate-950">现有孩子</h2>
+      <p v-if="childUsers.length === 0" class="mt-3 text-sm text-slate-500">
+        暂无孩子。
+      </p>
+      <ul v-else class="mt-4 grid gap-3 sm:grid-cols-2">
+        <li
+          v-for="child in childUsers"
+          :key="child.id"
+          class="rounded-2xl border border-slate-200 bg-white p-4"
+        >
+          <div class="flex min-w-0 items-center gap-3">
+            <Avatar
+              :avatar-id="child.avatar_id"
+              :options="avatarOptions"
+              role="child"
+              class="h-12 w-12 shrink-0"
+            />
+            <div class="min-w-0 flex-1">
+              <template v-if="editingChildId === child.id">
+                <label :for="`child-name-${child.id}`" class="sr-only">孩子姓名</label>
+                <input
+                  :id="`child-name-${child.id}`"
+                  v-model="editingChildNameModel"
+                  name="child-name"
+                  type="text"
+                  autocomplete="off"
+                  class="app-input"
+                />
+              </template>
+              <template v-else>
+                <p class="truncate text-base font-semibold text-slate-950">{{ child.name }}</p>
+                <p class="mt-0.5 text-xs text-slate-500">孩子账户 · 可登录查看</p>
+              </template>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <template v-if="editingChildId === child.id">
+              <button
+                type="button"
+                class="button-primary min-h-9 px-3 py-1.5 text-xs"
+                :disabled="loading"
+                @click="onUpdateChild"
+              >
+                保存
+              </button>
+              <button
+                type="button"
+                class="button-quiet min-h-9 px-3 py-1.5 text-xs"
+                :disabled="loading"
+                @click="onCancelEditChild"
+              >
+                取消
+              </button>
+            </template>
             <button
+              v-else
               type="button"
-              class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-200"
+              class="button-secondary min-h-9 px-3 py-1.5 text-xs"
               :disabled="loading"
-              @click="onUpdateChild"
+              @click="onStartEditChild(child)"
             >
-              保存
+              编辑
             </button>
             <button
               type="button"
-              class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-300"
+              class="button-danger min-h-9 px-3 py-1.5 text-xs"
               :disabled="loading"
-              @click="onCancelEditChild"
+              @click="onArchiveChild(child.id)"
             >
-              取消
+              归档
             </button>
-          </template>
-          <button
-            v-else
-            type="button"
-            class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
-            :disabled="loading"
-            @click="onStartEditChild(child)"
-          >
-            编辑
-          </button>
-          <button
-            type="button"
-            class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-200"
-            :disabled="loading"
-            @click="onArchiveChild(child.id)"
-          >
-            归档
-          </button>
-        </div>
-      </li>
-    </ul>
+          </div>
+        </li>
+      </ul>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import Avatar from "./Avatar.vue";
 import type { AppUser } from "../types";
 import type { AvatarOption } from "../config";
+
+const childNameModel = defineModel<string>("newChildName", { required: true });
+const newChildPinModel = defineModel<string>("newChildPin", { required: true });
+const newChildAvatarIdModel = defineModel<string>("newChildAvatarId", {
+  required: true,
+});
+const editingChildNameModel = defineModel<string>("editingChildName", {
+  required: true,
+});
 
 const props = defineProps<{
   childUsers: AppUser[];
   childAvatars: AvatarOption[];
   avatarOptions: AvatarOption[];
-  newChildName: string;
-  newChildPin: string;
-  newChildAvatarId: string;
   editingChildId: string | null;
-  editingChildName: string;
   loading: boolean;
   sanitizePin: (value: string) => string;
   onCreateChild: () => void;
@@ -138,25 +185,8 @@ const props = defineProps<{
   onArchiveChild: (id: string) => void;
 }>();
 
-const emit = defineEmits<{
-  (event: "update:newChildName", value: string): void;
-  (event: "update:newChildPin", value: string): void;
-  (event: "update:newChildAvatarId", value: string): void;
-  (event: "update:editingChildName", value: string): void;
-}>();
-
-const childNameModel = computed({
-  get: () => props.newChildName,
-  set: (value) => emit("update:newChildName", value),
-});
-
-const editingChildNameModel = computed({
-  get: () => props.editingChildName,
-  set: (value) => emit("update:editingChildName", value),
-});
-
 const onPinInput = (event: Event) => {
   const target = event.target as HTMLInputElement | null;
-  emit("update:newChildPin", props.sanitizePin(target?.value ?? ""));
+  newChildPinModel.value = props.sanitizePin(target?.value ?? "");
 };
 </script>

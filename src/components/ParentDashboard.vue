@@ -1,5 +1,5 @@
 <template>
-  <main class="flex-1 space-y-6 px-6 py-6">
+  <main id="main-content" class="page-container flex-1 py-5 sm:py-7">
     <ChildManagerCard
       v-if="showChildManager"
       v-model:new-child-name="newChildNameModel"
@@ -19,86 +19,105 @@
       :on-archive-child="onArchiveChild"
     />
 
-    <CurrencySummaryGrid
-      :currency-totals="currencyTotals"
-      :format-amount="formatAmount"
-    />
+    <div v-else class="grid items-start gap-5 xl:grid-cols-[350px_minmax(0,1fr)] xl:gap-7">
+      <aside class="space-y-5 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:pr-1">
+        <CurrencySummaryGrid
+          :currency-totals="currencyTotals"
+          :format-amount="formatAmount"
+        />
 
-    <ChildListPanel
-      :child-users="childUsers"
-      :selected-child-id="selectedChildId"
-      :avatar-options="avatarOptions"
-      :on-select-child="onSelectChild"
-    />
+        <ChildListPanel
+          :child-users="childUsers"
+          :selected-child-id="selectedChildId"
+          :avatar-options="avatarOptions"
+          :on-select-child="onSelectChild"
+        />
 
-    <AccountListPanel
-      v-model:new-account-name="newAccountNameModel"
-      v-model:new-account-currency="newAccountCurrencyModel"
-      v-model:new-account-owner-id="newAccountOwnerIdModel"
-      v-model:show-account-creator="showAccountCreatorModel"
-      v-model:editing-account-name="editingAccountNameModel"
-      :selected-child-id="selectedChildId"
-      :selected-child-name="selectedChildName"
-      :child-users="childUsers"
-      :selected-child-accounts="selectedChildAccounts"
-      :selected-account-id="selectedAccountId"
-      :balances="balances"
-      :supported-currencies="supportedCurrencies"
-      :loading="loading"
-      :editing-account-id="editingAccountId"
-      :format-amount="formatAmount"
-      :on-create-account="onCreateAccount"
-      :on-select-account="onSelectAccount"
-      :on-start-edit-account="onStartEditAccount"
-      :on-update-account="onUpdateAccount"
-      :on-cancel-edit-account="onCancelEditAccount"
-      :on-close-account="onCloseAccount"
-    />
+        <AccountListPanel
+          v-model:new-account-name="newAccountNameModel"
+          v-model:new-account-currency="newAccountCurrencyModel"
+          v-model:new-account-owner-id="newAccountOwnerIdModel"
+          v-model:show-account-creator="showAccountCreatorModel"
+          v-model:editing-account-name="editingAccountNameModel"
+          :selected-child-id="selectedChildId"
+          :selected-child-name="selectedChildName"
+          :child-users="childUsers"
+          :selected-child-accounts="selectedChildAccounts"
+          :selected-account-id="selectedAccountId"
+          :balances="balances"
+          :supported-currencies="supportedCurrencies"
+          :loading="loading"
+          :editing-account-id="editingAccountId"
+          :format-amount="formatAmount"
+          :on-create-account="onCreateAccount"
+          :on-select-account="onSelectAccount"
+          :on-start-edit-account="onStartEditAccount"
+          :on-update-account="onUpdateAccount"
+          :on-cancel-edit-account="onCancelEditAccount"
+          :on-close-account="onCloseAccount"
+        />
+      </aside>
 
-    <AccountHeader
-      v-if="selectedAccount"
-      v-model:editing-account-name="editingAccountNameModel"
-      :is-editing="editingAccountId === selectedAccount.id"
-      :loading="loading"
-      :selected-account-name="selectedAccount.name"
-      :selected-account-currency="selectedAccount.currency"
-      :formatted-balance="selectedAccountBalance"
-      :on-update-account="onUpdateAccount"
-      :on-cancel-edit-account="onCancelEditAccount"
-    />
+      <section class="min-w-0 space-y-5">
+        <section
+          v-if="selectedAccount"
+          class="overflow-hidden rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8"
+        >
+          <p class="section-kicker text-brand-300">
+            {{ selectedChildName }} · {{ selectedAccount.currency }} 账户
+          </p>
+          <AccountHeader
+            v-model:editing-account-name="editingAccountNameModel"
+            :is-editing="editingAccountId === selectedAccount.id"
+            :loading="loading"
+            :selected-account-name="selectedAccount.name"
+            :selected-account-currency="selectedAccount.currency"
+            :formatted-balance="selectedAccountBalance"
+            :on-update-account="onUpdateAccount"
+            :on-cancel-edit-account="onCancelEditAccount"
+          />
+        </section>
+        <section v-else class="surface-card p-8 text-center sm:p-12">
+          <p class="section-kicker">账户工作区</p>
+          <h2 class="mt-3 text-xl font-semibold text-slate-950">先选择一个账户</h2>
+          <p class="mt-2 text-sm text-slate-500">
+            选择孩子和账户后，可查看余额趋势、记录收支和转账。
+          </p>
+        </section>
 
-    <AccountDetailPanel
-      v-model:amount-input="amountInputModel"
-      v-model:note-input="noteInputModel"
-      v-model:transfer-amount="transferAmountModel"
-      v-model:transfer-target-id="transferTargetIdModel"
-      v-model:transfer-note="transferNoteModel"
-      :selected-account="selectedAccount"
-      :selected-child-name="selectedChildName"
-      :can-edit="canEdit"
-      :chart-path="chartPath"
-      :transfer-targets="transferTargets"
-      :formatted-balance="selectedAccountBalance"
-      :loading="loading"
-      :paged-transactions="pagedTransactions"
-      :has-more-transactions="hasMoreTransactions"
-      :transaction-loading="transactionLoading"
-      :can-void="canEdit"
-      :transaction-labels="transactionLabels"
-      :format-signed-amount="formatSignedAmount"
-      :transaction-tone="transactionTone"
-      :get-transaction-note="getTransactionNote"
-      :format-timestamp="formatTimestamp"
-      :on-add-transaction="onAddTransaction"
-      :on-transfer="onTransfer"
-      :on-load-more="onLoadMore"
-      :on-void-transaction="onVoidTransaction"
-    />
+        <AccountDetailPanel
+          v-model:amount-input="amountInputModel"
+          v-model:note-input="noteInputModel"
+          v-model:transfer-amount="transferAmountModel"
+          v-model:transfer-target-id="transferTargetIdModel"
+          v-model:transfer-note="transferNoteModel"
+          :selected-account="selectedAccount"
+          :selected-child-name="selectedChildName"
+          :can-edit="canEdit"
+          :chart-points="chartPoints"
+          :transfer-targets="transferTargets"
+          :formatted-balance="selectedAccountBalance"
+          :loading="loading"
+          :paged-transactions="pagedTransactions"
+          :has-more-transactions="hasMoreTransactions"
+          :transaction-loading="transactionLoading"
+          :can-void="canEdit"
+          :transaction-labels="transactionLabels"
+          :format-signed-amount="formatSignedAmount"
+          :transaction-tone="transactionTone"
+          :get-transaction-note="getTransactionNote"
+          :format-timestamp="formatTimestamp"
+          :on-add-transaction="onAddTransaction"
+          :on-transfer="onTransfer"
+          :on-load-more="onLoadMore"
+          :on-void-transaction="onVoidTransaction"
+        />
+      </section>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import AccountDetailPanel from "./AccountDetailPanel.vue";
 import AccountHeader from "./AccountHeader.vue";
 import AccountListPanel from "./AccountListPanel.vue";
@@ -107,17 +126,43 @@ import ChildManagerCard from "./ChildManagerCard.vue";
 import CurrencySummaryGrid from "./CurrencySummaryGrid.vue";
 import type { Account, AppUser, Transaction, TransferTarget } from "../types";
 import type { AvatarOption } from "../config";
+import type { ChartPoint } from "../composables/useChartData";
 
-const props = defineProps<{
+const newChildNameModel = defineModel<string>("newChildName", { required: true });
+const newChildPinModel = defineModel<string>("newChildPin", { required: true });
+const newChildAvatarIdModel = defineModel<string>("newChildAvatarId", {
+  required: true,
+});
+const editingChildNameModel = defineModel<string>("editingChildName", {
+  required: true,
+});
+const newAccountNameModel = defineModel<string>("newAccountName", { required: true });
+const newAccountCurrencyModel = defineModel<string>("newAccountCurrency", {
+  required: true,
+});
+const newAccountOwnerIdModel = defineModel<string>("newAccountOwnerId", {
+  required: true,
+});
+const showAccountCreatorModel = defineModel<boolean>("showAccountCreator", {
+  required: true,
+});
+const editingAccountNameModel = defineModel<string>("editingAccountName", {
+  required: true,
+});
+const amountInputModel = defineModel<string>("amountInput", { required: true });
+const noteInputModel = defineModel<string>("noteInput", { required: true });
+const transferAmountModel = defineModel<string>("transferAmount", { required: true });
+const transferTargetIdModel = defineModel<string>("transferTargetId", {
+  required: true,
+});
+const transferNoteModel = defineModel<string>("transferNote", { required: true });
+
+defineProps<{
   showChildManager: boolean;
   childUsers: AppUser[];
   childAvatars: AvatarOption[];
   avatarOptions: AvatarOption[];
-  newChildName: string;
-  newChildPin: string;
-  newChildAvatarId: string;
   editingChildId: string | null;
-  editingChildName: string;
   loading: boolean;
   sanitizePin: (value: string) => string;
   onCreateChild: () => void;
@@ -134,12 +179,7 @@ const props = defineProps<{
   selectedAccountId: string | null;
   balances: Record<string, number>;
   supportedCurrencies: string[];
-  newAccountName: string;
-  newAccountCurrency: string;
-  newAccountOwnerId: string;
-  showAccountCreator: boolean;
   editingAccountId: string | null;
-  editingAccountName: string;
   onCreateAccount: () => void;
   onSelectAccount: (id: string) => void;
   onStartEditAccount: (account: Account) => void;
@@ -148,12 +188,7 @@ const props = defineProps<{
   onCloseAccount: (account: Account) => void;
   selectedAccount: Account | null;
   canEdit: boolean;
-  chartPath: string;
-  amountInput: string;
-  noteInput: string;
-  transferAmount: string;
-  transferTargetId: string;
-  transferNote: string;
+  chartPoints: ChartPoint[];
   transferTargets: TransferTarget[];
   selectedAccountBalance: string;
   pagedTransactions: Transaction[];
@@ -169,91 +204,4 @@ const props = defineProps<{
   onLoadMore: () => void;
   onVoidTransaction: (transaction: Transaction) => void;
 }>();
-
-const emit = defineEmits<{
-  (event: "update:newChildName", value: string): void;
-  (event: "update:newChildPin", value: string): void;
-  (event: "update:newChildAvatarId", value: string): void;
-  (event: "update:editingChildName", value: string): void;
-  (event: "update:newAccountName", value: string): void;
-  (event: "update:newAccountCurrency", value: string): void;
-  (event: "update:newAccountOwnerId", value: string): void;
-  (event: "update:showAccountCreator", value: boolean): void;
-  (event: "update:editingAccountName", value: string): void;
-  (event: "update:amountInput", value: string): void;
-  (event: "update:noteInput", value: string): void;
-  (event: "update:transferAmount", value: string): void;
-  (event: "update:transferTargetId", value: string): void;
-  (event: "update:transferNote", value: string): void;
-}>();
-
-const newChildNameModel = computed({
-  get: () => props.newChildName,
-  set: (value) => emit("update:newChildName", value),
-});
-
-const newChildPinModel = computed({
-  get: () => props.newChildPin,
-  set: (value) => emit("update:newChildPin", value),
-});
-
-const newChildAvatarIdModel = computed({
-  get: () => props.newChildAvatarId,
-  set: (value) => emit("update:newChildAvatarId", value),
-});
-
-const editingChildNameModel = computed({
-  get: () => props.editingChildName,
-  set: (value) => emit("update:editingChildName", value),
-});
-
-const newAccountNameModel = computed({
-  get: () => props.newAccountName,
-  set: (value) => emit("update:newAccountName", value),
-});
-
-const newAccountCurrencyModel = computed({
-  get: () => props.newAccountCurrency,
-  set: (value) => emit("update:newAccountCurrency", value),
-});
-
-const newAccountOwnerIdModel = computed({
-  get: () => props.newAccountOwnerId,
-  set: (value) => emit("update:newAccountOwnerId", value),
-});
-
-const showAccountCreatorModel = computed({
-  get: () => props.showAccountCreator,
-  set: (value) => emit("update:showAccountCreator", value),
-});
-
-const editingAccountNameModel = computed({
-  get: () => props.editingAccountName,
-  set: (value) => emit("update:editingAccountName", value),
-});
-
-const amountInputModel = computed({
-  get: () => props.amountInput,
-  set: (value) => emit("update:amountInput", value),
-});
-
-const noteInputModel = computed({
-  get: () => props.noteInput,
-  set: (value) => emit("update:noteInput", value),
-});
-
-const transferAmountModel = computed({
-  get: () => props.transferAmount,
-  set: (value) => emit("update:transferAmount", value),
-});
-
-const transferTargetIdModel = computed({
-  get: () => props.transferTargetId,
-  set: (value) => emit("update:transferTargetId", value),
-});
-
-const transferNoteModel = computed({
-  get: () => props.transferNote,
-  set: (value) => emit("update:transferNote", value),
-});
 </script>

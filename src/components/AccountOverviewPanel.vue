@@ -1,46 +1,24 @@
 <template>
-  <template v-if="selectedAccount">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h3 class="text-lg font-semibold text-slate-800">
-          {{ selectedAccount.name }}
-        </h3>
-        <p class="text-sm text-slate-500">
-          币种 {{ selectedAccount.currency }} · 余额 {{ formattedBalance }}
-        </p>
-      </div>
-    </div>
-
-    <div class="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-lg backdrop-blur">
-      <div class="flex items-center justify-between">
-        <div>
-          <h4 class="text-sm font-semibold text-slate-700">近 30 天余额趋势</h4>
-          <p class="text-xs text-slate-400">按日累计余额</p>
+  <div v-if="selectedAccount" class="space-y-5">
+    <section class="rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
+      <p class="section-kicker text-brand-300">我的账户 · {{ selectedAccount.currency }}</p>
+      <div class="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h2 class="truncate text-2xl font-semibold tracking-tight sm:text-3xl">
+            {{ selectedAccount.name }}
+          </h2>
+          <p class="mt-2 text-sm text-slate-400">只读查看 · 每笔变化都由家长记录</p>
         </div>
-        <span class="text-xs font-semibold text-brand-600">{{
-          selectedAccount.currency
-        }}</span>
+        <div class="shrink-0 sm:text-right">
+          <p class="text-xs font-semibold tracking-[0.14em] text-slate-400 uppercase">当前余额</p>
+          <p class="numeric mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
+            {{ formattedBalance }}
+          </p>
+        </div>
       </div>
-      <div class="mt-4 h-32">
-        <svg v-if="chartPath" viewBox="0 0 100 100" class="h-full w-full">
-          <path
-            :d="chartPath"
-            fill="none"
-            stroke="url(#sparkline)"
-            stroke-width="3"
-            stroke-linecap="round"
-          />
-          <defs>
-            <linearGradient id="sparkline" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stop-color="#f97316" />
-              <stop offset="50%" stop-color="#a855f7" />
-              <stop offset="100%" stop-color="#38bdf8" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <p v-else class="text-sm text-slate-400">暂无数据</p>
-      </div>
-    </div>
+    </section>
+
+    <AccountTrendCard :chart-points="chartPoints" :currency="selectedAccount.currency" />
 
     <TransactionsList
       :transactions="pagedTransactions"
@@ -55,18 +33,24 @@
       :on-load-more="onLoadMore"
       :on-void-transaction="onVoidTransaction"
     />
-  </template>
-  <p v-else class="text-sm text-slate-500">暂无账户。</p>
+  </div>
+  <section v-else class="surface-card p-10 text-center">
+    <p class="section-kicker">我的储蓄</p>
+    <h2 class="mt-3 text-xl font-semibold text-slate-950">暂无账户。</h2>
+    <p class="mt-2 text-sm text-slate-500">请让家长为你创建第一个储蓄账户。</p>
+  </section>
 </template>
 
 <script setup lang="ts">
+import AccountTrendCard from "./AccountTrendCard.vue";
 import TransactionsList from "./TransactionsList.vue";
 import type { Account, Transaction } from "../types";
+import type { ChartPoint } from "../composables/useChartData";
 
 defineProps<{
   selectedAccount: Account | null;
   formattedBalance: string;
-  chartPath: string;
+  chartPoints: ChartPoint[];
   pagedTransactions: Transaction[];
   hasMoreTransactions: boolean;
   transactionLoading: boolean;

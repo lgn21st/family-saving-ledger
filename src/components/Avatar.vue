@@ -1,5 +1,13 @@
 <template>
-  <img :src="avatarUrl" :alt="avatar.label" :class="resolvedClass" />
+  <img
+    :src="avatarUrl"
+    :alt="avatar.label"
+    :class="resolvedClass"
+    width="64"
+    height="64"
+    decoding="async"
+    draggable="false"
+  />
 </template>
 
 <script setup lang="ts">
