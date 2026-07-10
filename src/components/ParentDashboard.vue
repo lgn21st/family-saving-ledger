@@ -113,17 +113,47 @@
           :on-void-transaction="onVoidTransaction"
         />
       </section>
+
+      <button
+        ref="quickTransactionTrigger"
+        type="button"
+        class="button-primary fixed right-4 bottom-4 z-40 min-h-12 rounded-2xl px-5 shadow-xl shadow-brand-900/20 sm:right-6 sm:bottom-6 xl:right-8"
+        aria-haspopup="dialog"
+        :aria-expanded="showQuickTransaction"
+        @click="showQuickTransaction = true"
+      >
+        记一笔
+      </button>
+
+      <QuickTransactionSheet
+        v-if="showQuickTransaction"
+        v-model:amount-input="amountInputModel"
+        v-model:note-input="noteInputModel"
+        :child-users="childUsers"
+        :selected-child-id="selectedChildId"
+        :selected-child-accounts="selectedChildAccounts"
+        :selected-account-id="selectedAccountId"
+        :formatted-balance="selectedAccountBalance"
+        :loading="loading"
+        :on-select-child="onSelectChild"
+        :on-select-account="onSelectAccount"
+        :on-add-transaction="onAddTransaction"
+        :on-close="closeQuickTransaction"
+      />
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from "vue";
+
 import AccountDetailPanel from "./AccountDetailPanel.vue";
 import AccountHeader from "./AccountHeader.vue";
 import AccountListPanel from "./AccountListPanel.vue";
 import ChildListPanel from "./ChildListPanel.vue";
 import ChildManagerCard from "./ChildManagerCard.vue";
 import CurrencySummaryGrid from "./CurrencySummaryGrid.vue";
+import QuickTransactionSheet from "./QuickTransactionSheet.vue";
 import type { Account, AppUser, Transaction, TransferTarget } from "../types";
 import type { AvatarOption } from "../config";
 import type { ChartPoint } from "../composables/useChartData";
@@ -156,6 +186,14 @@ const transferTargetIdModel = defineModel<string>("transferTargetId", {
   required: true,
 });
 const transferNoteModel = defineModel<string>("transferNote", { required: true });
+const showQuickTransaction = ref(false);
+const quickTransactionTrigger = ref<HTMLButtonElement | null>(null);
+
+const closeQuickTransaction = async () => {
+  showQuickTransaction.value = false;
+  await nextTick();
+  quickTransactionTrigger.value?.focus();
+};
 
 defineProps<{
   showChildManager: boolean;

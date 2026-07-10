@@ -1,27 +1,27 @@
 <template>
   <main
     id="main-content"
-    class="relative flex min-h-screen items-center overflow-hidden bg-slate-950 px-4 py-10 text-white sm:px-6 lg:py-16"
+    class="relative flex min-h-screen items-start overflow-hidden bg-slate-950 px-4 py-6 text-white sm:px-6 lg:items-center lg:py-16"
   >
     <div
       class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.4),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.2),transparent_38%)]"
       aria-hidden="true"
     />
     <div
-      class="relative mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16"
+      class="relative mx-auto grid w-full max-w-6xl items-center gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16"
     >
       <section class="max-w-xl text-center lg:text-left">
         <p class="section-kicker text-brand-300">Family Saving Ledger</p>
         <h1
-          class="mt-4 text-balance text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl"
+          class="mt-2 text-balance text-2xl font-semibold tracking-[-0.04em] text-white sm:mt-4 sm:text-5xl lg:text-6xl"
         >
           让每一笔储蓄，都变成看得见的成长
         </h1>
-        <p class="mt-5 text-pretty text-base leading-7 text-slate-300 sm:text-lg">
+        <p class="mt-5 hidden text-pretty text-base leading-7 text-slate-300 sm:text-lg lg:block">
           家长负责记录，孩子随时查看。余额、转账和每月利息，都在一个清晰的家庭账本里。
         </p>
         <div
-          class="mx-auto mt-8 grid max-w-md grid-cols-3 gap-3 text-left lg:mx-0"
+          class="mx-auto mt-8 hidden max-w-md grid-cols-3 gap-3 text-left lg:mx-0 lg:grid"
         >
           <div class="rounded-2xl border border-white/10 bg-white/6 p-3">
             <p class="text-sm font-semibold text-white">共同管理</p>

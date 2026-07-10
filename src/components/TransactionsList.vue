@@ -10,17 +10,54 @@
       </span>
     </div>
 
+    <div v-if="transactions.length > 0" class="mt-5 grid gap-2 sm:grid-cols-[1fr_160px]">
+      <label class="sr-only" for="transaction-search">搜索交易</label>
+      <input
+        id="transaction-search"
+        v-model="searchTerm"
+        type="search"
+        name="transaction-search"
+        autocomplete="off"
+        placeholder="搜索备注、金额或类型"
+        class="app-input"
+      />
+      <label class="sr-only" for="transaction-type-filter">交易类型</label>
+      <select
+        id="transaction-type-filter"
+        v-model="typeFilter"
+        name="transaction-type-filter"
+        class="app-input"
+      >
+        <option value="all">全部类型</option>
+        <option v-for="(label, type) in transactionLabels" :key="type" :value="type">
+          {{ label }}
+        </option>
+      </select>
+    </div>
+
     <div v-if="transactions.length === 0" class="mt-5 rounded-2xl bg-slate-50 px-5 py-10 text-center">
       <p class="text-sm font-medium text-slate-600">暂无交易</p>
       <p class="mt-1 text-xs text-slate-400">记录第一笔收支后会显示在这里。</p>
     </div>
     <template v-else>
-      <ul class="mt-5 divide-y divide-slate-100">
-        <li
-          v-for="transaction in transactions"
-          :key="transaction.id"
+      <div
+        v-if="filteredTransactions.length === 0"
+        class="mt-5 rounded-2xl bg-slate-50 px-5 py-10 text-center"
+      >
+        <p class="text-sm font-medium text-slate-600">没有匹配的交易</p>
+        <button type="button" class="button-quiet mt-2" @click="clearFilters">清除筛选</button>
+      </div>
+      <ul v-else class="mt-5">
+        <template v-for="(transaction, index) in filteredTransactions" :key="transaction.id">
+          <li
+            v-if="shouldShowMonth(transaction, index)"
+            class="sticky top-[73px] z-10 border-y border-slate-100 bg-white/95 py-2 text-xs font-semibold text-slate-500 backdrop-blur"
+          >
+            {{ formatMonth(transaction.created_at) }}
+          </li>
+          <li
           :class="[
-            'group flex items-start gap-3 py-4 sm:gap-4',
+            'group flex items-start gap-3 border-b border-slate-100 py-4 sm:gap-4',
             transaction.is_void ? 'opacity-55' : '',
           ]"
           @pointerdown="startLongPress(transaction, $event)"
@@ -28,7 +65,7 @@
           @pointercancel="cancelLongPress"
           @pointerleave="cancelLongPress"
           @pointermove="handlePointerMove($event)"
-        >
+          >
           <TransactionIcon :type="transaction.type" />
           <div class="min-w-0 flex-1">
             <div class="flex items-start justify-between gap-3">
@@ -83,7 +120,8 @@
               </div>
             </div>
           </div>
-        </li>
+          </li>
+        </template>
       </ul>
       <button
         v-if="hasMore"
@@ -98,12 +136,13 @@
 
     <div
       v-if="confirmingTransaction"
+      ref="dialogElement"
       class="fixed inset-0 z-[80] flex items-center justify-center overscroll-contain bg-slate-950/55 px-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="void-dialog-title"
       aria-describedby="void-dialog-description"
-      @keydown.esc="cancelConfirm"
+      @keydown="handleDialogKeydown"
     >
       <div class="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
         <p class="section-kicker text-rose-600">不可直接删除</p>
@@ -117,7 +156,9 @@
           交易会标记为已作废；如果是转账，对应的另一笔记录也会同时撤销。
         </p>
         <div class="mt-6 grid grid-cols-2 gap-3">
-          <button type="button" class="button-secondary" @click="cancelConfirm">取消</button>
+          <button ref="cancelButton" type="button" class="button-secondary" @click="cancelConfirm">
+            取消
+          </button>
           <button type="button" class="button-danger bg-rose-600 text-white hover:bg-rose-700" @click="confirmVoid">
             确认撤销
           </button>
@@ -128,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRefs } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, toRefs, watch } from "vue";
 import TransactionIcon from "./TransactionIcon.vue";
 import type { Transaction } from "../types";
 
@@ -158,6 +199,46 @@ const pressTargetId = ref<string | null>(null);
 const startX = ref(0);
 const startY = ref(0);
 const confirmingTransaction = ref<Transaction | null>(null);
+const searchTerm = ref("");
+const typeFilter = ref<"all" | Transaction["type"]>("all");
+const dialogElement = ref<HTMLElement | null>(null);
+const cancelButton = ref<HTMLButtonElement | null>(null);
+const returnFocusElement = ref<HTMLElement | null>(null);
+let previousBodyOverflow = "";
+const monthFormatter = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric",
+  month: "long",
+});
+
+const formatMonth = (value: string) => monthFormatter.format(new Date(value));
+
+const filteredTransactions = computed(() => {
+  const query = searchTerm.value.trim().toLocaleLowerCase("zh-CN");
+  return props.transactions.filter((transaction) => {
+    if (typeFilter.value !== "all" && transaction.type !== typeFilter.value) return false;
+    if (!query) return true;
+    const searchable = [
+      props.transactionLabels[transaction.type],
+      props.getTransactionNote(transaction),
+      props.formatSignedAmount(transaction),
+      props.formatTimestamp(transaction.created_at),
+    ]
+      .join(" ")
+      .toLocaleLowerCase("zh-CN");
+    return searchable.includes(query);
+  });
+});
+
+const shouldShowMonth = (transaction: Transaction, index: number) => {
+  if (index === 0) return true;
+  const previous = filteredTransactions.value[index - 1];
+  return !previous || formatMonth(previous.created_at) !== formatMonth(transaction.created_at);
+};
+
+const clearFilters = () => {
+  searchTerm.value = "";
+  typeFilter.value = "all";
+};
 
 const clearPressTimer = () => {
   if (pressTimer.value === null) return;
@@ -167,6 +248,7 @@ const clearPressTimer = () => {
 
 const requestVoid = (transaction: Transaction) => {
   if (!canVoid?.value || transaction.is_void) return;
+  returnFocusElement.value = document.activeElement as HTMLElement | null;
   confirmingTransaction.value = transaction;
 };
 
@@ -203,5 +285,51 @@ const confirmVoid = () => {
     onVoidTransaction.value(confirmingTransaction.value);
   }
   confirmingTransaction.value = null;
+};
+
+watch(confirmingTransaction, async (transaction) => {
+  if (transaction) {
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = previousBodyOverflow;
+  }
+  await nextTick();
+  if (transaction) {
+    cancelButton.value?.focus();
+    return;
+  }
+  returnFocusElement.value?.focus();
+  returnFocusElement.value = null;
+});
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = previousBodyOverflow;
+});
+
+const handleDialogKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+    cancelConfirm();
+    return;
+  }
+  if (event.key !== "Tab" || !dialogElement.value) return;
+
+  const controls = Array.from(
+    dialogElement.value.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  );
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (!first || !last) return;
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 };
 </script>

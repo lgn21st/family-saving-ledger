@@ -1145,7 +1145,7 @@ describe("Home Bank UI", () => {
       await screen.findByRole("button", { name: /利息账户/ }),
     );
 
-    expect(await screen.findByText("利息")).toBeInTheDocument();
+    expect(await screen.findByText("利息", { selector: "span" })).toBeInTheDocument();
     expect(
       screen.getByText("2024年01月结息，利率 10%"),
     ).toBeInTheDocument();
