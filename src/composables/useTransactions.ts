@@ -14,7 +14,11 @@
  * - chartBaseBalance: 图表起始余额
  */
 import { computed, ref, type Ref } from "vue";
-import type { SupabaseClient, Transaction } from "../types";
+import type {
+  SupabaseClient,
+  SupabaseFilterBuilder,
+  Transaction,
+} from "../types";
 
 const PAGE_SIZE = 10;
 
@@ -45,7 +49,7 @@ export const useTransactions = (params: {
     transactionLoading.value = false;
   };
 
-  const applyVoidFilter = (query: any) => {
+  const applyVoidFilter = <T>(query: SupabaseFilterBuilder<T>) => {
     return includeVoided.value ? query : query.eq("is_void", false);
   };
 

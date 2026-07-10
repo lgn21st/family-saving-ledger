@@ -1,10 +1,12 @@
 import { defineConfig } from 'vitest/config'
+import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
