@@ -24,6 +24,14 @@ describe("useStatus", () => {
     expect(status.value).toBe("请先将该孩子所有账户余额清零后再归档。");
   });
 
+  it("tracks success tone independently from message text", () => {
+    const { statusTone, setSuccessStatus } = useStatus();
+
+    setSuccessStatus("任意成功消息");
+
+    expect(statusTone.value).toBe("success");
+  });
+
   it("auto clears success and error messages with different timeouts", async () => {
     vi.useFakeTimers();
     const { status, setSuccessStatus, setErrorStatus } = useStatus();

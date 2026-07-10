@@ -1,71 +1,4 @@
-export type Role = "parent" | "child";
-
-export type AppUser = {
-  id: string;
-  name: string;
-  role: Role;
-  pin?: string;
-  avatar_id?: string | null;
-  is_active?: boolean;
-  archived_at?: string | null;
-  archived_by?: string | null;
-  created_at?: string;
-};
-
-export type Account = {
-  id: string;
-  name: string;
-  currency: string;
-  owner_child_id: string;
-  created_by: string;
-  is_active: boolean;
-  closed_at?: string | null;
-  closed_by?: string | null;
-  created_at?: string;
-};
-
-export type TransferTarget = Account & { ownerName: string };
-
-export type TransactionType =
-  | "deposit"
-  | "withdrawal"
-  | "transfer_in"
-  | "transfer_out"
-  | "interest";
-
-export type Transaction = {
-  id: string;
-  account_id: string;
-  type: TransactionType;
-  amount: number;
-  currency: string;
-  note: string | null;
-  related_account_id: string | null;
-  transfer_group_id?: string | null;
-  created_by: string;
-  created_at: string;
-  interest_month?: string | null;
-  is_void?: boolean;
-  voided_at?: string | null;
-  voided_by?: string | null;
-};
-
-export type StatusTone = "success" | "error";
-
-export type Settings = {
-  id: string;
-  annual_rate: number;
-  timezone: string;
-};
-
-export type AccountBalance = {
-  account_id: string;
-  balance: number | null;
-};
-
-export type SupabaseError = {
-  message: string;
-};
+export type SupabaseError = { message: string };
 
 export type SupabaseQueryResult<T> = {
   data: T[] | null;
@@ -112,14 +45,6 @@ export type SupabaseTable<T> = {
   delete: () => SupabaseFilterBuilder<T>;
 };
 
-export type DatabaseTables = {
-  app_users: AppUser;
-  accounts: Account;
-  transactions: Transaction;
-  settings: Settings;
-  account_balances: AccountBalance;
-};
-
 export type SupabaseFromClient = {
   from: (table: string) => SupabaseTable<unknown>;
 };
@@ -133,16 +58,7 @@ export type SupabaseRpcClient = {
       get?: boolean;
       count?: "exact" | "planned" | "estimated";
     },
-  ) => {
-    then: <TResult1 = SupabaseRpcResult<T>, TResult2 = never>(
-      onfulfilled?:
-        | ((value: SupabaseRpcResult<T>) => TResult1 | PromiseLike<TResult1>)
-        | null,
-      onrejected?:
-        | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
-        | null,
-    ) => PromiseLike<TResult1 | TResult2>;
-  };
+  ) => PromiseLike<SupabaseRpcResult<T>>;
 };
 
 export type SupabaseClient = SupabaseFromClient & SupabaseRpcClient;

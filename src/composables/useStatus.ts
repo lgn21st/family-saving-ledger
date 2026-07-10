@@ -1,16 +1,5 @@
-import { computed, getCurrentInstance, onBeforeUnmount, ref, watch } from "vue";
+import { getCurrentInstance, onBeforeUnmount, ref, watch } from "vue";
 import type { StatusTone } from "../types";
-
-const successMessages = new Set([
-  "已保存交易。",
-  "账户已创建。",
-  "孩子用户已创建。",
-  "孩子及其账户已归档，账本记录已保留。",
-  "已更新名称。",
-  "账户名称已更新。",
-  "转账完成。",
-  "账户已关闭。",
-]);
 
 const mapErrorMessage = (message: string) => {
   if (message.includes("Insufficient balance")) return "余额不足。";
@@ -33,29 +22,28 @@ const mapErrorMessage = (message: string) => {
 
 export const useStatus = () => {
   const status = ref<string | null>(null);
+  const statusTone = ref<StatusTone>("error");
   let statusTimeoutId: number | null = null;
 
-  const statusTone = computed<StatusTone>(() => {
-    if (!status.value) return "error";
-    return successMessages.has(status.value) ? "success" : "error";
-  });
-
   const setStatus = (message: string | null) => {
+    statusTone.value = "error";
     status.value = message;
   };
 
   const setErrorStatus = (message: string) => {
+    statusTone.value = "error";
     status.value = mapErrorMessage(message);
   };
 
   const setSuccessStatus = (message: string) => {
+    statusTone.value = "success";
     status.value = message;
   };
 
   watch(status, (nextStatus) => {
     if (!nextStatus) return;
     if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
-    const timeoutMs = successMessages.has(nextStatus) ? 1500 : 3000;
+    const timeoutMs = statusTone.value === "success" ? 1500 : 3000;
     statusTimeoutId = window.setTimeout(() => {
       if (status.value === nextStatus) status.value = null;
     }, timeoutMs);
