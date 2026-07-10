@@ -30,7 +30,7 @@ describe("ParentDashboard", () => {
         onStartEditChild: vi.fn(),
         onUpdateChild: vi.fn(),
         onCancelEditChild: vi.fn(),
-        onDeleteChild: vi.fn(),
+        onArchiveChild: vi.fn(),
         currencyTotals: {},
         formatAmount: (amount: number, currency: string) =>
           `${amount.toFixed(2)} ${currency}`,

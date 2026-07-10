@@ -1,187 +1,75 @@
-create table if not exists app_users (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  role text not null check (role in ('parent', 'child')),
-  pin text not null check (pin ~ '^[0-9]{4}$'),
-  avatar_id text,
-  is_active boolean not null default true,
-  archived_at timestamp with time zone,
-  archived_by uuid references app_users(id),
-  created_at timestamp with time zone default now()
-);
+alter table public.app_users
+  add column if not exists is_active boolean not null default true,
+  add column if not exists archived_at timestamp with time zone,
+  add column if not exists archived_by uuid references public.app_users(id);
 
-create table if not exists accounts (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  currency text not null check (currency ~ '^[A-Z]{3}$'),
-  owner_child_id uuid not null references app_users(id),
-  created_by uuid not null references app_users(id),
-  is_active boolean not null default true,
-  closed_at timestamp with time zone,
-  closed_by uuid references app_users(id),
-  created_at timestamp with time zone default now()
-);
+alter table public.accounts
+  add column if not exists closed_at timestamp with time zone,
+  add column if not exists closed_by uuid references public.app_users(id);
 
-create table if not exists transactions (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id),
-  type text not null check (type in ('deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'interest')),
-  amount numeric(12, 2) not null check (amount > 0),
-  currency text not null,
-  note text,
-  related_account_id uuid references accounts(id),
-  transfer_group_id uuid,
-  created_by uuid not null references app_users(id),
-  created_at timestamp with time zone default now(),
-  interest_month date,
-  is_void boolean not null default false,
-  voided_at timestamp with time zone,
-  voided_by uuid references app_users(id)
-);
-
-create table if not exists settings (
-  id uuid primary key default gen_random_uuid(),
-  annual_rate numeric(5, 2) not null,
-  timezone text not null default 'Asia/Singapore',
-  updated_at timestamp with time zone default now()
-);
-
-create table if not exists interest_log (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts(id) on delete cascade,
-  month date not null,
-  annual_rate numeric(5, 2) not null,
-  interest_amount numeric(12, 2) not null,
-  created_at timestamp with time zone default now(),
-  unique (account_id, month)
-);
-
-create unique index if not exists transactions_interest_unique_idx
-  on transactions (account_id, interest_month)
-  where type = 'interest' and interest_month is not null and is_void = false;
-
-create index if not exists transactions_account_created_at_idx
-  on transactions (account_id, created_at desc);
+update public.accounts
+set closed_at = coalesce(closed_at, now())
+where is_active = false;
 
 create index if not exists accounts_owner_child_id_idx
-  on accounts (owner_child_id);
+  on public.accounts (owner_child_id);
 
 create index if not exists accounts_created_by_idx
-  on accounts (created_by);
+  on public.accounts (created_by);
 
 create index if not exists accounts_closed_by_idx
-  on accounts (closed_by)
+  on public.accounts (closed_by)
   where closed_by is not null;
 
 create index if not exists app_users_archived_by_idx
-  on app_users (archived_by)
+  on public.app_users (archived_by)
   where archived_by is not null;
 
 create index if not exists transactions_related_account_id_idx
-  on transactions (related_account_id)
+  on public.transactions (related_account_id)
   where related_account_id is not null;
 
 create index if not exists transactions_transfer_group_id_idx
-  on transactions (transfer_group_id)
+  on public.transactions (transfer_group_id)
   where transfer_group_id is not null;
 
 create index if not exists transactions_created_by_idx
-  on transactions (created_by);
+  on public.transactions (created_by);
 
 create index if not exists transactions_voided_by_idx
-  on transactions (voided_by)
+  on public.transactions (voided_by)
   where voided_by is not null;
 
-create or replace view account_balances as
-select
-  account_id,
-  coalesce(
-    sum(
-      case
-        when type in ('withdrawal', 'transfer_out') then -amount
-        else amount
-      end
-    ),
-    0
-  )::numeric(12, 2) as balance
-from transactions
-where is_void = false
-group by account_id;
-
-alter view public.account_balances set (security_invoker = true);
-
-create or replace function get_account_balance(p_account_id uuid)
-returns numeric
-language sql
-stable
-as $$
-  select coalesce(
-    sum(
-      case
-        when type in ('withdrawal', 'transfer_out') then -amount
-        else amount
-      end
-    ),
-    0
-  )
-  from transactions
-  where account_id = p_account_id
-    and is_void = false;
-$$;
-
-create or replace function get_balance_before_date(
-  p_account_id uuid,
-  p_before timestamptz
-)
-returns numeric
-language sql
-stable
-as $$
-  select coalesce(
-    sum(
-      case
-        when type in ('withdrawal', 'transfer_out') then -amount
-        else amount
-      end
-    ),
-    0
-  )
-  from transactions
-  where account_id = p_account_id
-    and is_void = false
-    and created_at < p_before;
-$$;
-
-create or replace function is_active_parent(p_user_id uuid)
+create or replace function public.is_active_parent(p_user_id uuid)
 returns boolean
 language sql
 stable
 as $$
   select exists (
     select 1
-    from app_users
+    from public.app_users
     where id = p_user_id
       and role = 'parent'
       and is_active = true
   );
 $$;
 
-create or replace function apply_transaction(
+create or replace function public.apply_transaction(
   p_account_id uuid,
   p_type text,
   p_amount numeric,
   p_note text,
   p_created_by uuid
 )
-returns transactions
+returns public.transactions
 language plpgsql
 as $$
 declare
-  account_row accounts;
+  account_row public.accounts;
   current_balance numeric;
-  inserted_row transactions;
+  inserted_row public.transactions;
 begin
-  if not is_active_parent(p_created_by) then
+  if not public.is_active_parent(p_created_by) then
     raise exception 'Only an active parent can create transactions';
   end if;
 
@@ -195,7 +83,7 @@ begin
 
   select *
   into account_row
-  from accounts
+  from public.accounts
   where id = p_account_id
     and is_active = true
   for update;
@@ -205,13 +93,13 @@ begin
   end if;
 
   if p_type = 'withdrawal' then
-    current_balance := get_account_balance(p_account_id);
+    current_balance := public.get_account_balance(p_account_id);
     if p_amount > current_balance then
       raise exception 'Insufficient balance';
     end if;
   end if;
 
-  insert into transactions (
+  insert into public.transactions (
     account_id,
     type,
     amount,
@@ -237,19 +125,19 @@ begin
 end;
 $$;
 
-create or replace function transfer_between_accounts(
+create or replace function public.transfer_between_accounts(
   p_source_account_id uuid,
   p_target_account_id uuid,
   p_amount numeric,
   p_note text,
   p_created_by uuid
 )
-returns setof transactions
+returns setof public.transactions
 language plpgsql
 as $$
 declare
-  source_account accounts;
-  target_account accounts;
+  source_account public.accounts;
+  target_account public.accounts;
   source_owner_name text;
   target_owner_name text;
   source_note text;
@@ -258,7 +146,7 @@ declare
   current_balance numeric;
   transfer_group uuid := gen_random_uuid();
 begin
-  if not is_active_parent(p_created_by) then
+  if not public.is_active_parent(p_created_by) then
     raise exception 'Only an active parent can transfer funds';
   end if;
 
@@ -271,14 +159,14 @@ begin
   end if;
 
   perform id
-  from accounts
+  from public.accounts
   where id in (p_source_account_id, p_target_account_id)
   order by id
   for update;
 
   select *
   into source_account
-  from accounts
+  from public.accounts
   where id = p_source_account_id
     and is_active = true;
 
@@ -288,7 +176,7 @@ begin
 
   select *
   into target_account
-  from accounts
+  from public.accounts
   where id = p_target_account_id
     and is_active = true;
 
@@ -300,19 +188,19 @@ begin
     raise exception 'Transfer currency mismatch';
   end if;
 
-  current_balance := get_account_balance(p_source_account_id);
+  current_balance := public.get_account_balance(p_source_account_id);
   if p_amount > current_balance then
     raise exception 'Insufficient balance';
   end if;
 
   select name
   into source_owner_name
-  from app_users
+  from public.app_users
   where id = source_account.owner_child_id;
 
   select name
   into target_owner_name
-  from app_users
+  from public.app_users
   where id = target_account.owner_child_id;
 
   note_suffix := case
@@ -324,7 +212,7 @@ begin
   target_note := '来自 ' || coalesce(source_owner_name, '') || ' ' || source_account.name || note_suffix;
 
   return query
-  insert into transactions (
+  insert into public.transactions (
     account_id,
     type,
     amount,
@@ -349,7 +237,7 @@ begin
   returning *;
 
   return query
-  insert into transactions (
+  insert into public.transactions (
     account_id,
     type,
     amount,
@@ -375,7 +263,7 @@ begin
 end;
 $$;
 
-create or replace function void_transaction(
+create or replace function public.void_transaction(
   p_transaction_id uuid,
   p_voided_by uuid
 )
@@ -383,54 +271,36 @@ returns integer
 language plpgsql
 as $$
 declare
-  target_row transactions;
-  target_transfer_group_id uuid;
+  target_row public.transactions;
   updated_count integer;
 begin
-  if not is_active_parent(p_voided_by) then
+  if not public.is_active_parent(p_voided_by) then
     raise exception 'Only an active parent can void transactions';
   end if;
 
-  select transfer_group_id
-  into target_transfer_group_id
-  from transactions
-  where id = p_transaction_id;
+  select *
+  into target_row
+  from public.transactions
+  where id = p_transaction_id
+  for update;
 
   if not found then
     raise exception 'Transaction not found';
   end if;
 
-  if target_transfer_group_id is not null then
-    perform id
-    from transactions
-    where transfer_group_id = target_transfer_group_id
-    order by id
-    for update;
-  else
-    perform id
-    from transactions
-    where id = p_transaction_id
-    for update;
-  end if;
-
-  select *
-  into target_row
-  from transactions
-  where id = p_transaction_id;
-
   if target_row.is_void then
     return 0;
   end if;
 
-  if target_transfer_group_id is not null then
-    update transactions
+  if target_row.transfer_group_id is not null then
+    update public.transactions
     set is_void = true,
         voided_at = now(),
         voided_by = p_voided_by
-    where transfer_group_id = target_transfer_group_id
+    where transfer_group_id = target_row.transfer_group_id
       and is_void = false;
   else
-    update transactions
+    update public.transactions
     set is_void = true,
         voided_at = now(),
         voided_by = p_voided_by
@@ -443,24 +313,24 @@ begin
 end;
 $$;
 
-create or replace function close_account(
+create or replace function public.close_account(
   p_account_id uuid,
   p_closed_by uuid
 )
-returns accounts
+returns public.accounts
 language plpgsql
 as $$
 declare
-  account_row accounts;
+  account_row public.accounts;
   current_balance numeric;
 begin
-  if not is_active_parent(p_closed_by) then
+  if not public.is_active_parent(p_closed_by) then
     raise exception 'Only an active parent can close accounts';
   end if;
 
   select *
   into account_row
-  from accounts
+  from public.accounts
   where id = p_account_id
     and is_active = true
   for update;
@@ -469,12 +339,12 @@ begin
     raise exception 'Account not found or inactive';
   end if;
 
-  current_balance := get_account_balance(p_account_id);
+  current_balance := public.get_account_balance(p_account_id);
   if current_balance <> 0 then
     raise exception 'Account balance must be zero before closing';
   end if;
 
-  update accounts
+  update public.accounts
   set is_active = false,
       closed_at = now(),
       closed_by = p_closed_by
@@ -485,7 +355,7 @@ begin
 end;
 $$;
 
-create or replace function archive_child(
+create or replace function public.archive_child(
   p_child_id uuid,
   p_archived_by uuid
 )
@@ -493,15 +363,17 @@ returns integer
 language plpgsql
 as $$
 declare
+  child_row public.app_users;
   nonzero_account_id uuid;
   archived_account_count integer;
 begin
-  if not is_active_parent(p_archived_by) then
+  if not public.is_active_parent(p_archived_by) then
     raise exception 'Only an active parent can archive children';
   end if;
 
-  perform 1
-  from app_users
+  select *
+  into child_row
+  from public.app_users
   where id = p_child_id
     and role = 'child'
     and is_active = true
@@ -512,7 +384,7 @@ begin
   end if;
 
   perform id
-  from accounts
+  from public.accounts
   where owner_child_id = p_child_id
     and is_active = true
   order by id
@@ -520,10 +392,10 @@ begin
 
   select id
   into nonzero_account_id
-  from accounts
+  from public.accounts
   where owner_child_id = p_child_id
     and is_active = true
-    and get_account_balance(id) <> 0
+    and public.get_account_balance(id) <> 0
   order by id
   limit 1;
 
@@ -531,7 +403,7 @@ begin
     raise exception 'All child account balances must be zero before archiving';
   end if;
 
-  update accounts
+  update public.accounts
   set is_active = false,
       closed_at = now(),
       closed_by = p_archived_by
@@ -540,7 +412,7 @@ begin
 
   get diagnostics archived_account_count = row_count;
 
-  update app_users
+  update public.app_users
   set is_active = false,
       archived_at = now(),
       archived_by = p_archived_by
@@ -550,13 +422,7 @@ begin
 end;
 $$;
 
-drop function if exists run_monthly_interest(date);
-
-drop function if exists run_monthly_interest();
-
-drop function if exists run_monthly_interest_impl();
-
-create function run_monthly_interest_impl()
+create or replace function public.run_monthly_interest()
 returns void
 language plpgsql
 as $$
@@ -577,7 +443,7 @@ begin
 
   select annual_rate, timezone
   into config_rate, config_timezone
-  from settings
+  from public.settings
   where id = '00000000-0000-0000-0000-000000000001';
 
   if config_rate is null then
@@ -595,8 +461,8 @@ begin
     date_trunc('month', transactions.created_at at time zone config_timezone)::date
   )
   into earliest_month
-  from transactions
-  join accounts on accounts.id = transactions.account_id
+  from public.transactions
+  join public.accounts on accounts.id = transactions.account_id
   where transactions.is_void = false
     and accounts.is_active = true;
 
@@ -611,7 +477,7 @@ begin
     month_prefix := to_char(current_month, 'YYYY年MM月') || '结息';
     month_note := month_prefix || '，利率 ' || config_rate || '%';
 
-    insert into interest_log (
+    insert into public.interest_log (
       account_id,
       month,
       annual_rate,
@@ -622,8 +488,8 @@ begin
       current_month,
       config_rate,
       transactions.amount
-    from transactions
-    join accounts on accounts.id = transactions.account_id
+    from public.transactions
+    join public.accounts on accounts.id = transactions.account_id
     where transactions.type = 'interest'
       and transactions.interest_month = current_month
       and transactions.is_void = false
@@ -651,7 +517,7 @@ begin
                 else transactions.amount
               end
             )
-            from transactions
+            from public.transactions
             where transactions.account_id = accounts.id
               and transactions.is_void = false
               and (transactions.created_at at time zone config_timezone) <
@@ -659,7 +525,7 @@ begin
           ),
           0
         ) as balance
-      from accounts
+      from public.accounts
       cross join days
       where accounts.is_active = true
         and date_trunc(
@@ -682,7 +548,7 @@ begin
       where monthly_interest.interest_amount > 0
         and not exists (
           select 1
-          from transactions
+          from public.transactions
           where transactions.account_id = monthly_interest.account_id
             and transactions.type = 'interest'
             and transactions.interest_month = current_month
@@ -690,7 +556,7 @@ begin
         )
     ),
     inserted_logs as (
-      insert into interest_log (
+      insert into public.interest_log (
         account_id,
         month,
         annual_rate,
@@ -708,7 +574,7 @@ begin
           created_at = now()
       returning account_id, interest_amount
     )
-    insert into transactions (
+    insert into public.transactions (
       account_id,
       type,
       amount,
@@ -730,84 +596,9 @@ begin
       current_month,
       false
     from inserted_logs
-    join accounts on accounts.id = inserted_logs.account_id;
+    join public.accounts on accounts.id = inserted_logs.account_id;
 
     current_month := (current_month + interval '1 month')::date;
   end loop;
 end;
 $$;
-
-create function run_monthly_interest()
-returns void
-language plpgsql
-as $$
-begin
-  perform pg_advisory_xact_lock(
-    hashtextextended('family-saving-ledger:monthly-interest', 0)
-  );
-
-  perform id
-  from accounts
-  where is_active = true
-  order by id
-  for update;
-
-  perform run_monthly_interest_impl();
-end;
-$$;
-
-revoke execute on function run_monthly_interest_impl()
-  from public, anon, authenticated;
-
-insert into settings (id, annual_rate, timezone)
-values ('00000000-0000-0000-0000-000000000001', 10.00, 'Asia/Singapore')
-on conflict (id) do update
-set annual_rate = excluded.annual_rate,
-    timezone = excluded.timezone,
-    updated_at = now();
-
-alter table public.app_users enable row level security;
-alter table public.accounts enable row level security;
-alter table public.transactions enable row level security;
-alter table public.interest_log enable row level security;
-alter table public.settings enable row level security;
-
-drop policy if exists allow_all_app_users on public.app_users;
-create policy allow_all_app_users
-on public.app_users
-for all
-to anon, authenticated
-using (true)
-with check (true);
-
-drop policy if exists allow_all_accounts on public.accounts;
-create policy allow_all_accounts
-on public.accounts
-for all
-to anon, authenticated
-using (true)
-with check (true);
-
-drop policy if exists allow_all_transactions on public.transactions;
-create policy allow_all_transactions
-on public.transactions
-for all
-to anon, authenticated
-using (true)
-with check (true);
-
-drop policy if exists allow_all_interest_log on public.interest_log;
-create policy allow_all_interest_log
-on public.interest_log
-for all
-to anon, authenticated
-using (true)
-with check (true);
-
-drop policy if exists allow_all_settings on public.settings;
-create policy allow_all_settings
-on public.settings
-for all
-to anon, authenticated
-using (true)
-with check (true);

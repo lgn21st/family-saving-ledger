@@ -32,7 +32,7 @@ describe("ChildManagerCard", () => {
         onStartEditChild: vi.fn(),
         onUpdateChild: vi.fn(),
         onCancelEditChild: vi.fn(),
-        onDeleteChild: vi.fn(),
+        onArchiveChild: vi.fn(),
         "onUpdate:newChildName": onUpdateName,
         "onUpdate:newChildPin": onUpdatePin,
         "onUpdate:newChildAvatarId": onUpdateAvatar,
@@ -53,12 +53,12 @@ describe("ChildManagerCard", () => {
     expect(onCreateChild).toHaveBeenCalled();
   });
 
-  it("supports edit and delete actions", async () => {
+  it("supports edit and archive actions", async () => {
     const user = userEvent.setup();
     const onStartEditChild = vi.fn();
     const onUpdateChild = vi.fn();
     const onCancelEditChild = vi.fn();
-    const onDeleteChild = vi.fn();
+    const onArchiveChild = vi.fn();
 
     render(ChildManagerCard, {
       props: {
@@ -76,7 +76,7 @@ describe("ChildManagerCard", () => {
         onStartEditChild,
         onUpdateChild,
         onCancelEditChild,
-        onDeleteChild,
+        onArchiveChild,
       },
     });
 
@@ -87,8 +87,8 @@ describe("ChildManagerCard", () => {
       role: "child",
     });
 
-    await user.click(screen.getByRole("button", { name: "删除" }));
-    expect(onDeleteChild).toHaveBeenCalledWith("child-1");
+    await user.click(screen.getByRole("button", { name: "归档" }));
+    expect(onArchiveChild).toHaveBeenCalledWith("child-1");
 
     render(ChildManagerCard, {
       props: {
@@ -106,7 +106,7 @@ describe("ChildManagerCard", () => {
         onStartEditChild,
         onUpdateChild,
         onCancelEditChild,
-        onDeleteChild,
+        onArchiveChild,
       },
     });
 

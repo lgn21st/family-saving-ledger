@@ -34,7 +34,9 @@ export const useUsers = (params: {
       return;
     }
 
-    childUsers.value = (data ?? []) as AppUser[];
+    childUsers.value = ((data ?? []) as AppUser[]).filter(
+      (user) => user.is_active !== false,
+    );
   };
 
   const loadLoginUsers = async () => {
@@ -48,7 +50,9 @@ export const useUsers = (params: {
       return;
     }
 
-    const rows = (data ?? []) as AppUser[];
+    const rows = ((data ?? []) as AppUser[]).filter(
+      (user) => user.is_active !== false,
+    );
     const parents = rows
       .filter((user) => user.role === "parent")
       .sort((left, right) => left.name.localeCompare(right.name));

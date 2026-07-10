@@ -15,6 +15,7 @@ const createSupabaseMock = () => {
   const select = vi.fn(() => ({
     eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
   }));
+  const rpc = vi.fn(() => Promise.resolve({ data: 1, error: null }));
 
   return {
     from: () => ({
@@ -23,7 +24,8 @@ const createSupabaseMock = () => {
       delete: deleteFn,
       select,
     }),
-    spies: { insert, update, deleteFn, select },
+    rpc,
+    spies: { insert, update, deleteFn, select, rpc },
   };
 };
 
@@ -56,6 +58,7 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild: vi.fn(),
+      confirmArchiveChild: vi.fn(() => true),
       setStatus,
       setErrorStatus,
       setSuccessStatus,
@@ -97,6 +100,7 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild: vi.fn(),
+      confirmArchiveChild: vi.fn(() => true),
       setStatus,
       setErrorStatus,
       setSuccessStatus,
@@ -116,13 +120,8 @@ describe("useChildren", () => {
     expect(setSuccessStatus).toHaveBeenCalledWith("孩子用户已创建。");
   });
 
-  it("deletes child and reloads data", async () => {
+  it("archives child through one RPC and reloads data", async () => {
     const supabase = createSupabaseMock();
-    supabase.spies.select.mockReturnValueOnce({
-      eq: vi.fn(() =>
-        Promise.resolve({ data: [{ id: "acc-1" }], error: null }),
-      ),
-    });
 
     const setStatus = vi.fn();
     const setErrorStatus = vi.fn();
@@ -139,7 +138,8 @@ describe("useChildren", () => {
     const loading = ref(false);
     const user = ref({ id: "parent" });
 
-    const { handleDeleteChild } = useChildren({
+    const confirmArchiveChild = vi.fn(() => true);
+    const { handleArchiveChild } = useChildren({
       supabase,
       user,
       loading,
@@ -150,6 +150,7 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild: vi.fn(),
+      confirmArchiveChild,
       setStatus,
       setErrorStatus,
       setSuccessStatus,
@@ -158,12 +159,19 @@ describe("useChildren", () => {
       loadAccounts,
     });
 
-    await handleDeleteChild("child-1");
+    await handleArchiveChild("child-1");
 
+    expect(confirmArchiveChild).toHaveBeenCalled();
+    expect(supabase.spies.rpc).toHaveBeenCalledWith("archive_child", {
+      p_child_id: "child-1",
+      p_archived_by: "parent",
+    });
     expect(loadChildUsers).toHaveBeenCalled();
     expect(loadAccounts).toHaveBeenCalled();
     expect(loadLoginUsersAndSelect).toHaveBeenCalled();
-    expect(setSuccessStatus).toHaveBeenCalledWith("已删除孩子及关联账户。");
+    expect(setSuccessStatus).toHaveBeenCalledWith(
+      "孩子及其账户已归档，账本记录已保留。",
+    );
   });
 
   it("updates child name with validation", async () => {
@@ -195,6 +203,7 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild,
+      confirmArchiveChild: vi.fn(() => true),
       setStatus,
       setErrorStatus,
       setSuccessStatus,

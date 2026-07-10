@@ -1,21 +1,21 @@
 /**
  * 孩子用户管理
- * 创建、编辑、删除孩子账户
+ * 创建、编辑、归档孩子账户
  *
  * 功能：
  * - 创建新孩子用户（需姓名、4位PIN、头像）
  * - 编辑孩子姓名
- * - 删除孩子及关联账户（级联删除交易和账户）
+ * - 归档余额已清零的孩子及账户，保留账本记录
  *
  * 依赖：
  * - 需要外部调用 loadChildUsers 刷新列表
  * - 需要外部调用 loadAccounts 刷新账户
  */
 import type { Ref } from "vue";
-import type { AppUser, SupabaseFromClient } from "../types";
+import type { AppUser, SupabaseClient } from "../types";
 
 export const useChildren = (params: {
-  supabase: SupabaseFromClient;
+  supabase: SupabaseClient;
   user: Ref<AppUser | null>;
   loading: Ref<boolean>;
   newChildName: Ref<string>;
@@ -25,6 +25,7 @@ export const useChildren = (params: {
   editingChildId: Ref<string | null>;
   editingChildName: Ref<string>;
   cancelEditChild: () => void;
+  confirmArchiveChild: () => boolean;
   setStatus: (message: string) => void;
   setErrorStatus: (message: string) => void;
   setSuccessStatus: (message: string) => void;
@@ -43,6 +44,7 @@ export const useChildren = (params: {
     editingChildId,
     editingChildName,
     cancelEditChild,
+    confirmArchiveChild,
     setStatus,
     setErrorStatus,
     setSuccessStatus,
@@ -97,56 +99,18 @@ export const useChildren = (params: {
     loading.value = false;
   };
 
-  const handleDeleteChild = async (childId: string) => {
+  const handleArchiveChild = async (childId: string) => {
     if (!user.value) return;
+    if (!confirmArchiveChild()) return;
 
     loading.value = true;
+    const { error } = await supabase.rpc("archive_child", {
+      p_child_id: childId,
+      p_archived_by: user.value.id,
+    });
 
-    const { data: childAccounts, error: childAccountsError } = await supabase
-      .from("accounts")
-      .select("id")
-      .eq("owner_child_id", childId);
-
-    if (childAccountsError) {
-      setErrorStatus(childAccountsError.message);
-      loading.value = false;
-      return;
-    }
-
-    const accountRows = (childAccounts ?? []) as Array<{ id: string }>;
-    const accountIds = accountRows.map((account) => account.id);
-
-    if (accountIds.length > 0) {
-      const { error: transactionsError } = await supabase
-        .from("transactions")
-        .delete()
-        .in("account_id", accountIds);
-
-      if (transactionsError) {
-        setErrorStatus(transactionsError.message);
-        loading.value = false;
-        return;
-      }
-
-      const { error: accountsError } = await supabase
-        .from("accounts")
-        .delete()
-        .in("id", accountIds);
-
-      if (accountsError) {
-        setErrorStatus(accountsError.message);
-        loading.value = false;
-        return;
-      }
-    }
-
-    const { error: childError } = await supabase
-      .from("app_users")
-      .delete()
-      .eq("id", childId);
-
-    if (childError) {
-      setErrorStatus(childError.message);
+    if (error) {
+      setErrorStatus(error.message);
       loading.value = false;
       return;
     }
@@ -154,7 +118,7 @@ export const useChildren = (params: {
     await loadChildUsers();
     await loadAccounts(user.value);
     await loadLoginUsersAndSelect();
-    setSuccessStatus("已删除孩子及关联账户。");
+    setSuccessStatus("孩子及其账户已归档，账本记录已保留。");
     loading.value = false;
   };
 
@@ -188,7 +152,7 @@ export const useChildren = (params: {
 
   return {
     handleCreateChild,
-    handleDeleteChild,
+    handleArchiveChild,
     handleUpdateChild,
   };
 };

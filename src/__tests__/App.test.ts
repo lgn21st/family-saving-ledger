@@ -12,6 +12,9 @@ type AppUser = {
   role: Role;
   pin: string;
   avatar_id?: string | null;
+  is_active?: boolean;
+  archived_at?: string | null;
+  archived_by?: string | null;
   created_at?: string;
 };
 
@@ -22,6 +25,8 @@ type Account = {
   owner_child_id: string;
   created_by: string;
   is_active: boolean;
+  closed_at?: string | null;
+  closed_by?: string | null;
   created_at?: string;
 };
 
@@ -440,6 +445,103 @@ function createSupabaseMock() {
         return Promise.resolve({ data: [sourceRow, targetRow], error: null });
       }
 
+      if (fnName === "archive_child") {
+        const childId = String(payload.p_child_id);
+        const archivedBy = String(payload.p_archived_by);
+        const child = dataStore.app_users.find(
+          (entry) =>
+            entry.id === childId &&
+            entry.role === "child" &&
+            entry.is_active !== false,
+        );
+        const parent = dataStore.app_users.find(
+          (entry) =>
+            entry.id === archivedBy &&
+            entry.role === "parent" &&
+            entry.is_active !== false,
+        );
+
+        if (!child || !parent) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Child not found or inactive" },
+          });
+        }
+
+        const childAccounts = dataStore.accounts.filter(
+          (entry) => entry.owner_child_id === childId && entry.is_active,
+        );
+        if (childAccounts.some((account) => getBalance(account.id) !== 0)) {
+          return Promise.resolve({
+            data: null,
+            error: {
+              message: "All child account balances must be zero before archiving",
+            },
+          });
+        }
+
+        const archivedAt = now();
+        dataStore = {
+          ...dataStore,
+          app_users: dataStore.app_users.map((entry) =>
+            entry.id === childId
+              ? {
+                  ...entry,
+                  is_active: false,
+                  archived_at: archivedAt,
+                  archived_by: archivedBy,
+                }
+              : entry,
+          ),
+          accounts: dataStore.accounts.map((entry) =>
+            entry.owner_child_id === childId && entry.is_active
+              ? {
+                  ...entry,
+                  is_active: false,
+                  closed_at: archivedAt,
+                  closed_by: archivedBy,
+                }
+              : entry,
+          ),
+        };
+
+        return Promise.resolve({ data: childAccounts.length, error: null });
+      }
+
+      if (fnName === "close_account") {
+        const accountId = String(payload.p_account_id);
+        const closedBy = String(payload.p_closed_by);
+        const account = dataStore.accounts.find(
+          (entry) => entry.id === accountId && entry.is_active,
+        );
+
+        if (!account) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Account not found or inactive" },
+          });
+        }
+
+        if (getBalance(accountId) !== 0) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Account balance must be zero before closing" },
+          });
+        }
+
+        const [closedAccount] = updateRows(
+          "accounts",
+          {
+            is_active: false,
+            closed_at: now(),
+            closed_by: closedBy,
+          },
+          [(entry) => entry.id === accountId],
+        );
+
+        return Promise.resolve({ data: closedAccount, error: null });
+      }
+
       if (fnName === "get_balance_before_date") {
         const accountId = String(payload.p_account_id);
         const before = String(payload.p_before);
@@ -533,6 +635,8 @@ const selectAccount = async (
 
 describe("Home Bank UI", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     loadMockData({});
     sessionStorage.clear();
   });
@@ -736,7 +840,7 @@ describe("Home Bank UI", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("deletes a child and related accounts", async () => {
+  it("archives a child with zero-balance accounts and preserves records", async () => {
     loadMockData({
       app_users: [
         { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
@@ -766,10 +870,102 @@ describe("Home Bank UI", () => {
     expect(childRow).not.toBeNull();
 
     await user.click(
-      within(childRow as HTMLElement).getByRole("button", { name: "删除" }),
+      within(childRow as HTMLElement).getByRole("button", { name: "归档" }),
     );
 
     expect(within(childCard).queryByText("小女儿")).not.toBeInTheDocument();
+  });
+
+  it("keeps a child active when an account still has a balance", async () => {
+    loadMockData({
+      app_users: [
+        { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小女儿", role: "child", pin: "1111" },
+      ],
+      accounts: [
+        {
+          id: "acc-1",
+          name: "零花钱",
+          currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
+        },
+      ],
+      transactions: [
+        {
+          id: "t-1",
+          account_id: "acc-1",
+          type: "deposit",
+          amount: 10,
+          currency: "CNY",
+          note: "余额",
+          related_account_id: null,
+          created_by: "parent",
+          created_at: "2024-01-01T10:00:00Z",
+        },
+      ],
+    });
+
+    render(App);
+    const user = userEvent.setup();
+
+    await loginAs(user, "爸爸", "1234");
+    await user.click(screen.getByRole("button", { name: "管理孩子" }));
+
+    const childCard = screen.getByTestId("child-card");
+    const childRow = within(childCard).getByText("小女儿").closest("li");
+    expect(childRow).not.toBeNull();
+
+    await user.click(
+      within(childRow as HTMLElement).getByRole("button", { name: "归档" }),
+    );
+
+    expect(
+      await screen.findByText("请先将该孩子所有账户余额清零后再归档。"),
+    ).toBeInTheDocument();
+    expect(within(childCard).getByText("小女儿")).toBeInTheDocument();
+  });
+
+  it("closes a zero-balance account through the database RPC", async () => {
+    loadMockData({
+      app_users: [
+        { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小女儿", role: "child", pin: "1111" },
+      ],
+      accounts: [
+        {
+          id: "acc-1",
+          name: "空账户",
+          currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
+        },
+      ],
+    });
+
+    render(App);
+    const user = userEvent.setup();
+
+    await loginAs(user, "爸爸", "1234");
+    await selectChild(user, "小女儿");
+
+    const accountSection = screen
+      .getByRole("heading", { name: "账户列表" })
+      .closest("section");
+    expect(accountSection).not.toBeNull();
+
+    await user.click(
+      within(accountSection as HTMLElement).getByRole("button", {
+        name: "编辑",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "关闭账户" }));
+
+    expect(
+      await screen.findByText("该孩子暂无账户。"),
+    ).toBeInTheDocument();
   });
 
   it("updates child name from list", async () => {

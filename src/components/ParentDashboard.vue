@@ -16,7 +16,7 @@
       :on-start-edit-child="onStartEditChild"
       :on-update-child="onUpdateChild"
       :on-cancel-edit-child="onCancelEditChild"
-      :on-delete-child="onDeleteChild"
+      :on-archive-child="onArchiveChild"
     />
 
     <CurrencySummaryGrid
@@ -124,7 +124,7 @@ const props = defineProps<{
   onStartEditChild: (child: AppUser) => void;
   onUpdateChild: () => void;
   onCancelEditChild: () => void;
-  onDeleteChild: (id: string) => void;
+  onArchiveChild: (id: string) => void;
   currencyTotals: Record<string, number>;
   formatAmount: (amount: number, currency: string) => string;
   selectedChildId: string | null;

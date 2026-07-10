@@ -104,9 +104,9 @@
             type="button"
             class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-200"
             :disabled="loading"
-            @click="onDeleteChild(child.id)"
+            @click="onArchiveChild(child.id)"
           >
-            删除
+            归档
           </button>
         </div>
       </li>
@@ -135,7 +135,7 @@ const props = defineProps<{
   onStartEditChild: (child: AppUser) => void;
   onUpdateChild: () => void;
   onCancelEditChild: () => void;
-  onDeleteChild: (id: string) => void;
+  onArchiveChild: (id: string) => void;
 }>();
 
 const emit = defineEmits<{

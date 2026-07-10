@@ -8,6 +8,7 @@ type AppUser = {
   name: string;
   role: "parent" | "child";
   pin: string;
+  is_active?: boolean;
 };
 
 const createSupabaseMock = (user: AppUser | null) => {
@@ -80,5 +81,33 @@ describe("useAuth", () => {
     expect(user.value?.id).toBe("user-1");
     expect(loginPin.value).toBe("");
     expect(sessionStorage.getItem("homebank.session")).toContain("user-1");
+  });
+
+  it("rejects an archived user even when the PIN matches", async () => {
+    const supabase = createSupabaseMock({
+      id: "user-1",
+      name: "已归档孩子",
+      role: "child",
+      pin: "1234",
+      is_active: false,
+    });
+    const user = ref<AppUser | null>(null);
+    const setStatus = vi.fn();
+
+    const { handleLogin } = useAuth({
+      supabase,
+      user,
+      loginPin: ref("1234"),
+      selectedLoginUserId: ref("user-1"),
+      isSupabaseConfigured: true,
+      sessionStatus: ref<string | null>(null),
+      loading: ref(false),
+      setStatus,
+    });
+
+    await handleLogin();
+
+    expect(user.value).toBeNull();
+    expect(setStatus).toHaveBeenCalledWith("PIN 无效，请重试。");
   });
 });

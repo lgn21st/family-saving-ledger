@@ -7,6 +7,7 @@ type AppUser = {
   name: string;
   role: "parent" | "child";
   pin: string;
+  is_active?: boolean;
   created_at?: string;
 };
 
@@ -40,6 +41,13 @@ describe("useUsers", () => {
         role: "child",
         pin: "1111",
         created_at: "2024-01-01T00:00:00Z",
+      },
+      {
+        id: "c2",
+        name: "已归档孩子",
+        role: "child",
+        pin: "2222",
+        is_active: false,
       },
     ]);
     const setErrorStatus = vi.fn();

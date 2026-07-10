@@ -59,7 +59,7 @@ export const useAuth = (params: {
       .maybeSingle();
 
     const resolvedUser = data as AppUser | null;
-    if (error || !resolvedUser) {
+    if (error || !resolvedUser || resolvedUser.is_active === false) {
       setStatus("PIN 无效，请重试。");
       loading.value = false;
       return;
@@ -85,7 +85,7 @@ export const useAuth = (params: {
       .maybeSingle();
 
     const resolvedUser = data as AppUser | null;
-    if (error || !resolvedUser) {
+    if (error || !resolvedUser || resolvedUser.is_active === false) {
       sessionStorage.removeItem("homebank.session");
       loading.value = false;
       return;

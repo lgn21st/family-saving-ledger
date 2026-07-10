@@ -53,7 +53,7 @@
       :on-start-edit-child="startEditChild"
       :on-update-child="handleUpdateChild"
       :on-cancel-edit-child="cancelEditChild"
-      :on-delete-child="handleDeleteChild"
+      :on-archive-child="handleArchiveChild"
       :currency-totals="currencyTotals"
       :format-amount="formatAmount"
       :selected-child-id="selectedChildId"
@@ -303,9 +303,9 @@ const { selectLoginUser, refreshAccountData, handleLogout } = useSession({
   selectedAccount,
 });
 
-const { handleCreateChild, handleDeleteChild, handleUpdateChild } = useChildren(
+const { handleCreateChild, handleArchiveChild, handleUpdateChild } = useChildren(
   {
-    supabase: supabaseFrom,
+    supabase: supabaseClient,
     user,
     loading,
     newChildName,
@@ -318,6 +318,10 @@ const { handleCreateChild, handleDeleteChild, handleUpdateChild } = useChildren(
       editingChildId.value = null;
       editingChildName.value = "";
     },
+    confirmArchiveChild: () =>
+      window.confirm(
+        "确认归档该孩子？\n所有账户余额必须先清零；孩子和账户将隐藏，但历史账本会保留。\n本月尚未结算的利息不会补发。",
+      ),
     setStatus,
     setErrorStatus,
     setSuccessStatus,
@@ -419,22 +423,16 @@ const cancelEditAccount = () => {
 const handleCloseAccount = async (account: { id: string; name: string }) => {
   if (!user.value) return;
 
-  const balance = balances.value[account.id] ?? 0;
-  if (Math.abs(balance) >= 0.000001) {
-    setStatus("请先将账户余额清零后再关闭。");
-    return;
-  }
-
   const confirmed = window.confirm(
-    `确认关闭账户「${account.name}」？\n关闭后将不再显示，且无法继续记账/转账。\n可能影响未结息月份的利息。`,
+    `确认关闭账户「${account.name}」？\n关闭后将不再显示，且无法继续记账/转账。\n本月尚未结算的利息不会补发。`,
   );
   if (!confirmed) return;
 
   loading.value = true;
-  const { error } = await supabaseFrom
-    .from("accounts")
-    .update({ is_active: false })
-    .eq("id", account.id);
+  const { error } = await supabaseRpc.rpc("close_account", {
+    p_account_id: account.id,
+    p_closed_by: user.value.id,
+  });
 
   if (error) {
     setErrorStatus(error.message);
