@@ -88,17 +88,39 @@
               :class="[
                 'flex min-w-0 items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-[border-color,background-color,box-shadow,transform] focus-visible:ring-3 focus-visible:ring-brand-100 focus-visible:outline-none active:translate-y-px',
                 account.id === selectedAccountId
-                  ? 'border-brand-300 bg-brand-50 shadow-sm ring-1 ring-brand-100'
+                  ? 'border-slate-950 bg-slate-950 text-white shadow-md'
                   : 'border-slate-200 bg-white hover:border-brand-200 hover:bg-slate-50',
               ]"
               @click="onSelectAccount(account.id)"
             >
               <span class="min-w-0">
-                <span class="block truncate text-sm font-semibold text-slate-900">{{ account.name }}</span>
-                <span class="mt-0.5 block text-xs text-slate-400">{{ account.currency }}</span>
+                <span
+                  :class="[
+                    'block truncate text-sm font-semibold',
+                    account.id === selectedAccountId ? 'text-white' : 'text-slate-900',
+                  ]"
+                >
+                  {{ account.name }}
+                </span>
+                <span class="mt-0.5 block text-xs text-slate-400">
+                  {{ account.currency }}
+                </span>
               </span>
-              <span class="numeric shrink-0 text-sm font-semibold text-slate-700">
-                {{ formatAmount(balances[account.id] ?? 0, account.currency) }}
+              <span class="flex shrink-0 flex-col items-end">
+                <span
+                  v-if="account.id === selectedAccountId"
+                  class="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300"
+                >
+                  当前
+                </span>
+                <span
+                  :class="[
+                    'numeric text-sm font-semibold',
+                    account.id === selectedAccountId ? 'mt-1 text-white' : 'text-slate-700',
+                  ]"
+                >
+                  {{ formatAmount(balances[account.id] ?? 0, account.currency) }}
+                </span>
               </span>
             </button>
           </div>
@@ -111,24 +133,6 @@
             </button>
           </div>
         </section>
-      </div>
-    </div>
-
-    <div
-      v-if="selectedAccount"
-      class="flex flex-col gap-3 bg-slate-950 px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div class="min-w-0">
-        <p class="text-xs font-semibold text-brand-300">
-          当前账户 · {{ selectedChildName }} · {{ selectedAccount.currency }}
-        </p>
-        <h3 class="mt-1 truncate text-xl font-semibold tracking-tight">{{ selectedAccount.name }}</h3>
-      </div>
-      <div class="shrink-0 sm:text-right">
-        <p class="text-[11px] font-semibold tracking-[0.12em] text-slate-400 uppercase">当前余额</p>
-        <p class="numeric mt-0.5 text-2xl font-semibold tracking-tight sm:text-3xl">
-          {{ selectedAccountBalance }}
-        </p>
       </div>
     </div>
   </section>
@@ -147,8 +151,6 @@ defineProps<{
   avatarOptions: AvatarOption[];
   accounts: Account[];
   selectedAccountId: string | null;
-  selectedAccount: Account | null;
-  selectedAccountBalance: string;
   balances: Record<string, number>;
   formatAmount: (amount: number, currency: string) => string;
   onSelectChild: (id: string) => void;

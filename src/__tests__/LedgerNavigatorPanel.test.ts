@@ -30,8 +30,6 @@ describe("LedgerNavigatorPanel", () => {
         avatarOptions: [],
         accounts: [account],
         selectedAccountId: "acc-1",
-        selectedAccount: account,
-        selectedAccountBalance: "120.00 CNY",
         balances: { "acc-1": 120 },
         formatAmount: (amount: number, currency: string) => `${amount.toFixed(2)} ${currency}`,
         onSelectChild,
@@ -43,8 +41,8 @@ describe("LedgerNavigatorPanel", () => {
     expect(screen.getByRole("heading", { name: "家庭资产" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "选择孩子" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "茉莉的账户" })).toBeTruthy();
-    expect(screen.getByText("当前账户 · 茉莉 · CNY")).toBeTruthy();
-    expect(screen.getAllByText("120.00 CNY")).toHaveLength(3);
+    expect(screen.getByText("当前")).toBeTruthy();
+    expect(screen.getAllByText("120.00 CNY")).toHaveLength(2);
 
     await user.click(screen.getByRole("button", { name: /茉茉/ }));
     expect(onSelectChild).toHaveBeenCalledWith("child-2");
@@ -64,8 +62,6 @@ describe("LedgerNavigatorPanel", () => {
         avatarOptions: [],
         accounts: [],
         selectedAccountId: null,
-        selectedAccount: null,
-        selectedAccountBalance: "0.00",
         balances: {},
         formatAmount: (amount: number, currency: string) => `${amount.toFixed(2)} ${currency}`,
         onSelectChild: vi.fn(),

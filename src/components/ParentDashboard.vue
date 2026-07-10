@@ -9,8 +9,6 @@
         :avatar-options="avatarOptions"
         :accounts="selectedChildAccounts"
         :selected-account-id="selectedAccountId"
-        :selected-account="selectedAccount"
-        :selected-account-balance="selectedAccountBalance"
         :balances="balances"
         :format-amount="formatAmount"
         :on-select-child="onSelectChild"
