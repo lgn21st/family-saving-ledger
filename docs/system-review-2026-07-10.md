@@ -1,5 +1,9 @@
 # System Review — 2026-07-10
 
+> Historical review snapshot. Current structure and commands live in
+> `docs/architecture.md`, `docs/development.md`, and `docs/database.md`;
+> validation counts below reflect the original review run.
+
 ## Scope and outcome
 
 The review covered the Vue application, composables, tests, PWA build, Supabase

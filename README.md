@@ -1,196 +1,73 @@
 # Family Saving Ledger
 
-Family Saving Ledger is a Vue 3 family savings ledger app. It provides a PIN-based login, parent-managed transactions, child read-only views, and automated monthly interest settlement. The UI is PWA-ready for desktop and mobile.
+面向家庭内部使用的储蓄账本 PWA。家长负责开户、记账、同币种转账、账户关闭和孩子归档；孩子以只读方式查看余额与流水。后端使用 Supabase，并按月结算利息。
 
-## Features
+## 快速开始
 
-- PIN-based login (4-digit) with parent/child roles
-- Multi-currency accounts grouped by currency
-- Parent actions: deposit, withdrawal, same-currency transfer, account closure,
-  and zero-balance child archival
-- Child actions: read-only access to balances and transactions
-- PWA installation for app-like usage
-
-## Tech Stack
-
-- Vite + Vue 3 + TypeScript
-- Supabase (local or cloud)
-- Tailwind CSS
-- Vite PWA plugin
-- Vitest + Testing Library
-
-## Local Development
-
-### 1) Install the toolchain and dependencies
-
-The project targets Node.js 24 LTS and npm 11. If you use `mise`, the checked-in
-toolchain file installs the pinned Node release:
+项目固定使用 Node.js 24 和 npm 11；可通过 `mise.toml` 或 `.nvmrc` 安装匹配版本。
 
 ```bash
 mise install
-```
-
-The `.nvmrc` file provides the same Node major for `nvm` users.
-
-```bash
 npm install
+supabase start
+supabase migration up --local
+npm run dev
 ```
 
-### 2) Set up Supabase
-
-You can run Supabase locally (recommended for development):
+创建 `.env.local`：
 
 ```bash
-supabase start
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_ANON_KEY=<supabase status 输出的本地 anon key>
 ```
 
-Apply the schema:
+如果需要从零重建并写入开发种子数据：
 
 ```bash
 supabase db reset --local
 ```
 
-`supabase db reset --local` deletes existing local data before applying all
-migrations and seed data.
+`db reset` 会清空本地数据。已有本地账本时应使用 `supabase migration up --local`。
 
-### 3) Configure environment variables
-
-Create `.env.local` in the project root:
+## 质量门禁
 
 ```bash
-VITE_SUPABASE_URL=your-supabase-url
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+npm run check     # lint + unit tests + typecheck/build
+npm run test:db   # 回滚式数据库业务风险测试
 ```
 
-### 4) Run the app
+## 项目结构
 
-```bash
-npm run dev
+```text
+src/
+├── app/            # 应用装配、页面状态和跨功能协调
+├── components/     # 展示与交互组件
+├── composables/    # 可独立测试的业务/UI 能力
+├── config/         # 币种与头像等静态配置
+├── types/          # 领域类型与 Supabase 边界类型
+└── test/           # 测试运行时配置
+supabase/
+├── migrations/     # 数据库结构唯一事实源
+├── tests/          # 数据库集成测试
+└── seed.sql        # 仅用于本地 reset 的开发数据
+docs/               # 架构、开发、数据库和审查记录
+skills/             # 可版本化、可安装的项目专用 Codex skills
 ```
 
-Open the URL shown in the terminal to access the app.
+## 文档
 
-## Supabase Data Model
+- [架构与依赖边界](docs/architecture.md)
+- [本地开发与质量门禁](docs/development.md)
+- [数据库迁移与运维](docs/database.md)
+- [2026-07-10 系统审查](docs/system-review-2026-07-10.md)
 
-Tables are defined in `supabase/schema.sql`:
+## 核心规则
 
-- `app_users`: PIN login user records (parent/child) with archive audit fields
-- `accounts`: account name, currency, owner child, creator, and close audit fields
-- `transactions`: ledger entries (deposit/withdrawal/transfer/interest)
-- `settings`: global configuration (interest rate, timezone)
-- `interest_log`: monthly interest audit
-- `cron.job`: scheduled interest runs (Supabase)
+- 只有活跃家长可以修改账本；孩子只读。
+- 交易金额必须为正，扣减与转出不能造成负余额。
+- 转账双方必须是不同的活跃同币种账户，并作为一组共同作废。
+- 已作废交易不计入余额和利息。
+- 账户和孩子只能在权威余额为零时关闭或归档，历史账本始终保留。
+- 每个账户每个月最多产生一笔有效利息交易和一条利息审计记录。
 
-### Seed Data
-
-The database is seeded automatically via `supabase db reset --local`.
-
-```sql
-with parents as (
-  insert into app_users (name, role, pin, avatar_id)
-  values
-    ('爸爸', 'parent', '1234', 'parent-1'),
-    ('妈妈', 'parent', '2345', 'parent-2')
-  returning id, name
-),
-children as (
-  insert into app_users (name, role, pin, avatar_id)
-  values
-    ('大女儿', 'child', '1111', 'child-2'),
-    ('小女儿', 'child', '2222', 'child-3')
-  returning id, name
-),
-settings_row as (
-  insert into settings (id, annual_rate, timezone)
-  values ('00000000-0000-0000-0000-000000000001', 10.00, 'Asia/Singapore')
-  on conflict (id) do update
-  set annual_rate = excluded.annual_rate,
-      timezone = excluded.timezone,
-      updated_at = now()
-  returning id
-)
-insert into accounts (name, currency, owner_child_id, created_by)
-values
-  (
-    '中国 - 日常',
-    'CNY',
-    (select id from children where name = '大女儿'),
-    (select id from parents where name = '爸爸')
-  ),
-  (
-    '中国 - 目标基金',
-    'CNY',
-    (select id from children where name = '大女儿'),
-    (select id from parents where name = '爸爸')
-  ),
-  (
-    '中国 - 日常',
-    'CNY',
-    (select id from children where name = '小女儿'),
-    (select id from parents where name = '妈妈')
-  );
-```
-
-## Usage
-
-- Parents log in to add deposits, withdrawals, and transfers.
-- Children log in to view balances and transaction history.
-- Transfers only work between accounts of the same currency.
-- Accounts can close only at an authoritative zero balance.
-- Children can be archived only after all their account balances reach zero;
-  ledger records and transfer pairs are retained.
-- Interest is settled automatically by a Supabase cron job.
-
-## Scripts
-
-- `npm run dev` - start local dev server
-- `npm run typecheck` - run Vue/TypeScript type checking
-- `npm run build` - production build
-- `npm run preview` - preview the production build
-- `npm run lint` - ESLint
-- `npm run test` - run unit tests
-- `npm run test:watch` - watch tests
-- `npm run test:db` - run rollback-only ledger integration tests locally
-- `npm run check` - run lint, tests, and production build
-
-## Tests
-
-Unit tests use Vitest + Testing Library and mock the Supabase client. Run:
-
-```bash
-npm run test
-```
-
-## Monthly Interest Calculation
-
-Monthly interest is settled by a Supabase cron job that runs on the 1st of each month at 09:00 Asia/Singapore time. The settlement logic lives in `run_monthly_interest()` inside `supabase/schema.sql` and uses the `settings` table for annual rate and timezone.
-
-### Manual Trigger
-
-Execute monthly interest settlement locally:
-
-```bash
-npx supabase db shell -c "SELECT run_monthly_interest();"
-```
-
-## PWA Notes
-
-The app includes a web manifest and service worker configuration. Install on iOS:
-
-1. Open the app in Safari
-2. Tap the Share icon
-3. Choose "Add to Home Screen"
-
-## Project Structure
-
-- `src/App.vue`: main UI and business logic
-- `src/main.ts`: app entry and service worker registration
-- `src/supabaseClient.ts`: Supabase client initialization
-- `supabase/schema.sql`: database schema
-- `supabase/migrations/`: database migrations
-- `public/manifest.webmanifest`: PWA manifest
-- `vite.config.ts`: Vite + PWA configuration
-
-## License
-
-This project is for family use and learning. Add a license if you plan to distribute it.
+本项目目前采用家庭内部可信边界下的 PIN 登录，不应直接扩展为公开多租户服务。
