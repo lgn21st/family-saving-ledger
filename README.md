@@ -6,7 +6,8 @@ Family Saving Ledger is a Vue 3 family savings ledger app. It provides a PIN-bas
 
 - PIN-based login (4-digit) with parent/child roles
 - Multi-currency accounts grouped by currency
-- Parent actions: deposit, withdrawal, same-currency transfer
+- Parent actions: deposit, withdrawal, same-currency transfer, account closure,
+  and zero-balance child archival
 - Child actions: read-only access to balances and transactions
 - PWA installation for app-like usage
 
@@ -20,7 +21,16 @@ Family Saving Ledger is a Vue 3 family savings ledger app. It provides a PIN-bas
 
 ## Local Development
 
-### 1) Install dependencies
+### 1) Install the toolchain and dependencies
+
+The project targets Node.js 24 LTS and npm 11. If you use `mise`, the checked-in
+toolchain file installs the pinned Node release:
+
+```bash
+mise install
+```
+
+The `.nvmrc` file provides the same Node major for `nvm` users.
 
 ```bash
 npm install
@@ -39,6 +49,9 @@ Apply the schema:
 ```bash
 supabase db reset --local
 ```
+
+`supabase db reset --local` deletes existing local data before applying all
+migrations and seed data.
 
 ### 3) Configure environment variables
 
@@ -61,8 +74,8 @@ Open the URL shown in the terminal to access the app.
 
 Tables are defined in `supabase/schema.sql`:
 
-- `app_users`: PIN login user records (parent/child)
-- `accounts`: account name, currency, owner child, creator
+- `app_users`: PIN login user records (parent/child) with archive audit fields
+- `accounts`: account name, currency, owner child, creator, and close audit fields
 - `transactions`: ledger entries (deposit/withdrawal/transfer/interest)
 - `settings`: global configuration (interest rate, timezone)
 - `interest_log`: monthly interest audit
@@ -123,16 +136,22 @@ values
 - Parents log in to add deposits, withdrawals, and transfers.
 - Children log in to view balances and transaction history.
 - Transfers only work between accounts of the same currency.
+- Accounts can close only at an authoritative zero balance.
+- Children can be archived only after all their account balances reach zero;
+  ledger records and transfer pairs are retained.
 - Interest is settled automatically by a Supabase cron job.
 
 ## Scripts
 
 - `npm run dev` - start local dev server
+- `npm run typecheck` - run Vue/TypeScript type checking
 - `npm run build` - production build
 - `npm run preview` - preview the production build
 - `npm run lint` - ESLint
 - `npm run test` - run unit tests
 - `npm run test:watch` - watch tests
+- `npm run test:db` - run rollback-only ledger integration tests locally
+- `npm run check` - run lint, tests, and production build
 
 ## Tests
 
