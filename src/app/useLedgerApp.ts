@@ -54,7 +54,7 @@ export const useLedgerApp = () => {
   const editingAccountName = ref("");
   const sessionStatus = ref<string | null>(null);
   const selectedChildId = ref<string | null>(null);
-  const showChildManager = ref(false);
+  const showSettings = ref(false);
   const showAccountCreator = ref(false);
 
   const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus } =
@@ -166,7 +166,7 @@ export const useLedgerApp = () => {
     selectedLoginUserId,
     selectedAccountId,
     selectedChildId,
-    showChildManager,
+    showSettings,
     showAccountCreator,
     clearTransactions,
     setStatus,
@@ -299,8 +299,8 @@ export const useLedgerApp = () => {
   const selectChild = (childId: string) => {
     selectedChildId.value = childId;
   };
-  const toggleChildManager = () => {
-    showChildManager.value = !showChildManager.value;
+  const toggleSettings = () => {
+    showSettings.value = !showSettings.value;
   };
   const handleLoadMoreForSelected = async () => {
     if (!selectedAccount.value) return;
@@ -387,13 +387,13 @@ export const useLedgerApp = () => {
     selectedLoginUserId,
     sessionStatus,
     showAccountCreator,
-    showChildManager,
+    showSettings,
     startEditAccount,
     startEditChild,
     status,
     statusTone,
     supportedCurrencies,
-    toggleChildManager,
+    toggleSettings,
     transactionLabels,
     transactionLoading,
     transactionTone,

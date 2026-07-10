@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <p class="section-kicker">家庭设置</p>
-        <h1 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">孩子管理</h1>
+        <h2 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">孩子管理</h2>
         <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
           新增孩子、设置登录 PIN 或更新名称。归档前需要先将孩子名下所有账户余额清零。
         </p>

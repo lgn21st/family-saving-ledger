@@ -20,14 +20,14 @@
     :user="user"
     :avatar-options="avatarOptions"
     :can-edit="canEdit"
-    :show-child-manager="showChildManager"
-    :on-toggle-child-manager="toggleChildManager"
+    :show-settings="showSettings"
+    :on-toggle-settings="toggleSettings"
     :on-logout="handleLogout"
     :status="status"
     :status-tone="statusTone"
   >
-    <ParentDashboard
-      v-if="user.role === 'parent'"
+    <SettingsPage
+      v-if="user.role === 'parent' && showSettings"
       v-model:new-child-name="newChildName"
       v-model:new-child-pin="newChildPin"
       v-model:new-child-avatar-id="newChildAvatarId"
@@ -37,12 +37,6 @@
       v-model:new-account-owner-id="newAccountOwnerId"
       v-model:show-account-creator="showAccountCreator"
       v-model:editing-account-name="editingAccountName"
-      v-model:amount-input="amountInput"
-      v-model:note-input="noteInput"
-      v-model:transfer-amount="transferAmount"
-      v-model:transfer-target-id="transferTargetId"
-      v-model:transfer-note="transferNote"
-      :show-child-manager="showChildManager"
       :child-users="childUsers"
       :child-avatars="childAvatars"
       :avatar-options="avatarOptions"
@@ -54,7 +48,6 @@
       :on-update-child="handleUpdateChild"
       :on-cancel-edit-child="cancelEditChild"
       :on-archive-child="handleArchiveChild"
-      :currency-totals="currencyTotals"
       :format-amount="formatAmount"
       :selected-child-id="selectedChildId"
       :selected-child-name="selectedChild?.name ?? null"
@@ -70,11 +63,33 @@
       :on-update-account="handleUpdateAccount"
       :on-cancel-edit-account="cancelEditAccount"
       :on-close-account="handleCloseAccount"
+    />
+
+    <ParentDashboard
+      v-else-if="user.role === 'parent'"
+      v-model:amount-input="amountInput"
+      v-model:note-input="noteInput"
+      v-model:transfer-amount="transferAmount"
+      v-model:transfer-target-id="transferTargetId"
+      v-model:transfer-note="transferNote"
+      :child-users="childUsers"
+      :avatar-options="avatarOptions"
+      :currency-totals="currencyTotals"
+      :format-amount="formatAmount"
+      :selected-child-id="selectedChildId"
+      :selected-child-name="selectedChild?.name ?? null"
+      :on-select-child="selectChild"
+      :selected-child-accounts="selectedChildAccounts"
+      :selected-account-id="selectedAccountId"
+      :balances="balances"
+      :on-select-account="selectAccount"
+      :on-open-settings="toggleSettings"
       :selected-account="selectedAccount"
       :can-edit="canEdit"
       :chart-points="chartPoints"
       :transfer-targets="transferTargets"
       :selected-account-balance="selectedAccountBalance"
+      :loading="loading"
       :paged-transactions="pagedTransactions"
       :has-more-transactions="hasMoreTransactions"
       :transaction-loading="transactionLoading"
@@ -117,6 +132,7 @@ import AppShell from "./components/AppShell.vue";
 import ChildDashboard from "./components/ChildDashboard.vue";
 import LoginPage from "./components/LoginPage.vue";
 import ParentDashboard from "./components/ParentDashboard.vue";
+import SettingsPage from "./components/SettingsPage.vue";
 
 const {
   amountInput,
@@ -177,13 +193,13 @@ const {
   selectedLoginUserId,
   sessionStatus,
   showAccountCreator,
-  showChildManager,
+  showSettings,
   startEditAccount,
   startEditChild,
   status,
   statusTone,
   supportedCurrencies,
-  toggleChildManager,
+  toggleSettings,
   transactionLabels,
   transactionLoading,
   transactionTone,

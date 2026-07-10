@@ -16,7 +16,7 @@ describe("useSession", () => {
       selectedLoginUserId,
       selectedAccountId: ref(null),
       selectedChildId: ref(null),
-      showChildManager: ref(false),
+      showSettings: ref(false),
       showAccountCreator: ref(false),
       clearTransactions: vi.fn(),
       setStatus: vi.fn(),
@@ -43,7 +43,7 @@ describe("useSession", () => {
       selectedLoginUserId: ref(null),
       selectedAccountId: ref("acc-1"),
       selectedChildId: ref(null),
-      showChildManager: ref(false),
+      showSettings: ref(false),
       showAccountCreator: ref(false),
       clearTransactions: vi.fn(),
       setStatus: vi.fn(),
@@ -65,7 +65,7 @@ describe("useSession", () => {
     const selectedLoginUserId = ref<string | null>("user-1");
     const selectedAccountId = ref<string | null>("acc-1");
     const selectedChildId = ref<string | null>("child-1");
-    const showChildManager = ref(true);
+    const showSettings = ref(true);
     const showAccountCreator = ref(true);
     const clearTransactions = vi.fn();
     const setStatus = vi.fn();
@@ -78,7 +78,7 @@ describe("useSession", () => {
       selectedLoginUserId,
       selectedAccountId,
       selectedChildId,
-      showChildManager,
+      showSettings,
       showAccountCreator,
       clearTransactions,
       setStatus,
@@ -95,7 +95,7 @@ describe("useSession", () => {
     expect(selectedLoginUserId.value).toBeNull();
     expect(selectedAccountId.value).toBeNull();
     expect(selectedChildId.value).toBeNull();
-    expect(showChildManager.value).toBe(false);
+    expect(showSettings.value).toBe(false);
     expect(showAccountCreator.value).toBe(false);
     expect(clearTransactions).toHaveBeenCalled();
     expect(setStatus).toHaveBeenCalledWith(null);

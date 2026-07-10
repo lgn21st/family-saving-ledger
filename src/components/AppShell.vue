@@ -10,8 +10,8 @@
       :user="user"
       :avatar-options="avatarOptions"
       :can-edit="canEdit"
-      :show-child-manager="showChildManager"
-      :on-toggle-child-manager="onToggleChildManager"
+      :show-settings="showSettings"
+      :on-toggle-settings="onToggleSettings"
       :on-logout="onLogout"
       :status="status"
       :status-tone="statusTone"
@@ -29,8 +29,8 @@ defineProps<{
   user: AppUser;
   avatarOptions: AvatarOption[];
   canEdit: boolean;
-  showChildManager: boolean;
-  onToggleChildManager: () => void;
+  showSettings: boolean;
+  onToggleSettings: () => void;
   onLogout: () => void;
   status: string | null;
   statusTone: StatusTone;

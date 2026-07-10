@@ -1,25 +1,6 @@
 <template>
   <main id="main-content" class="page-container flex-1 py-5 sm:py-7">
-    <ChildManagerCard
-      v-if="showChildManager"
-      v-model:new-child-name="newChildNameModel"
-      v-model:new-child-pin="newChildPinModel"
-      v-model:new-child-avatar-id="newChildAvatarIdModel"
-      v-model:editing-child-name="editingChildNameModel"
-      :child-users="childUsers"
-      :child-avatars="childAvatars"
-      :avatar-options="avatarOptions"
-      :editing-child-id="editingChildId"
-      :loading="loading"
-      :sanitize-pin="sanitizePin"
-      :on-create-child="onCreateChild"
-      :on-start-edit-child="onStartEditChild"
-      :on-update-child="onUpdateChild"
-      :on-cancel-edit-child="onCancelEditChild"
-      :on-archive-child="onArchiveChild"
-    />
-
-    <div v-else class="grid items-start gap-5 xl:grid-cols-[350px_minmax(0,1fr)] xl:gap-7">
+    <div class="grid items-start gap-5 xl:grid-cols-[350px_minmax(0,1fr)] xl:gap-7">
       <aside class="space-y-5 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:pr-1">
         <CurrencySummaryGrid
           :currency-totals="currencyTotals"
@@ -33,28 +14,14 @@
           :on-select-child="onSelectChild"
         />
 
-        <AccountListPanel
-          v-model:new-account-name="newAccountNameModel"
-          v-model:new-account-currency="newAccountCurrencyModel"
-          v-model:new-account-owner-id="newAccountOwnerIdModel"
-          v-model:show-account-creator="showAccountCreatorModel"
-          v-model:editing-account-name="editingAccountNameModel"
-          :selected-child-id="selectedChildId"
-          :selected-child-name="selectedChildName"
-          :child-users="childUsers"
-          :selected-child-accounts="selectedChildAccounts"
+        <AccountNavigationPanel
+          :accounts="selectedChildAccounts"
           :selected-account-id="selectedAccountId"
+          :selected-child-name="selectedChildName"
           :balances="balances"
-          :supported-currencies="supportedCurrencies"
-          :loading="loading"
-          :editing-account-id="editingAccountId"
           :format-amount="formatAmount"
-          :on-create-account="onCreateAccount"
           :on-select-account="onSelectAccount"
-          :on-start-edit-account="onStartEditAccount"
-          :on-update-account="onUpdateAccount"
-          :on-cancel-edit-account="onCancelEditAccount"
-          :on-close-account="onCloseAccount"
+          :on-open-settings="onOpenSettings"
         />
       </aside>
 
@@ -66,16 +33,20 @@
           <p class="section-kicker text-brand-300">
             {{ selectedChildName }} · {{ selectedAccount.currency }} 账户
           </p>
-          <AccountHeader
-            v-model:editing-account-name="editingAccountNameModel"
-            :is-editing="editingAccountId === selectedAccount.id"
-            :loading="loading"
-            :selected-account-name="selectedAccount.name"
-            :selected-account-currency="selectedAccount.currency"
-            :formatted-balance="selectedAccountBalance"
-            :on-update-account="onUpdateAccount"
-            :on-cancel-edit-account="onCancelEditAccount"
-          />
+          <div class="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div class="min-w-0">
+              <h2 class="truncate text-2xl font-semibold tracking-tight sm:text-3xl">
+                {{ selectedAccount.name }}
+              </h2>
+              <p class="mt-2 text-sm text-slate-400">查看趋势、记录收支或在同币种账户间转账</p>
+            </div>
+            <div class="shrink-0 sm:text-right">
+              <p class="text-xs font-semibold tracking-[0.14em] text-slate-400 uppercase">当前余额</p>
+              <p class="numeric mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
+                {{ selectedAccountBalance }}
+              </p>
+            </div>
+          </div>
         </section>
         <section v-else class="surface-card p-8 text-center sm:p-12">
           <p class="section-kicker">账户工作区</p>
@@ -83,6 +54,9 @@
           <p class="mt-2 text-sm text-slate-500">
             选择孩子和账户后，可查看余额趋势、记录收支和转账。
           </p>
+          <button type="button" class="button-secondary mt-4" @click="onOpenSettings">
+            管理账户
+          </button>
         </section>
 
         <AccountDetailPanel
@@ -148,43 +122,18 @@
 import { nextTick, ref } from "vue";
 
 import AccountDetailPanel from "./AccountDetailPanel.vue";
-import AccountHeader from "./AccountHeader.vue";
-import AccountListPanel from "./AccountListPanel.vue";
+import AccountNavigationPanel from "./AccountNavigationPanel.vue";
 import ChildListPanel from "./ChildListPanel.vue";
-import ChildManagerCard from "./ChildManagerCard.vue";
 import CurrencySummaryGrid from "./CurrencySummaryGrid.vue";
 import QuickTransactionSheet from "./QuickTransactionSheet.vue";
 import type { Account, AppUser, Transaction, TransferTarget } from "../types";
 import type { AvatarOption } from "../config";
 import type { ChartPoint } from "../composables/useChartData";
 
-const newChildNameModel = defineModel<string>("newChildName", { required: true });
-const newChildPinModel = defineModel<string>("newChildPin", { required: true });
-const newChildAvatarIdModel = defineModel<string>("newChildAvatarId", {
-  required: true,
-});
-const editingChildNameModel = defineModel<string>("editingChildName", {
-  required: true,
-});
-const newAccountNameModel = defineModel<string>("newAccountName", { required: true });
-const newAccountCurrencyModel = defineModel<string>("newAccountCurrency", {
-  required: true,
-});
-const newAccountOwnerIdModel = defineModel<string>("newAccountOwnerId", {
-  required: true,
-});
-const showAccountCreatorModel = defineModel<boolean>("showAccountCreator", {
-  required: true,
-});
-const editingAccountNameModel = defineModel<string>("editingAccountName", {
-  required: true,
-});
 const amountInputModel = defineModel<string>("amountInput", { required: true });
 const noteInputModel = defineModel<string>("noteInput", { required: true });
 const transferAmountModel = defineModel<string>("transferAmount", { required: true });
-const transferTargetIdModel = defineModel<string>("transferTargetId", {
-  required: true,
-});
+const transferTargetIdModel = defineModel<string>("transferTargetId", { required: true });
 const transferNoteModel = defineModel<string>("transferNote", { required: true });
 const showQuickTransaction = ref(false);
 const quickTransactionTrigger = ref<HTMLButtonElement | null>(null);
@@ -196,18 +145,8 @@ const closeQuickTransaction = async () => {
 };
 
 defineProps<{
-  showChildManager: boolean;
   childUsers: AppUser[];
-  childAvatars: AvatarOption[];
   avatarOptions: AvatarOption[];
-  editingChildId: string | null;
-  loading: boolean;
-  sanitizePin: (value: string) => string;
-  onCreateChild: () => void;
-  onStartEditChild: (child: AppUser) => void;
-  onUpdateChild: () => void;
-  onCancelEditChild: () => void;
-  onArchiveChild: (id: string) => void;
   currencyTotals: Record<string, number>;
   formatAmount: (amount: number, currency: string) => string;
   selectedChildId: string | null;
@@ -216,19 +155,14 @@ defineProps<{
   selectedChildAccounts: Account[];
   selectedAccountId: string | null;
   balances: Record<string, number>;
-  supportedCurrencies: string[];
-  editingAccountId: string | null;
-  onCreateAccount: () => void;
   onSelectAccount: (id: string) => void;
-  onStartEditAccount: (account: Account) => void;
-  onUpdateAccount: () => void;
-  onCancelEditAccount: () => void;
-  onCloseAccount: (account: Account) => void;
+  onOpenSettings: () => void;
   selectedAccount: Account | null;
   canEdit: boolean;
   chartPoints: ChartPoint[];
   transferTargets: TransferTarget[];
   selectedAccountBalance: string;
+  loading: boolean;
   pagedTransactions: Transaction[];
   hasMoreTransactions: boolean;
   transactionLoading: boolean;

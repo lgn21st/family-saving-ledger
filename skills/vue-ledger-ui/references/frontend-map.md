@@ -11,8 +11,10 @@
 
 - `LoginPage.vue`: user selection and PIN entry.
 - `AppShell.vue`: header, status and authenticated layout.
-- `ParentDashboard.vue`: parent account, child and transaction workflows.
+- `ParentDashboard.vue`: parent account selection, balances and transaction workflows.
 - `ChildDashboard.vue`: read-only child account view.
+- `SettingsPage.vue`: parent-only member and account lifecycle management.
+- `AccountNavigationPanel.vue`: read-only account selection in the parent workspace.
 
 ## Capabilities
 

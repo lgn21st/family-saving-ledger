@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/vue";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import ParentDashboard from "../components/ParentDashboard.vue";
@@ -12,47 +13,24 @@ const transactionLabels = {
 };
 
 describe("ParentDashboard", () => {
-  it("renders child manager and empty account state", () => {
+  it("keeps management actions out of the workspace and links to settings", async () => {
+    const user = userEvent.setup();
+    const onOpenSettings = vi.fn();
+
     render(ParentDashboard, {
       props: {
-        showChildManager: true,
         childUsers: [],
-        childAvatars: [],
         avatarOptions: [],
-        newChildName: "",
-        newChildPin: "",
-        newChildAvatarId: "",
-        editingChildId: null,
-        editingChildName: "",
-        loading: false,
-        sanitizePin: (value: string) => value,
-        onCreateChild: vi.fn(),
-        onStartEditChild: vi.fn(),
-        onUpdateChild: vi.fn(),
-        onCancelEditChild: vi.fn(),
-        onArchiveChild: vi.fn(),
         currencyTotals: {},
-        formatAmount: (amount: number, currency: string) =>
-          `${amount.toFixed(2)} ${currency}`,
+        formatAmount: (amount: number, currency: string) => `${amount.toFixed(2)} ${currency}`,
         selectedChildId: null,
         selectedChildName: null,
         onSelectChild: vi.fn(),
         selectedChildAccounts: [],
         selectedAccountId: null,
         balances: {},
-        supportedCurrencies: ["CNY"],
-        newAccountName: "",
-        newAccountCurrency: "CNY",
-        newAccountOwnerId: "",
-        showAccountCreator: false,
-        editingAccountId: null,
-        editingAccountName: "",
-        onCreateAccount: vi.fn(),
         onSelectAccount: vi.fn(),
-        onStartEditAccount: vi.fn(),
-        onUpdateAccount: vi.fn(),
-        onCancelEditAccount: vi.fn(),
-        onCloseAccount: vi.fn(),
+        onOpenSettings,
         selectedAccount: null,
         canEdit: true,
         chartPoints: [],
@@ -63,6 +41,7 @@ describe("ParentDashboard", () => {
         transferNote: "",
         transferTargets: [],
         selectedAccountBalance: "0.00",
+        loading: false,
         pagedTransactions: [],
         hasMoreTransactions: false,
         transactionLoading: false,
@@ -78,7 +57,9 @@ describe("ParentDashboard", () => {
       },
     });
 
-    expect(screen.getByText("孩子管理")).toBeTruthy();
-    expect(screen.getByText("暂无孩子。")).toBeTruthy();
+    expect(screen.queryByText("创建账户")).toBeNull();
+    expect(screen.queryByText("孩子管理")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "前往设置" }));
+    expect(onOpenSettings).toHaveBeenCalled();
   });
 });

@@ -24,11 +24,11 @@
           v-if="canEdit"
           type="button"
           class="button-secondary min-h-9 px-3 py-1.5 text-xs sm:text-sm"
-          :aria-pressed="showChildManager"
-          aria-label="管理孩子"
-          @click="onToggleChildManager"
+          :aria-pressed="showSettings"
+          :aria-label="showSettings ? '返回账本' : '打开设置'"
+          @click="onToggleSettings"
         >
-          {{ showChildManager ? "返回账本" : "成员管理" }}
+          {{ showSettings ? "返回账本" : "设置" }}
         </button>
         <span
           class="hidden rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 sm:inline-flex"
@@ -58,8 +58,8 @@ defineProps<{
   user: AppUser;
   avatarOptions: AvatarOption[];
   canEdit: boolean;
-  showChildManager: boolean;
-  onToggleChildManager: () => void;
+  showSettings: boolean;
+  onToggleSettings: () => void;
   onLogout: () => void;
   status: string | null;
   statusTone: StatusTone;

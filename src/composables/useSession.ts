@@ -9,7 +9,7 @@ export const useSession = (params: {
   selectedLoginUserId: Ref<string | null>;
   selectedAccountId: Ref<string | null>;
   selectedChildId: Ref<string | null>;
-  showChildManager: Ref<boolean>;
+  showSettings: Ref<boolean>;
   showAccountCreator: Ref<boolean>;
   clearTransactions: () => void;
   setStatus: (message: string | null) => void;
@@ -25,7 +25,7 @@ export const useSession = (params: {
     selectedLoginUserId,
     selectedAccountId,
     selectedChildId,
-    showChildManager,
+    showSettings,
     showAccountCreator,
     clearTransactions,
     setStatus,
@@ -55,7 +55,7 @@ export const useSession = (params: {
     loginPin.value = "";
     selectedLoginUserId.value = null;
     selectedChildId.value = null;
-    showChildManager.value = false;
+    showSettings.value = false;
     showAccountCreator.value = false;
     sessionStorage.removeItem("homebank.session");
   };

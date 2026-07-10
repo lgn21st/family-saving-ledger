@@ -7,7 +7,7 @@ import AppHeader from "../components/AppHeader.vue";
 describe("AppHeader", () => {
   it("renders user info and triggers actions", async () => {
     const user = userEvent.setup();
-    const onToggleChildManager = vi.fn();
+    const onToggleSettings = vi.fn();
     const onLogout = vi.fn();
 
     render(AppHeader, {
@@ -27,8 +27,8 @@ describe("AppHeader", () => {
           },
         ],
         canEdit: true,
-        showChildManager: false,
-        onToggleChildManager,
+        showSettings: false,
+        onToggleSettings,
         onLogout,
         status: "提示",
         statusTone: "text-rose-600",
@@ -37,8 +37,8 @@ describe("AppHeader", () => {
 
     expect(screen.getByText("爸爸")).toBeTruthy();
     expect(screen.getByText("提示")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "管理孩子" }));
-    expect(onToggleChildManager).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    expect(onToggleSettings).toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "退出" }));
     expect(onLogout).toHaveBeenCalled();

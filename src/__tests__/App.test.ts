@@ -620,7 +620,7 @@ const selectAccount = async (
   name: string,
 ) => {
   const accountSection = screen
-    .getByRole("heading", { name: "账户列表" })
+    .getByRole("heading", { name: "账户", exact: true })
     .closest("section");
   expect(accountSection).not.toBeNull();
 
@@ -863,7 +863,7 @@ describe("Home Bank UI", () => {
     const user = userEvent.setup();
 
     await loginAs(user, "爸爸", "1234");
-    await user.click(screen.getByRole("button", { name: "管理孩子" }));
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
 
     const childCard = screen.getByTestId("child-card");
     const childRow = within(childCard).getByText("小女儿").closest("li");
@@ -911,7 +911,7 @@ describe("Home Bank UI", () => {
     const user = userEvent.setup();
 
     await loginAs(user, "爸爸", "1234");
-    await user.click(screen.getByRole("button", { name: "管理孩子" }));
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
 
     const childCard = screen.getByTestId("child-card");
     const childRow = within(childCard).getByText("小女儿").closest("li");
@@ -950,6 +950,8 @@ describe("Home Bank UI", () => {
 
     await loginAs(user, "爸爸", "1234");
     await selectChild(user, "小女儿");
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    await user.click(screen.getByRole("button", { name: "账户", exact: true }));
 
     const accountSection = screen
       .getByRole("heading", { name: "账户列表" })
@@ -980,7 +982,7 @@ describe("Home Bank UI", () => {
     const user = userEvent.setup();
 
     await loginAs(user, "爸爸", "1234");
-    await user.click(screen.getByRole("button", { name: "管理孩子" }));
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
 
     const childCard = screen.getByTestId("child-card");
     const childRow = within(childCard).getByText("小女儿").closest("li");
@@ -1024,6 +1026,8 @@ describe("Home Bank UI", () => {
 
     await loginAs(user, "妈妈", "2222");
     await selectChild(user, "小朋友");
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    await user.click(screen.getByRole("button", { name: "账户", exact: true }));
 
     const accountSection = screen
       .getByRole("heading", { name: "账户列表" })
