@@ -1,0 +1,4 @@
+interface:
+  display_name: "Family Ledger Vue UI"
+  short_description: "Refactor and test the family ledger frontend"
+  default_prompt: "Use $vue-ledger-ui to implement a tested frontend change while preserving the project architecture."

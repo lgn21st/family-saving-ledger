@@ -1,0 +1,4 @@
+interface:
+  display_name: "Family Ledger Supabase Ops"
+  short_description: "Run safe ledger migrations, tests, and data refreshes"
+  default_prompt: "Use $supabase-ledger-ops to perform a safe Supabase operation and verify the result."

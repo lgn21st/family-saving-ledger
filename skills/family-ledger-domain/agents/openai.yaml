@@ -1,0 +1,4 @@
+interface:
+  display_name: "Family Ledger Domain"
+  short_description: "Protect ledger rules, balances, and audit history"
+  default_prompt: "Use $family-ledger-domain to review or change ledger behavior without breaking its invariants."
