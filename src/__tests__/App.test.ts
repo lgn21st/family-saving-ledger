@@ -603,13 +603,13 @@ const selectChild = async (
   user: ReturnType<typeof userEvent.setup>,
   name: string,
 ) => {
-  const childSection = screen
-    .getByRole("heading", { name: "孩子列表" })
+  const navigator = screen
+    .getByRole("heading", { name: "选择孩子和账户" })
     .closest("section");
-  expect(childSection).not.toBeNull();
+  expect(navigator).not.toBeNull();
 
   await user.click(
-    await within(childSection as HTMLElement).findByRole("button", {
+    await within(navigator as HTMLElement).findByRole("button", {
       name: new RegExp(name),
     }),
   );
@@ -619,18 +619,18 @@ const selectAccount = async (
   user: ReturnType<typeof userEvent.setup>,
   name: string,
 ) => {
-  const accountSection = screen
-    .getByRole("heading", { name: "账户", exact: true })
+  const navigator = screen
+    .getByRole("heading", { name: "选择孩子和账户" })
     .closest("section");
-  expect(accountSection).not.toBeNull();
+  expect(navigator).not.toBeNull();
 
   await user.click(
-    within(accountSection as HTMLElement).getByRole("button", {
+    within(navigator as HTMLElement).getByRole("button", {
       name: new RegExp(name),
     }),
   );
 
-  return accountSection as HTMLElement;
+  return navigator as HTMLElement;
 };
 
 describe("Home Bank UI", () => {
@@ -732,12 +732,11 @@ describe("Home Bank UI", () => {
     await loginAs(user, "爸爸", "1234");
 
     expect(
-      await screen.findByRole("heading", { name: "孩子列表" }),
+      await screen.findByRole("heading", { name: "选择孩子" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("SGD 资产总览")).toBeInTheDocument();
-    expect(screen.getByText("CNY 资产总览")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "家庭资产" })).toBeInTheDocument();
     const childList = screen
-      .getByRole("heading", { name: "孩子列表" })
+      .getByRole("heading", { name: "选择孩子" })
       .closest("section");
     expect(childList).not.toBeNull();
 

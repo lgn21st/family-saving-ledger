@@ -14,7 +14,7 @@
 - `ParentDashboard.vue`: parent account selection, balances and transaction workflows.
 - `ChildDashboard.vue`: read-only child account view.
 - `SettingsPage.vue`: parent-only member and account lifecycle management.
-- `AccountNavigationPanel.vue`: read-only account selection in the parent workspace.
+- `LedgerNavigatorPanel.vue`: unified family assets, child selection, account selection and current-account context.
 
 ## Capabilities
 
