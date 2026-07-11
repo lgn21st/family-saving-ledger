@@ -778,9 +778,10 @@ describe("Home Bank UI", () => {
     await selectChild(user, "小女儿");
     await selectAccount(user, "零花钱");
 
-    await user.type(screen.getByPlaceholderText("金额"), "20");
-    await user.type(screen.getByPlaceholderText("备注（必填）"), "零花钱发放");
-    await user.click(screen.getByRole("button", { name: "增加" }));
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    await user.type(screen.getByLabelText("存入金额"), "20");
+    await user.type(screen.getByLabelText("用途或备注"), "零花钱发放");
+    await user.click(screen.getByRole("button", { name: "确认存入" }));
 
     expect(await screen.findByText("零花钱发放")).toBeInTheDocument();
   });
@@ -830,12 +831,13 @@ describe("Home Bank UI", () => {
     await selectChild(user, "小女儿");
     await selectAccount(user, "旅行基金");
 
-    const transferCard = screen.getByTestId("transfer-card");
-    const select = within(transferCard).getByRole("combobox");
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    await user.click(screen.getByRole("button", { name: "转账" }));
+    const select = screen.getByRole("combobox", { name: "转入账户" });
 
-    expect(within(select).getByText("小儿子 - 旅行基金")).toBeInTheDocument();
+    expect(within(select).getByText("小儿子 · 旅行基金 · SGD")).toBeInTheDocument();
     expect(
-      within(select).queryByText("小儿子 - 零花钱"),
+      within(select).queryByText("小儿子 · 零花钱 · CNY"),
     ).not.toBeInTheDocument();
   });
 
@@ -1231,9 +1233,11 @@ describe("Home Bank UI", () => {
     await selectChild(user, "小女儿");
     await selectAccount(user, "零花钱");
 
-    await user.type(screen.getByPlaceholderText("金额"), "10");
-    await user.type(screen.getByPlaceholderText("备注（必填）"), "测试扣减");
-    await user.click(screen.getByRole("button", { name: "减少" }));
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    await user.click(screen.getByRole("button", { name: "取出" }));
+    await user.type(screen.getByLabelText("取出金额"), "10");
+    await user.type(screen.getByLabelText("用途或备注"), "测试扣减");
+    await user.click(screen.getByRole("button", { name: "确认取出" }));
 
     expect(await screen.findByText("余额不足。")).toBeInTheDocument();
     expect(screen.queryByText("测试扣减")).not.toBeInTheDocument();

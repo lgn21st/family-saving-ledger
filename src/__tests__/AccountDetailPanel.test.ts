@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/vue";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import AccountDetailPanel from "../components/AccountDetailPanel.vue";
@@ -22,17 +21,7 @@ describe("AccountDetailPanel", () => {
     render(AccountDetailPanel, {
       props: {
         selectedAccount: null,
-        selectedChildName: null,
-        canEdit: false,
         chartPoints: [],
-        amountInput: "",
-        noteInput: "",
-        transferAmount: "",
-        transferTargetId: "",
-        transferNote: "",
-        transferTargets: [],
-        formattedBalance: "0.00",
-        loading: false,
         pagedTransactions: [],
         hasMoreTransactions: false,
         transactionLoading: false,
@@ -42,8 +31,6 @@ describe("AccountDetailPanel", () => {
         transactionTone,
         getTransactionNote,
         formatTimestamp,
-        onAddTransaction: vi.fn(),
-        onTransfer: vi.fn(),
         onLoadMore: vi.fn(),
         onVoidTransaction: vi.fn(),
       },
@@ -52,28 +39,14 @@ describe("AccountDetailPanel", () => {
     expect(screen.getByText("暂无账户。")).toBeTruthy();
   });
 
-  it("bubbles input updates from child controls", async () => {
-    const user = userEvent.setup();
-    const onUpdateAmount = vi.fn();
-    const onUpdateNote = vi.fn();
-
+  it("keeps account details focused on trend and history", () => {
     render(AccountDetailPanel, {
       props: {
         selectedAccount: { id: "acc-1", name: "零钱", currency: "CNY" },
-        selectedChildName: "小乐",
-        canEdit: true,
         chartPoints: [
           { date: new Date("2024-01-01"), balance: 8 },
           { date: new Date("2024-01-30"), balance: 10 },
         ],
-        amountInput: "",
-        noteInput: "",
-        transferAmount: "",
-        transferTargetId: "",
-        transferNote: "",
-        transferTargets: [{ id: "acc-2", name: "教育金", ownerName: "小乐" }],
-        formattedBalance: "10.00 CNY",
-        loading: false,
         pagedTransactions: [],
         hasMoreTransactions: false,
         transactionLoading: false,
@@ -83,19 +56,13 @@ describe("AccountDetailPanel", () => {
         transactionTone,
         getTransactionNote,
         formatTimestamp,
-        onAddTransaction: vi.fn(),
-        onTransfer: vi.fn(),
         onLoadMore: vi.fn(),
         onVoidTransaction: vi.fn(),
-        "onUpdate:amountInput": onUpdateAmount,
-        "onUpdate:noteInput": onUpdateNote,
       },
     });
 
-    await user.type(screen.getByPlaceholderText("金额"), "5");
-    expect(onUpdateAmount).toHaveBeenLastCalledWith("5");
-
-    await user.type(screen.getByPlaceholderText("备注（必填）"), "零花钱");
-    expect(onUpdateNote).toHaveBeenLastCalledWith("零花钱");
+    expect(screen.getByRole("heading", { name: "近 30 天趋势" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "交易记录" })).toBeTruthy();
+    expect(screen.queryByText("新增/扣减")).toBeNull();
   });
 });
