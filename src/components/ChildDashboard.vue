@@ -1,9 +1,6 @@
 <template>
-  <main
-    id="main-content"
-    class="page-container grid flex-1 items-start gap-5 py-5 sm:py-7 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-7"
-  >
-    <AccountSidebar
+  <main id="main-content" class="page-container flex-1 space-y-5 py-5 sm:py-7">
+    <ChildAccountNavigatorPanel
       :grouped-accounts="groupedAccounts"
       :selected-account-id="selectedAccountId"
       :balances="balances"
@@ -11,35 +8,26 @@
       :on-select-account="onSelectAccount"
     />
 
-    <section class="min-w-0">
-      <AccountOverviewPanel
-        :selected-account="selectedAccount"
-        :formatted-balance="
-          selectedAccount
-            ? formatAmount(
-                balances[selectedAccount.id] ?? 0,
-                selectedAccount.currency,
-              )
-            : '0.00'
-        "
-        :chart-points="chartPoints"
-        :paged-transactions="pagedTransactions"
-        :has-more-transactions="hasMoreTransactions"
-        :transaction-loading="transactionLoading"
-        :transaction-labels="transactionLabels"
-        :format-signed-amount="formatSignedAmount"
-        :transaction-tone="transactionTone"
-        :get-transaction-note="getTransactionNote"
-        :format-timestamp="formatTimestamp"
-        :on-load-more="onLoadMore"
-      />
-    </section>
+    <AccountOverviewPanel
+      v-if="selectedAccount"
+      :selected-account="selectedAccount"
+      :chart-points="chartPoints"
+      :paged-transactions="pagedTransactions"
+      :has-more-transactions="hasMoreTransactions"
+      :transaction-loading="transactionLoading"
+      :transaction-labels="transactionLabels"
+      :format-signed-amount="formatSignedAmount"
+      :transaction-tone="transactionTone"
+      :get-transaction-note="getTransactionNote"
+      :format-timestamp="formatTimestamp"
+      :on-load-more="onLoadMore"
+    />
   </main>
 </template>
 
 <script setup lang="ts">
 import AccountOverviewPanel from "./AccountOverviewPanel.vue";
-import AccountSidebar from "./AccountSidebar.vue";
+import ChildAccountNavigatorPanel from "./ChildAccountNavigatorPanel.vue";
 import type { Account, Transaction } from "../types";
 import type { ChartPoint } from "../composables/useChartData";
 

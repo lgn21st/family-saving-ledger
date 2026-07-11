@@ -10,34 +10,7 @@ const getTransactionNote = () => "备注";
 const formatTimestamp = () => "2024-01-01 10:00";
 
 describe("AccountOverviewPanel", () => {
-  it("shows empty state when no account is selected", () => {
-    render(AccountOverviewPanel, {
-      props: {
-        selectedAccount: null,
-        formattedBalance: "0.00",
-        chartPoints: [],
-        pagedTransactions: [],
-        hasMoreTransactions: false,
-        transactionLoading: false,
-        transactionLabels: {
-          deposit: "增加",
-          withdrawal: "减少",
-          transfer_in: "转入",
-          transfer_out: "转出",
-          interest: "利息",
-        },
-        formatSignedAmount,
-        transactionTone,
-        getTransactionNote,
-        formatTimestamp,
-        onLoadMore: vi.fn(),
-      },
-    });
-
-    expect(screen.getByText("暂无账户。")).toBeTruthy();
-  });
-
-  it("renders account details and loads more transactions", async () => {
+  it("renders read-only trend and transactions without repeating account overview", async () => {
     const user = userEvent.setup();
     const onLoadMore = vi.fn();
 
@@ -47,8 +20,10 @@ describe("AccountOverviewPanel", () => {
           id: "acc-1",
           name: "零钱",
           currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
         },
-        formattedBalance: "10.00 CNY",
         chartPoints: [
           { date: new Date("2024-01-01"), balance: 8 },
           { date: new Date("2024-01-30"), balance: 10 },
@@ -83,8 +58,8 @@ describe("AccountOverviewPanel", () => {
       },
     });
 
-    expect(screen.getByText("零钱")).toBeTruthy();
-    expect(screen.getByText("10.00 CNY", { exact: true })).toBeTruthy();
+    expect(screen.queryByText("零钱")).toBeNull();
+    expect(screen.getByText(/当前 10\.00 CNY/)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "加载更多" }));
     expect(onLoadMore).toHaveBeenCalled();
   });

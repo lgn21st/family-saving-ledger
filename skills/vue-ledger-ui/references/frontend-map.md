@@ -13,6 +13,7 @@
 - `AppShell.vue`: header, status and authenticated layout.
 - `ParentDashboard.vue`: parent account selection, balances and transaction workflows.
 - `ChildDashboard.vue`: read-only child account view.
+- `ChildAccountNavigatorPanel.vue`: child-only currency summary, account selection and current balance context.
 - `SettingsPage.vue`: parent-only member and account lifecycle management.
 - `LedgerNavigatorPanel.vue`: unified family assets, child selection, account selection and current-account context.
 

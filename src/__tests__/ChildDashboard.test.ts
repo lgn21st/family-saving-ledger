@@ -13,7 +13,7 @@ const transactionLabels = {
 };
 
 describe("ChildDashboard", () => {
-  it("renders sidebar and allows loading more", async () => {
+  it("renders unified read-only navigation and allows loading more", async () => {
     const user = userEvent.setup();
     const onLoadMore = vi.fn();
     const onSelectAccount = vi.fn();
@@ -73,6 +73,8 @@ describe("ChildDashboard", () => {
       },
     });
 
+    expect(screen.getByRole("heading", { name: "账户与余额" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "按币种汇总" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: /零钱/ }));
     expect(onSelectAccount).toHaveBeenCalledWith("acc-1");
 
