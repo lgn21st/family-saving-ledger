@@ -10,6 +10,40 @@
 SSH alias 使用本机已配置的 SSH agent 完成认证；仓库不保存私钥路径或凭据。
 端口转发、control socket 和连接复用均由该 alias 定义，npm 任务不重复这些配置。
 
+本机 `~/.ssh/config` 使用以下结构。只在本机替换尖括号占位符，不要把真实 IP、
+用户名或凭据提交到仓库；专用 alias 必须位于 `Host *` 之前：
+
+```sshconfig
+Host jarvis-supabase
+  HostName <JARVIS_HOST_OR_IP>
+  User <JARVIS_SSH_USER>
+  TCPKeepAlive yes
+  ForwardAgent no
+
+  ControlPath ~/.ssh/control-supabase-%C
+  ExitOnForwardFailure yes
+  LocalForward 127.0.0.1:54321 127.0.0.1:54321
+  LocalForward 127.0.0.1:54322 127.0.0.1:54322
+
+Host jarvis-sg
+  HostName <JARVIS_HOST_OR_IP>
+  User <JARVIS_SSH_USER>
+  TCPKeepAlive yes
+  ForwardAgent no
+
+Host *
+  IdentityAgent ~/.config/1password/agent.sock
+  ControlMaster auto
+  ControlPath /tmp/ssh_mux_%h_%p_%r
+  ControlPersist 10m
+  ServerAliveInterval 10
+  ServerAliveCountMax 3
+  GSSAPIAuthentication no
+```
+
+`jarvis-supabase` 的独立 `ControlPath` 防止关闭应用隧道时影响 Docker 使用的
+`jarvis-sg` 连接。配置文件权限应为仅当前用户可写，例如 `chmod 600 ~/.ssh/config`。
+
 ```bash
 mise install
 npm install
