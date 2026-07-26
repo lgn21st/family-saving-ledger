@@ -71,8 +71,7 @@ then
     lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1 \
       && die "本机端口 $port 已被占用"
   done
-  ssh -o IdentitiesOnly=no -S ~/.ssh/control-supabase-%C \
-    -fN "$TUNNEL_HOST"
+  ssh -S ~/.ssh/control-supabase-%C -fN "$TUNNEL_HOST"
 fi
 ssh -o ControlMaster=no -S ~/.ssh/control-supabase-%C \
   -O check "$TUNNEL_HOST" >/dev/null 2>&1 \

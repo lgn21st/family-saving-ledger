@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "remote:up": "ssh -o IdentitiesOnly=no -S ~/.ssh/control-supabase-%C -fN jarvis-supabase",
+    "remote:up": "ssh -S ~/.ssh/control-supabase-%C -fN jarvis-supabase",
     "remote:status": "ssh -o ControlMaster=no -S ~/.ssh/control-supabase-%C -O check jarvis-supabase",
     "remote:down": "ssh -o ControlMaster=no -S ~/.ssh/control-supabase-%C -O exit jarvis-supabase",
     "typecheck": "vue-tsc -b",
