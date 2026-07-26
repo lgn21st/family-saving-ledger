@@ -11,6 +11,9 @@ dist
 dist-ssr
 *.local
 
+# Local production database archives (sensitive, never commit)
+/.local-backups/
+
 # Supabase local CLI artifacts
 supabase/.branches/
 supabase/.temp/

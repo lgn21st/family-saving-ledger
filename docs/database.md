@@ -2,63 +2,52 @@
 
 ## 单一事实源
 
-数据库结构由 `supabase/migrations/*.sql` 按时间顺序定义。不要维护独立的完整 schema 快照；它会与真实迁移历史产生漂移。
+`supabase/migrations/*.sql` 定义 schema，包括表、函数、GRANT、default privileges、
+RLS、policy 和视图安全属性。控制台临时修复必须补 forward-only migration。
 
-`supabase/seed.sql` 只用于本地开发 reset，不应包含生产数据。
+`supabase/seed.sql` 只用于可丢弃的开发数据，不包含 production 数据。
 
-## 本地迁移
-
-查看和应用尚未执行的 migration：
+## Migration
 
 ```bash
+# jarvis 增量更新
 supabase migration list --local
 supabase migration up --local
-```
 
-从零验证全部 migration：
-
-```bash
-supabase db reset --local
-npm run test:db
-```
-
-`db reset` 会清空本地数据。已有本地账本时不要用它代替 `migration up --local`。
-
-## 远程迁移
-
-先只查看计划：
-
-```bash
+# production：先 dry-run
 supabase db push --linked --dry-run
+supabase db push --linked
 ```
 
-Supabase 的直接数据库地址默认要求 IPv6。IPv4-only 网络出现 `TLS EOF` 或直连失败时，从 Dashboard 的 **Connect** 页面复制 Session Pooler URL（端口 `5432`）：
+IPv4-only 网络使用 Dashboard Connect 的 Session Pooler URL：
 
 ```bash
 supabase db push --db-url '<SESSION_POOLER_URL>' --dry-run
 supabase db push --db-url '<SESSION_POOLER_URL>'
 ```
 
-不要把数据库密码写入仓库、shell 脚本或文档。
+不要保存或提交包含数据库密码的 URL。不要用 `db reset` 代替日常增量 migration。
 
-## 核心不变量
+## 账本不变量
 
-- `app_users.role` 只能是 `parent` 或 `child`；只有活跃家长可调用修改型 RPC。
-- 账户币种在创建后保持稳定；交易币种必须匹配账户。
-- 余额只统计未作废交易；扣减和转出为负向，其余为正向。
-- 转账使用同一个 `transfer_group_id` 形成一进一出，金额和币种一致，并共同作废。
-- 账户关闭和孩子归档必须在锁内重新计算权威余额，余额非零时拒绝。
-- 结息按账户和月份幂等，并通过确定性锁顺序避免并发重复。
+- 只有活跃家长可通过修改型 RPC 操作账本。
+- 金额为正；扣减和转出不能产生负余额。
+- 转账账户不同、币种相同，两行共享 group ID 并共同作废。
+- 作废交易不计入余额和利息。
+- 账户关闭、孩子归档要求权威余额为零并保留历史。
+- 月度结息按账户/月幂等；并发多行操作按 UUID 确定顺序加锁。
 
-## 数据同步
+## API 权限
 
-远程数据覆盖本地前必须：
+`20260726165000_restore_api_privileges.sql` 维护 API 对象权限；内部
+`run_monthly_interest_impl()` 不允许 `anon/authenticated` 执行。
+`supabase/tests/api_privileges.sql` 验证数据库角色和实际读取权限。
 
-1. 确认关联项目。
-2. 确认本地和远程 migration 兼容。
-3. 导出同步前本地备份。
-4. 验证远程 dump 只包含预期表。
-5. 使用 `ON_ERROR_STOP` 和单事务导入。
-6. 对比核心表行数，并运行 `npm run test:db`。
+数据库或权限变化后运行：
 
-dump 文件和本地备份都可能包含明文 PIN 与账本数据，用完后应删除。
+```bash
+npm run test:db
+supabase db lint --local --level warning
+```
+
+production 数据同步见 [Production → jarvis-sg](production-data-sync.md)。
