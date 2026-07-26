@@ -8,6 +8,7 @@
 - SSH alias `jarvis-supabase` → jarvis 上的 Supabase API 和 PostgreSQL 隧道
 
 SSH alias 使用本机已配置的 SSH agent 完成认证；仓库不保存私钥路径或凭据。
+端口转发、control socket 和连接复用均由该 alias 定义，npm 任务不重复这些配置。
 
 ```bash
 mise install
