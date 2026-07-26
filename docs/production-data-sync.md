@@ -6,13 +6,14 @@
 ./scripts/sync-production-to-jarvis.sh
 ```
 
-脚本固定使用当前 Supabase linked project 和 `remote → ssh://jarvis-sg`。覆盖前必须
-输入 `SYNC jarvis-sg`。
+脚本固定使用当前 Supabase linked project、`remote → ssh://jarvis-sg` Docker
+context，以及 `jarvis-supabase` 应用隧道 alias。覆盖前必须输入
+`SYNC jarvis-sg`。
 
 脚本会：
 
 1. 导出并校验 production 五张业务表。
-2. 建立 SSH 隧道并启动四服务精简栈。
+2. 通过 `jarvis-supabase` 建立 SSH 隧道并启动四服务精简栈。
 3. 增量应用 jarvis migrations。
 4. 备份 jarvis 当前数据。
 5. 单事务恢复 production 数据并验证账本不变量。

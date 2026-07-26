@@ -4,8 +4,7 @@ set -euo pipefail
 umask 077
 
 readonly DB_CONTAINER="supabase_db_family-saving-ledger"
-readonly SSH_HOST="jarvis-sg"
-readonly TUNNEL_SOCKET="/tmp/family-saving-ledger-supabase-tunnel.sock"
+readonly TUNNEL_HOST="jarvis-supabase"
 readonly APP_TABLES="accounts app_users interest_log settings transactions"
 readonly MINIMAL_EXCLUDES="edge-runtime,imgproxy,logflare,mailpit,postgres-meta,realtime,storage-api,studio,supavisor,vector"
 
@@ -65,20 +64,19 @@ expected_tables="$(printf '%s\n' $APP_TABLES | LC_ALL=C sort)"
 shasum -a 256 "$production_dump" > "$production_dump.sha256"
 
 printf '2/5 启动 jarvis-sg 最小 Supabase 服务集...\n'
-if ! ssh -S "$TUNNEL_SOCKET" -O check "$SSH_HOST" >/dev/null 2>&1; then
-  [[ ! -e "$TUNNEL_SOCKET" ]] || rm -f "$TUNNEL_SOCKET"
+if ! ssh -o ControlMaster=no -S ~/.ssh/control-supabase-%C \
+  -O check "$TUNNEL_HOST" >/dev/null 2>&1
+then
   for port in 54321 54322; do
     lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1 \
       && die "本机端口 $port 已被占用"
   done
-  ssh -M -S "$TUNNEL_SOCKET" -fN \
-    -o ExitOnForwardFailure=yes \
-    -o ServerAliveInterval=15 \
-    -o ServerAliveCountMax=6 \
-    -L 54321:127.0.0.1:54321 \
-    -L 54322:127.0.0.1:54322 \
-    "$SSH_HOST"
+  ssh -o IdentitiesOnly=no -S ~/.ssh/control-supabase-%C \
+    -fN "$TUNNEL_HOST"
 fi
+ssh -o ControlMaster=no -S ~/.ssh/control-supabase-%C \
+  -O check "$TUNNEL_HOST" >/dev/null 2>&1 \
+  || die "无法建立 $TUNNEL_HOST SSH 隧道"
 supabase start --exclude "$MINIMAL_EXCLUDES" >/dev/null
 docker inspect "$DB_CONTAINER" >/dev/null 2>&1 || die "找不到 $DB_CONTAINER"
 supabase migration up --local

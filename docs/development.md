@@ -5,6 +5,9 @@
 - Node.js 24、npm 11
 - Supabase CLI、独立 Docker CLI
 - Docker context `remote` → `ssh://jarvis-sg`
+- SSH alias `jarvis-supabase` → jarvis 上的 Supabase API 和 PostgreSQL 隧道
+
+SSH alias 使用本机已配置的 SSH agent 完成认证；仓库不保存私钥路径或凭据。
 
 ```bash
 mise install
@@ -15,24 +18,17 @@ docker context use remote
 ## 日常开发
 
 jarvis 上运行 PostgreSQL、GoTrue、Kong、PostgREST。本机 Docker CLI 通过
-`remote` context 管理容器；前端和数据库工具通过 SSH 隧道访问：
+`remote` context 和 `jarvis-sg` 管理容器；前端和数据库工具通过
+`jarvis-supabase` 隧道访问：
 
 - Supabase API：`http://localhost:54321`
 - PostgreSQL：`localhost:54322`
 
-建立隧道并启动前端：
+日常开发先建立并检查隧道，再启动前端：
 
 ```bash
-ssh -M \
-  -S /tmp/family-saving-ledger-supabase-tunnel.sock \
-  -fN \
-  -o ExitOnForwardFailure=yes \
-  -o ServerAliveInterval=15 \
-  -o ServerAliveCountMax=6 \
-  -L 54321:127.0.0.1:54321 \
-  -L 54322:127.0.0.1:54322 \
-  jarvis-sg
-
+npm run remote:up
+npm run remote:status
 npm run dev
 ```
 
@@ -40,8 +36,12 @@ npm run dev
 停止前端并关闭隧道，无需停止 jarvis 容器：
 
 ```bash
-ssh -S /tmp/family-saving-ledger-supabase-tunnel.sock -O exit jarvis-sg
+npm run remote:down
 ```
+
+两个 SSH alias 职责不同：`jarvis-sg` 供 Docker context 和远程管理使用；
+`jarvis-supabase` 只负责应用端口转发。不要把 `LocalForward` 配到
+`jarvis-sg`，以免 Docker CLI 的 SSH 连接参与隧道生命周期。
 
 如果 jarvis 容器未运行，先建立隧道，再启动精简栈：
 
@@ -55,7 +55,8 @@ supabase start --exclude edge-runtime,imgproxy,logflare,mailpit,postgres-meta,re
 ./scripts/sync-production-to-jarvis.sh
 ```
 
-该脚本会建立隧道、启动精简栈、备份 jarvis 数据，并在明确确认后执行覆盖。
+该脚本会复用 `jarvis-supabase`、启动精简栈、备份 jarvis 数据，并在明确确认后
+执行覆盖。
 详细说明见 [Production → jarvis-sg](production-data-sync.md)。
 
 需要停止远程服务但保留数据库 volume 时运行 `supabase stop`。
