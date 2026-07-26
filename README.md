@@ -4,10 +4,11 @@
 
 ## 快速开始
 
-项目固定使用 Node.js 24 和 npm 11；可通过 `mise.toml` 或 `.nvmrc` 安装匹配版本。
+项目固定使用 Node.js 24 LTS 和 npm 12；可通过 `mise.toml` 或 `.nvmrc` 安装匹配版本。
 
 ```bash
 mise install
+npm install --global npm@12.0.1
 npm install
 supabase start
 supabase migration up --local

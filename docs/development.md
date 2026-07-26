@@ -2,7 +2,7 @@
 
 ## 环境
 
-- Node.js 24、npm 11
+- Node.js 24 LTS、npm 12
 - Supabase CLI、独立 Docker CLI
 - Docker context `remote` → `ssh://jarvis-sg`
 - SSH alias `jarvis-supabase` → jarvis 上的 Supabase API 和 PostgreSQL 隧道
@@ -46,9 +46,13 @@ Host *
 
 ```bash
 mise install
+npm install --global npm@12.0.1
 npm install
 docker context use remote
 ```
+
+Node.js 24 自带的 npm 版本可能低于项目固定版本；首次安装或切换 Node 版本后，先执行
+上述 npm 全局升级命令，再安装项目依赖。
 
 ## 日常开发
 
