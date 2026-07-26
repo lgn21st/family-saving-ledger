@@ -74,7 +74,13 @@ import { nextTick, ref } from "vue";
 import AccountDetailPanel from "./AccountDetailPanel.vue";
 import LedgerNavigatorPanel from "./LedgerNavigatorPanel.vue";
 import QuickTransactionSheet from "./QuickTransactionSheet.vue";
-import type { Account, AppUser, Transaction, TransferTarget } from "../types";
+import type {
+  Account,
+  AppUser,
+  LedgerActionResult,
+  Transaction,
+  TransferTarget,
+} from "../types";
 import type { AvatarOption } from "../config";
 import type { ChartPoint } from "../composables/useChartData";
 
@@ -119,8 +125,8 @@ defineProps<{
   transactionTone: (transaction: Transaction) => string;
   getTransactionNote: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
-  onAddTransaction: (type: "deposit" | "withdrawal") => void;
-  onTransfer: () => void;
+  onAddTransaction: (type: "deposit" | "withdrawal") => Promise<LedgerActionResult>;
+  onTransfer: () => Promise<LedgerActionResult>;
   onLoadMore: () => void;
   onVoidTransaction: (transaction: Transaction) => void;
 }>();

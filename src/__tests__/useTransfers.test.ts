@@ -12,8 +12,6 @@ const createSupabaseMock = () => {
 describe("useTransfers", () => {
   it("validates transfer inputs and blocks invalid requests", async () => {
     const supabase = createSupabaseMock();
-    const setStatus = vi.fn();
-    const setErrorStatus = vi.fn();
     const setSuccessStatus = vi.fn();
     const refreshAccountData = vi.fn(async () => undefined);
 
@@ -27,21 +25,19 @@ describe("useTransfers", () => {
       accounts: ref([{ id: "acc-1", currency: "CNY" }]),
       balances: ref({ "acc-1": 10 }),
       loading: ref(false),
-      setStatus,
-      setErrorStatus,
       setSuccessStatus,
       refreshAccountData,
     });
 
-    await handle.handleTransfer();
-    expect(setStatus).toHaveBeenCalledWith("请输入有效转账金额。");
+    expect(await handle.handleTransfer()).toEqual({
+      ok: false,
+      message: "请输入有效转账金额。",
+    });
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
 
   it("executes transfer and clears form", async () => {
     const supabase = createSupabaseMock();
-    const setStatus = vi.fn();
-    const setErrorStatus = vi.fn();
     const setSuccessStatus = vi.fn();
     const refreshAccountData = vi.fn(async () => undefined);
 
@@ -62,13 +58,11 @@ describe("useTransfers", () => {
       ]),
       balances: ref({ "acc-1": 10 }),
       loading: ref(false),
-      setStatus,
-      setErrorStatus,
       setSuccessStatus,
       refreshAccountData,
     });
 
-    await handleTransfer();
+    expect(await handleTransfer()).toEqual({ ok: true });
     expect(supabase.rpc).toHaveBeenCalled();
     expect(transferAmount.value).toBe("");
     expect(transferTargetId.value).toBe("");

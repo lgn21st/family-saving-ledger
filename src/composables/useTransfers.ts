@@ -1,5 +1,6 @@
 import type { Ref } from "vue";
-import type { Account, SupabaseRpcClient } from "../types";
+import type { Account, LedgerActionResult, SupabaseRpcClient } from "../types";
+import { mapErrorMessage } from "./useStatus";
 
 export const useTransfers = (params: {
   supabase: SupabaseRpcClient;
@@ -11,8 +12,6 @@ export const useTransfers = (params: {
   accounts: Ref<Account[]>;
   balances: Ref<Record<string, number>>;
   loading: Ref<boolean>;
-  setStatus: (message: string) => void;
-  setErrorStatus: (message: string) => void;
   setSuccessStatus: (message: string) => void;
   refreshAccountData: () => Promise<void>;
 }) => {
@@ -26,46 +25,41 @@ export const useTransfers = (params: {
     accounts,
     balances,
     loading,
-    setStatus,
-    setErrorStatus,
     setSuccessStatus,
     refreshAccountData,
   } = params;
 
-  const handleTransfer = async () => {
-    if (!selectedAccountId.value || !userId.value) return;
+  const handleTransfer = async (): Promise<LedgerActionResult> => {
+    if (!selectedAccountId.value || !userId.value) {
+      return { ok: false, message: "请选择可用的转出账户。" };
+    }
 
     const amount = Number.parseFloat(transferAmount.value);
     if (Number.isNaN(amount) || amount <= 0) {
-      setStatus("请输入有效转账金额。");
-      return;
+      return { ok: false, message: "请输入有效转账金额。" };
     }
 
     const balance = balances.value[selectedAccountId.value] ?? 0;
     if (amount > balance) {
-      setStatus("转出金额不能超过当前余额。");
-      return;
+      return { ok: false, message: "转出金额不能超过当前余额。" };
     }
 
     const targetAccount = accounts.value.find(
       (account) => account.id === transferTargetId.value,
     );
     if (!targetAccount) {
-      setStatus("请选择转入账户。");
-      return;
+      return { ok: false, message: "请选择转入账户。" };
     }
 
     const sourceAccount = accounts.value.find(
       (account) => account.id === selectedAccountId.value,
     );
     if (!sourceAccount) {
-      setStatus("请选择转出账户。");
-      return;
+      return { ok: false, message: "请选择转出账户。" };
     }
 
     if (targetAccount.currency !== sourceAccount.currency) {
-      setStatus("只能在相同币种账户之间转账。");
-      return;
+      return { ok: false, message: "只能在相同币种账户之间转账。" };
     }
 
     loading.value = true;
@@ -78,9 +72,8 @@ export const useTransfers = (params: {
     });
 
     if (error) {
-      setErrorStatus(error.message);
       loading.value = false;
-      return;
+      return { ok: false, message: mapErrorMessage(error.message) };
     }
 
     transferAmount.value = "";
@@ -89,6 +82,7 @@ export const useTransfers = (params: {
     setSuccessStatus("转账完成。");
     await refreshAccountData();
     loading.value = false;
+    return { ok: true };
   };
 
   return {

@@ -51,3 +51,7 @@ export type Transaction = {
 };
 
 export type StatusTone = "success" | "error";
+
+export type LedgerActionResult =
+  | { ok: true }
+  | { ok: false; message: string };

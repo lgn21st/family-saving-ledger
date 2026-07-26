@@ -217,8 +217,6 @@ export const useLedgerApp = () => {
     accounts,
     balances,
     loading,
-    setStatus,
-    setErrorStatus,
     setSuccessStatus,
     refreshAccountData,
   });
@@ -246,8 +244,6 @@ export const useLedgerApp = () => {
     amountInput,
     noteInput,
     loading,
-    setStatus,
-    setErrorStatus,
     setSuccessStatus,
     refreshAccountData,
   });

@@ -1,7 +1,7 @@
 import { getCurrentInstance, onBeforeUnmount, ref, watch } from "vue";
 import type { StatusTone } from "../types";
 
-const mapErrorMessage = (message: string) => {
+export const mapErrorMessage = (message: string) => {
   if (message.includes("Insufficient balance")) return "余额不足。";
   if (message.includes("Account not found or inactive")) return "账户不可用。";
   if (message.includes("Account balance must be zero before closing"))

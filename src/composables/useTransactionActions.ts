@@ -1,5 +1,6 @@
 import type { Ref } from "vue";
-import type { SupabaseRpcClient } from "../types";
+import type { LedgerActionResult, SupabaseRpcClient } from "../types";
+import { mapErrorMessage } from "./useStatus";
 
 export const useTransactionActions = (params: {
   supabase: SupabaseRpcClient;
@@ -8,8 +9,6 @@ export const useTransactionActions = (params: {
   amountInput: Ref<string>;
   noteInput: Ref<string>;
   loading: Ref<boolean>;
-  setStatus: (message: string) => void;
-  setErrorStatus: (message: string) => void;
   setSuccessStatus: (message: string) => void;
   refreshAccountData: () => Promise<void>;
 }) => {
@@ -20,25 +19,25 @@ export const useTransactionActions = (params: {
     amountInput,
     noteInput,
     loading,
-    setStatus,
-    setErrorStatus,
     setSuccessStatus,
     refreshAccountData,
   } = params;
 
-  const handleAddTransaction = async (type: "deposit" | "withdrawal") => {
-    if (!selectedAccountId.value || !userId.value) return;
+  const handleAddTransaction = async (
+    type: "deposit" | "withdrawal",
+  ): Promise<LedgerActionResult> => {
+    if (!selectedAccountId.value || !userId.value) {
+      return { ok: false, message: "请选择可用账户。" };
+    }
 
     const amount = Number.parseFloat(amountInput.value);
     if (Number.isNaN(amount) || amount <= 0) {
-      setStatus("请输入有效金额。");
-      return;
+      return { ok: false, message: "请输入有效金额。" };
     }
 
     const trimmedNote = noteInput.value.trim();
     if (!trimmedNote) {
-      setStatus("请输入备注。");
-      return;
+      return { ok: false, message: "请输入备注。" };
     }
 
     loading.value = true;
@@ -51,9 +50,8 @@ export const useTransactionActions = (params: {
     });
 
     if (error) {
-      setErrorStatus(error.message);
       loading.value = false;
-      return;
+      return { ok: false, message: mapErrorMessage(error.message) };
     }
 
     amountInput.value = "";
@@ -61,6 +59,7 @@ export const useTransactionActions = (params: {
     setSuccessStatus("已保存交易。");
     await refreshAccountData();
     loading.value = false;
+    return { ok: true };
   };
 
   return {

@@ -22,6 +22,39 @@
         <button type="button" class="button-quiet min-h-10" @click="onClose">关闭</button>
       </div>
 
+      <div
+        v-if="successDetails"
+        class="mt-8 text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">
+          ✓
+        </div>
+        <h3 class="mt-4 text-xl font-semibold text-slate-950">
+          {{ successDetails.actionLabel }} {{ successDetails.formattedAmount }}
+        </h3>
+        <p class="mt-2 text-sm text-slate-500">{{ successDetails.accountLabel }}</p>
+        <div class="mt-5 rounded-2xl bg-slate-950 px-4 py-4 text-white">
+          <p class="text-xs font-medium text-slate-400">当前余额</p>
+          <p class="numeric mt-1 text-lg font-semibold">{{ formattedBalance }}</p>
+        </div>
+        <div class="mt-6 grid grid-cols-2 gap-3">
+          <button type="button" class="button-secondary min-h-12" @click="startAnotherEntry">
+            再记一笔
+          </button>
+          <button
+            ref="completeButton"
+            type="button"
+            class="button-primary min-h-12"
+            @click="onClose"
+          >
+            完成
+          </button>
+        </div>
+      </div>
+
+      <template v-else>
       <div class="mt-5 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1" aria-label="记账类型">
         <button
           v-for="option in modeOptions"
@@ -31,7 +64,8 @@
           class="min-h-11 rounded-xl px-2 text-sm font-semibold transition"
           :class="mode === option.value ? option.activeClass : 'text-slate-500 hover:text-slate-900'"
           :aria-pressed="mode === option.value"
-          @click="mode = option.value"
+          :disabled="loading"
+          @click="selectMode(option.value)"
         >
           {{ option.label }}
         </button>
@@ -44,6 +78,7 @@
             id="quick-child"
             class="app-input"
             :value="selectedChildId ?? ''"
+            :disabled="loading"
             @change="handleChildChange"
           >
             <option value="" disabled>选择孩子</option>
@@ -60,7 +95,7 @@
             id="quick-account"
             class="app-input"
             :value="selectedAccountId ?? ''"
-            :disabled="!selectedChildId || selectedChildAccounts.length === 0"
+            :disabled="loading || !selectedChildId || selectedChildAccounts.length === 0"
             @change="handleAccountChange"
           >
             <option value="" disabled>选择账户</option>
@@ -96,6 +131,7 @@
               autocomplete="off"
               placeholder="0.00"
               class="app-input numeric h-14 pr-16 text-xl font-semibold"
+              :disabled="loading"
               @input="onAmountInput"
             />
             <span class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs font-semibold text-slate-400">
@@ -110,7 +146,7 @@
             id="quick-transfer-target"
             :value="transferTargetId"
             class="app-input"
-            :disabled="!selectedAccountId || transferTargets.length === 0"
+            :disabled="loading || !selectedAccountId || transferTargets.length === 0"
             @change="onTransferTargetChange"
           >
             <option value="">{{ transferTargetPlaceholder }}</option>
@@ -133,6 +169,7 @@
             autocomplete="off"
             :placeholder="notePlaceholder"
             class="app-input"
+            :disabled="loading"
             @input="onNoteInput"
           />
         </div>
@@ -147,6 +184,14 @@
       >
         {{ loading ? '正在保存…' : submitLabel }}
       </button>
+      <p
+        v-if="submissionError"
+        class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
+        role="alert"
+      >
+        {{ submissionError }}
+      </p>
+      </template>
     </section>
   </div>
 </template>
@@ -154,7 +199,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
-import type { Account, AppUser, TransferTarget } from "../types";
+import type { Account, AppUser, LedgerActionResult, TransferTarget } from "../types";
 
 type EntryMode = "deposit" | "withdrawal" | "transfer";
 
@@ -173,8 +218,8 @@ const props = defineProps<{
   loading: boolean;
   onSelectChild: (id: string) => void;
   onSelectAccount: (id: string) => void;
-  onAddTransaction: (type: "deposit" | "withdrawal") => void;
-  onTransfer: () => void;
+  onAddTransaction: (type: "deposit" | "withdrawal") => Promise<LedgerActionResult>;
+  onTransfer: () => Promise<LedgerActionResult>;
   onClose: () => void;
 }>();
 
@@ -189,6 +234,13 @@ const emit = defineEmits<{
 const mode = ref<EntryMode>("deposit");
 const panelElement = ref<HTMLElement | null>(null);
 const modeControls = ref<HTMLButtonElement[]>([]);
+const completeButton = ref<HTMLButtonElement | null>(null);
+const submissionError = ref<string | null>(null);
+const successDetails = ref<{
+  actionLabel: string;
+  formattedAmount: string;
+  accountLabel: string;
+} | null>(null);
 let previousBodyOverflow = "";
 
 const modeOptions: Array<{ value: EntryMode; label: string; activeClass: string }> = [
@@ -206,11 +258,13 @@ const activeAmount = computed(() =>
 const activeNote = computed(() =>
   mode.value === "transfer" ? props.transferNote : props.noteInput,
 );
-const modeDescription = computed(() => ({
-  deposit: "为当前账户增加一笔收入。",
-  withdrawal: "记录一笔支出，并检查余额是否充足。",
-  transfer: "从当前账户转到另一个同币种账户。",
-})[mode.value]);
+const modeDescription = computed(() => successDetails.value
+  ? "交易已保存，并已更新账户余额。"
+  : ({
+      deposit: "为当前账户增加一笔收入。",
+      withdrawal: "记录一笔支出，并检查余额是否充足。",
+      transfer: "从当前账户转到另一个同币种账户。",
+    })[mode.value]);
 const amountLabel = computed(() => ({ deposit: "存入金额", withdrawal: "取出金额", transfer: "转账金额" })[mode.value]);
 const notePlaceholder = computed(() => mode.value === "transfer" ? "例如：转入教育金" : "例如：零花钱、奖励、购买文具");
 const transferTargetPlaceholder = computed(() =>
@@ -239,29 +293,76 @@ onBeforeUnmount(() => {
 });
 
 const handleChildChange = (event: Event) => {
+  submissionError.value = null;
   const value = (event.target as HTMLSelectElement | null)?.value;
   if (value) props.onSelectChild(value);
 };
 const handleAccountChange = (event: Event) => {
+  submissionError.value = null;
   const value = (event.target as HTMLSelectElement | null)?.value;
   if (value) props.onSelectAccount(value);
 };
 const onAmountInput = (event: Event) => {
+  submissionError.value = null;
   const value = (event.target as HTMLInputElement | null)?.value ?? "";
   if (mode.value === "transfer") emit("update:transferAmount", value);
   else emit("update:amountInput", value);
 };
 const onNoteInput = (event: Event) => {
+  submissionError.value = null;
   const value = (event.target as HTMLInputElement | null)?.value ?? "";
   if (mode.value === "transfer") emit("update:transferNote", value);
   else emit("update:noteInput", value);
 };
 const onTransferTargetChange = (event: Event) => {
+  submissionError.value = null;
   emit("update:transferTargetId", (event.target as HTMLSelectElement | null)?.value ?? "");
 };
-const submit = () => {
-  if (mode.value === "transfer") props.onTransfer();
-  else props.onAddTransaction(mode.value);
+const selectMode = (nextMode: EntryMode) => {
+  submissionError.value = null;
+  mode.value = nextMode;
+};
+const submit = async () => {
+  submissionError.value = null;
+  const submittedMode = mode.value;
+  const amount = Number.parseFloat(activeAmount.value);
+  const sourceAccount = selectedAccount.value;
+  const childName = props.childUsers.find(
+    (child) => child.id === props.selectedChildId,
+  )?.name;
+  const transferTarget = props.transferTargets.find(
+    (account) => account.id === props.transferTargetId,
+  );
+  const result = submittedMode === "transfer"
+    ? await props.onTransfer()
+    : await props.onAddTransaction(submittedMode);
+
+  if (!result.ok) {
+    submissionError.value = result.message;
+    return;
+  }
+
+  const sourceLabel = [childName, sourceAccount?.name].filter(Boolean).join(" · ");
+  const targetLabel = transferTarget
+    ? `${transferTarget.ownerName} · ${transferTarget.name}`
+    : "";
+  successDetails.value = {
+    actionLabel: ({ deposit: "已存入", withdrawal: "已取出", transfer: "已转账" })[
+      submittedMode
+    ],
+    formattedAmount: `${amount.toFixed(2)} ${sourceAccount?.currency ?? ""}`.trim(),
+    accountLabel: submittedMode === "transfer"
+      ? `${sourceLabel} → ${targetLabel}`
+      : sourceLabel,
+  };
+  await nextTick();
+  completeButton.value?.focus();
+};
+const startAnotherEntry = async () => {
+  successDetails.value = null;
+  submissionError.value = null;
+  await nextTick();
+  panelElement.value?.querySelector<HTMLInputElement>("#quick-amount")?.focus();
 };
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === "Escape") {
