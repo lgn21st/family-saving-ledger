@@ -52,9 +52,7 @@ describe("TransactionsList", () => {
     vi.advanceTimersByTime(600);
     await nextTick();
 
-    expect(
-      await screen.findByText("确认撤销这笔交易？该操作会影响当前余额。"),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "撤销这笔交易？" })).toBeTruthy();
     await fireEvent.click(screen.getByRole("button", { name: "确认撤销" }));
     expect(onVoidTransaction).toHaveBeenCalledWith(baseTransaction);
 
@@ -129,7 +127,7 @@ describe("TransactionsList", () => {
       },
     });
 
-    const trigger = screen.getByRole("button", { name: "撤销交易" });
+    const trigger = screen.getByRole("button", { name: /^撤销交易：/ });
     await user.click(trigger);
     const cancel = screen.getByRole("button", { name: "取消" });
     expect(document.activeElement).toBe(cancel);

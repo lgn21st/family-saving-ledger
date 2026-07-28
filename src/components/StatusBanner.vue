@@ -5,8 +5,16 @@
     :role="tone === 'error' ? 'alert' : 'status'"
     aria-live="polite"
   >
-    <div :class="bannerClass" class="pointer-events-auto w-full shadow-lg">
-      {{ message }}
+    <div :class="bannerClass" class="pointer-events-auto flex w-full items-start gap-3 shadow-lg">
+      <span class="min-w-0 flex-1">{{ message }}</span>
+      <button
+        type="button"
+        class="-my-1 min-h-8 shrink-0 rounded-lg px-2 text-xs font-semibold hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none"
+        aria-label="关闭提示"
+        @click="onDismiss"
+      >
+        关闭
+      </button>
     </div>
   </div>
 </template>
@@ -18,6 +26,7 @@ import type { StatusTone } from "../types";
 const props = defineProps<{
   message: string | null;
   tone: StatusTone;
+  onDismiss: () => void;
 }>();
 
 const bannerClass = computed(() => [

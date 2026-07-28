@@ -1,5 +1,9 @@
 <template>
   <section class="surface-card p-5 sm:p-6" aria-labelledby="transactions-title">
+    <div
+      :inert="Boolean(confirmingTransaction) || undefined"
+      :aria-hidden="confirmingTransaction ? 'true' : undefined"
+    >
     <div class="flex items-start justify-between gap-4">
       <div>
         <p class="section-kicker">账户明细</p>
@@ -94,8 +98,13 @@
                 >
                   {{ getTransactionNote(transaction) }}
                 </p>
-                <time class="mt-1.5 block text-xs text-slate-400" :datetime="transaction.created_at">
-                  {{ formatTimestamp(transaction.created_at) }}
+                <time
+                  class="mt-1.5 block text-xs text-slate-400"
+                  :datetime="transaction.created_at"
+                  :aria-label="formatTimestamp(transaction.created_at)"
+                >
+                  <span class="sm:hidden">{{ formatCompactTimestamp(transaction.created_at) }}</span>
+                  <span class="hidden sm:inline">{{ formatTimestamp(transaction.created_at) }}</span>
                 </time>
               </div>
               <div class="shrink-0 text-right">
@@ -111,7 +120,8 @@
                 <button
                   v-if="canVoid && !transaction.is_void"
                   type="button"
-                  class="mt-2 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 opacity-100 transition-[background-color,color,opacity] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-3 focus-visible:ring-rose-100 focus-visible:outline-none sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                  class="mt-2 min-h-11 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 opacity-100 transition-[background-color,color,opacity] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-3 focus-visible:ring-rose-100 focus-visible:outline-none sm:min-h-0 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                  :aria-label="voidButtonLabel(transaction)"
                   @pointerdown.stop
                   @click="requestVoid(transaction)"
                 >
@@ -133,43 +143,27 @@
         {{ loading ? "加载中…" : "加载更多" }}
       </button>
     </template>
-
-    <div
-      v-if="confirmingTransaction"
-      ref="dialogElement"
-      class="fixed inset-0 z-[80] flex items-center justify-center overscroll-contain bg-slate-950/55 px-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="void-dialog-title"
-      aria-describedby="void-dialog-description"
-      @keydown="handleDialogKeydown"
-    >
-      <div class="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
-        <p class="section-kicker text-rose-600">不可直接删除</p>
-        <h4 id="void-dialog-title" class="mt-2 text-xl font-semibold text-slate-950">
-          撤销这笔交易？
-        </h4>
-        <p id="void-dialog-description" class="mt-2 text-sm leading-6 text-slate-600">
-          确认撤销这笔交易？该操作会影响当前余额。
-        </p>
-        <p class="mt-2 text-sm leading-6 text-slate-500">
-          交易会标记为已作废；如果是转账，对应的另一笔记录也会同时撤销。
-        </p>
-        <div class="mt-6 grid grid-cols-2 gap-3">
-          <button ref="cancelButton" type="button" class="button-secondary" @click="cancelConfirm">
-            取消
-          </button>
-          <button type="button" class="button-danger bg-rose-600 text-white hover:bg-rose-700" @click="confirmVoid">
-            确认撤销
-          </button>
-        </div>
-      </div>
     </div>
+
+    <ConfirmActionDialog
+      v-if="confirmingTransaction"
+      title-id="void-dialog-title"
+      description-id="void-dialog-description"
+      kicker="不可直接删除"
+      title="撤销这笔交易？"
+      description="交易会标记为已作废，并影响当前余额。"
+      detail="如果是转账，对应的另一笔记录也会同时撤销。"
+      confirm-label="确认撤销"
+      :loading="loading"
+      :on-cancel="cancelConfirm"
+      :on-confirm="confirmVoid"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, toRefs, watch } from "vue";
+import { computed, nextTick, ref, toRefs } from "vue";
+import ConfirmActionDialog from "./ConfirmActionDialog.vue";
 import TransactionIcon from "./TransactionIcon.vue";
 import type { Transaction } from "../types";
 
@@ -184,7 +178,7 @@ const props = defineProps<{
   getTransactionNote: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
-  onVoidTransaction?: (transaction: Transaction) => void;
+  onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;
 }>();
 
 const {
@@ -201,16 +195,22 @@ const startY = ref(0);
 const confirmingTransaction = ref<Transaction | null>(null);
 const searchTerm = ref("");
 const typeFilter = ref<"all" | Transaction["type"]>("all");
-const dialogElement = ref<HTMLElement | null>(null);
-const cancelButton = ref<HTMLButtonElement | null>(null);
 const returnFocusElement = ref<HTMLElement | null>(null);
-let previousBodyOverflow = "";
 const monthFormatter = new Intl.DateTimeFormat("zh-CN", {
   year: "numeric",
   month: "long",
 });
 
 const formatMonth = (value: string) => monthFormatter.format(new Date(value));
+const compactTimestampFormatter = new Intl.DateTimeFormat("zh-CN", {
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const formatCompactTimestamp = (value: string) => compactTimestampFormatter.format(new Date(value));
+const voidButtonLabel = (transaction: Transaction) =>
+  `撤销交易：${props.getTransactionNote(transaction)}，${props.formatSignedAmount(transaction)}，${formatCompactTimestamp(transaction.created_at)}`;
 
 const filteredTransactions = computed(() => {
   const query = searchTerm.value.trim().toLocaleLowerCase("zh-CN");
@@ -276,60 +276,20 @@ const handlePointerMove = (event: PointerEvent) => {
   if (deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) cancelLongPress();
 };
 
-const cancelConfirm = () => {
+const cancelConfirm = async () => {
   confirmingTransaction.value = null;
-};
-
-const confirmVoid = () => {
-  if (confirmingTransaction.value && onVoidTransaction?.value) {
-    onVoidTransaction.value(confirmingTransaction.value);
-  }
-  confirmingTransaction.value = null;
-};
-
-watch(confirmingTransaction, async (transaction) => {
-  if (transaction) {
-    previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = previousBodyOverflow;
-  }
   await nextTick();
-  if (transaction) {
-    cancelButton.value?.focus();
-    return;
-  }
   returnFocusElement.value?.focus();
   returnFocusElement.value = null;
-});
+};
 
-onBeforeUnmount(() => {
-  document.body.style.overflow = previousBodyOverflow;
-});
-
-const handleDialogKeydown = (event: KeyboardEvent) => {
-  if (event.key === "Escape") {
-    event.preventDefault();
-    cancelConfirm();
-    return;
+const confirmVoid = async () => {
+  if (confirmingTransaction.value && onVoidTransaction?.value) {
+    await onVoidTransaction.value(confirmingTransaction.value);
   }
-  if (event.key !== "Tab" || !dialogElement.value) return;
-
-  const controls = Array.from(
-    dialogElement.value.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    ),
-  );
-  const first = controls[0];
-  const last = controls[controls.length - 1];
-  if (!first || !last) return;
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
+  confirmingTransaction.value = null;
+  await nextTick();
+  returnFocusElement.value?.focus();
+  returnFocusElement.value = null;
 };
 </script>

@@ -88,6 +88,7 @@ describe("ChildManagerCard", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "归档" }));
+    await user.click(screen.getByRole("button", { name: "确认归档" }));
     expect(onArchiveChild).toHaveBeenCalledWith("child-1");
 
     render(ChildManagerCard, {

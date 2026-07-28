@@ -25,6 +25,7 @@
     :on-logout="handleLogout"
     :status="status"
     :status-tone="statusTone"
+    :on-dismiss-status="clearStatus"
   >
     <SettingsPage
       v-if="user.role === 'parent' && showSettings"
@@ -141,6 +142,7 @@ const {
   canEdit,
   cancelEditAccount,
   cancelEditChild,
+  clearStatus,
   chartPoints,
   childAvatars,
   childUsers,

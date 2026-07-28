@@ -25,11 +25,13 @@ describe("useStatus", () => {
   });
 
   it("tracks success tone independently from message text", () => {
-    const { statusTone, setSuccessStatus } = useStatus();
+    const { status, statusTone, setSuccessStatus, clearStatus } = useStatus();
 
     setSuccessStatus("任意成功消息");
 
     expect(statusTone.value).toBe("success");
+    clearStatus();
+    expect(status.value).toBeNull();
   });
 
   it("auto clears success and error messages with different timeouts", async () => {
@@ -38,13 +40,13 @@ describe("useStatus", () => {
 
     setSuccessStatus("已保存交易。");
     await nextTick();
-    vi.advanceTimersByTime(1500);
+    vi.advanceTimersByTime(4000);
     await nextTick();
     expect(status.value).toBeNull();
 
     setErrorStatus("Insufficient balance");
     await nextTick();
-    vi.advanceTimersByTime(3000);
+    vi.advanceTimersByTime(6000);
     await nextTick();
     expect(status.value).toBeNull();
 

@@ -27,9 +27,6 @@ import type {
 } from "../types";
 import { sanitizePin } from "../utils/formatting";
 
-const ARCHIVE_CHILD_CONFIRMATION =
-  "确认归档该孩子？\n所有账户余额必须先清零；孩子和账户将隐藏，但历史账本会保留。\n本月尚未结算的利息不会补发。";
-
 export const useLedgerApp = () => {
   const childAvatars = avatarOptions.filter((avatar) => avatar.role === "child");
   const user = ref<AppUser | null>(null);
@@ -57,7 +54,7 @@ export const useLedgerApp = () => {
   const showSettings = ref(false);
   const showAccountCreator = ref(false);
 
-  const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus } =
+  const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus, clearStatus } =
     useStatus();
   const supabaseFrom = supabase as unknown as SupabaseFromClient;
   const supabaseRpc = supabase as unknown as SupabaseRpcClient;
@@ -199,7 +196,6 @@ export const useLedgerApp = () => {
     editingChildId,
     editingChildName,
     cancelEditChild,
-    confirmArchiveChild: () => window.confirm(ARCHIVE_CHILD_CONFIRMATION),
     setStatus,
     setErrorStatus,
     setSuccessStatus,
@@ -267,11 +263,6 @@ export const useLedgerApp = () => {
 
   const handleCloseAccount = async (account: { id: string; name: string }) => {
     if (!user.value) return;
-    const confirmed = window.confirm(
-      `确认关闭账户「${account.name}」？\n关闭后将不再显示，且无法继续记账/转账。\n本月尚未结算的利息不会补发。`,
-    );
-    if (!confirmed) return;
-
     loading.value = true;
     const { error } = await supabaseRpc.rpc("close_account", {
       p_account_id: account.id,
@@ -331,6 +322,7 @@ export const useLedgerApp = () => {
     canEdit,
     cancelEditAccount,
     cancelEditChild,
+    clearStatus,
     chartPoints,
     childAvatars,
     childUsers,

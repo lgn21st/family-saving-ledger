@@ -23,7 +23,7 @@
         <button
           v-if="canEdit"
           type="button"
-          class="button-secondary min-h-9 px-3 py-1.5 text-xs sm:text-sm"
+          class="button-secondary min-h-11 px-3 py-1.5 text-xs sm:text-sm"
           :aria-pressed="showSettings"
           :aria-label="showSettings ? '返回账本' : '打开设置'"
           @click="onToggleSettings"
@@ -37,7 +37,7 @@
         </span>
         <button
           type="button"
-          class="button-quiet min-h-9 px-2.5 py-1.5"
+          class="button-quiet min-h-11 px-2.5 py-1.5"
           @click="onLogout"
         >
           退出
@@ -45,7 +45,7 @@
       </div>
     </div>
   </header>
-  <StatusBanner :message="status" :tone="statusTone" />
+  <StatusBanner :message="status" :tone="statusTone" :on-dismiss="onDismissStatus" />
 </template>
 
 <script setup lang="ts">
@@ -63,5 +63,6 @@ defineProps<{
   onLogout: () => void;
   status: string | null;
   statusTone: StatusTone;
+  onDismissStatus: () => void;
 }>();
 </script>

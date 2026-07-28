@@ -1,5 +1,9 @@
 <template>
   <section class="surface-card p-4 sm:p-5" aria-labelledby="accounts-title">
+    <div
+      :inert="Boolean(confirmingAccount) || undefined"
+      :aria-hidden="confirmingAccount ? 'true' : undefined"
+    >
     <div class="flex items-center justify-between gap-3">
       <div class="min-w-0">
         <p class="section-kicker">账户导航</p>
@@ -114,7 +118,7 @@
             <button
               v-if="editingAccountId !== account.id"
               type="button"
-              class="button-quiet min-h-9 shrink-0 px-2.5 py-1.5 text-xs"
+              class="button-quiet min-h-11 shrink-0 px-2.5 py-1.5 text-xs"
               :disabled="loading"
               @click="onStartEditAccount(account)"
             >
@@ -124,7 +128,7 @@
           <div v-if="editingAccountId === account.id" class="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              class="button-primary min-h-9 px-3 py-1.5 text-xs"
+              class="button-primary min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
               @click="onUpdateAccount"
             >
@@ -132,7 +136,7 @@
             </button>
             <button
               type="button"
-              class="button-quiet min-h-9 px-3 py-1.5 text-xs"
+              class="button-quiet min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
               @click="onCancelEditAccount"
             >
@@ -141,9 +145,9 @@
             <button
               v-if="isZeroBalance(account.id)"
               type="button"
-              class="button-danger min-h-9 px-3 py-1.5 text-xs"
+              class="button-danger min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
-              @click="onCloseAccount(account)"
+              @click="requestClose(account)"
             >
               关闭账户
             </button>
@@ -152,10 +156,27 @@
       </div>
     </div>
     <p v-else class="mt-4 text-sm text-slate-500">请选择孩子查看账户。</p>
+    </div>
+
+    <ConfirmActionDialog
+      v-if="confirmingAccount"
+      title-id="close-account-dialog-title"
+      description-id="close-account-dialog-description"
+      kicker="余额需为零"
+      :title="`关闭账户「${confirmingAccount.name}」？`"
+      description="关闭后账户不再显示，也无法继续记账或转账，历史记录仍会保留。"
+      detail="本月尚未结算的利息不会补发。"
+      confirm-label="确认关闭"
+      :loading="loading"
+      :on-cancel="cancelClose"
+      :on-confirm="confirmClose"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from "vue";
+import ConfirmActionDialog from "./ConfirmActionDialog.vue";
 import type { Account, AppUser } from "../types";
 
 const newAccountNameModel = defineModel<string>("newAccountName", { required: true });
@@ -188,8 +209,28 @@ const props = defineProps<{
   onStartEditAccount: (account: Account) => void;
   onUpdateAccount: () => void;
   onCancelEditAccount: () => void;
-  onCloseAccount: (account: Account) => void;
+  onCloseAccount: (account: Account) => void | Promise<void>;
 }>();
+
+const confirmingAccount = ref<Account | null>(null);
+const closeTrigger = ref<HTMLElement | null>(null);
+
+const requestClose = (account: Account) => {
+  closeTrigger.value = document.activeElement as HTMLElement | null;
+  confirmingAccount.value = account;
+};
+const cancelClose = async () => {
+  confirmingAccount.value = null;
+  await nextTick();
+  closeTrigger.value?.focus();
+  closeTrigger.value = null;
+};
+const confirmClose = async () => {
+  if (!confirmingAccount.value) return;
+  await props.onCloseAccount(confirmingAccount.value);
+  confirmingAccount.value = null;
+  closeTrigger.value = null;
+};
 
 const isZeroBalance = (accountId: string) => {
   const value = props.balances[accountId] ?? 0;

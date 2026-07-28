@@ -2,7 +2,7 @@
   <div class="flex min-h-screen flex-col bg-slate-50">
     <a
       href="#main-content"
-      class="fixed top-3 left-3 z-[70] -translate-y-20 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0"
+      class="fixed top-3 left-3 z-[70] -translate-y-[calc(100%+1rem)] whitespace-nowrap rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0"
     >
       跳到主要内容
     </a>
@@ -15,6 +15,7 @@
       :on-logout="onLogout"
       :status="status"
       :status-tone="statusTone"
+      :on-dismiss-status="onDismissStatus"
     />
     <slot />
   </div>
@@ -34,5 +35,6 @@ defineProps<{
   onLogout: () => void;
   status: string | null;
   statusTone: StatusTone;
+  onDismissStatus: () => void;
 }>();
 </script>

@@ -58,7 +58,6 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild: vi.fn(),
-      confirmArchiveChild: vi.fn(() => true),
       setStatus,
       setErrorStatus,
       setSuccessStatus,
@@ -100,7 +99,6 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild: vi.fn(),
-      confirmArchiveChild: vi.fn(() => true),
       setStatus,
       setErrorStatus,
       setSuccessStatus,
@@ -138,7 +136,6 @@ describe("useChildren", () => {
     const loading = ref(false);
     const user = ref({ id: "parent" });
 
-    const confirmArchiveChild = vi.fn(() => true);
     const { handleArchiveChild } = useChildren({
       supabase,
       user,
@@ -150,7 +147,6 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild: vi.fn(),
-      confirmArchiveChild,
       setStatus,
       setErrorStatus,
       setSuccessStatus,
@@ -161,7 +157,6 @@ describe("useChildren", () => {
 
     await handleArchiveChild("child-1");
 
-    expect(confirmArchiveChild).toHaveBeenCalled();
     expect(supabase.spies.rpc).toHaveBeenCalledWith("archive_child", {
       p_child_id: "child-1",
       p_archived_by: "parent",
@@ -203,7 +198,6 @@ describe("useChildren", () => {
       editingChildId,
       editingChildName,
       cancelEditChild,
-      confirmArchiveChild: vi.fn(() => true),
       setStatus,
       setErrorStatus,
       setSuccessStatus,

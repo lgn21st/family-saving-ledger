@@ -780,7 +780,7 @@ describe("Home Bank UI", () => {
 
     await user.click(screen.getByRole("button", { name: "记一笔" }));
     await user.type(screen.getByLabelText("存入金额"), "20");
-    await user.type(screen.getByLabelText("用途或备注"), "零花钱发放");
+    await user.type(screen.getByLabelText(/^用途或备注/), "零花钱发放");
     await user.click(screen.getByRole("button", { name: "确认存入" }));
 
     expect(await screen.findByText("零花钱发放")).toBeInTheDocument();
@@ -873,6 +873,7 @@ describe("Home Bank UI", () => {
     await user.click(
       within(childRow as HTMLElement).getByRole("button", { name: "归档" }),
     );
+    await user.click(screen.getByRole("button", { name: "确认归档" }));
 
     expect(within(childCard).queryByText("小女儿")).not.toBeInTheDocument();
   });
@@ -921,6 +922,7 @@ describe("Home Bank UI", () => {
     await user.click(
       within(childRow as HTMLElement).getByRole("button", { name: "归档" }),
     );
+    await user.click(screen.getByRole("button", { name: "确认归档" }));
 
     expect(
       await screen.findByText("请先将该孩子所有账户余额清零后再归档。"),
@@ -965,6 +967,7 @@ describe("Home Bank UI", () => {
       }),
     );
     await user.click(screen.getByRole("button", { name: "关闭账户" }));
+    await user.click(screen.getByRole("button", { name: "确认关闭" }));
 
     expect(
       await screen.findByText("该孩子暂无账户。"),
@@ -1236,7 +1239,7 @@ describe("Home Bank UI", () => {
     await user.click(screen.getByRole("button", { name: "记一笔" }));
     await user.click(screen.getByRole("button", { name: "取出" }));
     await user.type(screen.getByLabelText("取出金额"), "10");
-    await user.type(screen.getByLabelText("用途或备注"), "测试扣减");
+    await user.type(screen.getByLabelText(/^用途或备注/), "测试扣减");
     await user.click(screen.getByRole("button", { name: "确认取出" }));
 
     expect(await screen.findByText("余额不足。")).toBeInTheDocument();

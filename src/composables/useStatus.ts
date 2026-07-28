@@ -40,10 +40,16 @@ export const useStatus = () => {
     status.value = message;
   };
 
+  const clearStatus = () => {
+    status.value = null;
+    if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
+    statusTimeoutId = null;
+  };
+
   watch(status, (nextStatus) => {
     if (!nextStatus) return;
     if (statusTimeoutId) window.clearTimeout(statusTimeoutId);
-    const timeoutMs = statusTone.value === "success" ? 1500 : 3000;
+    const timeoutMs = statusTone.value === "success" ? 4000 : 6000;
     statusTimeoutId = window.setTimeout(() => {
       if (status.value === nextStatus) status.value = null;
     }, timeoutMs);
@@ -61,5 +67,6 @@ export const useStatus = () => {
     setStatus,
     setErrorStatus,
     setSuccessStatus,
+    clearStatus,
   };
 };

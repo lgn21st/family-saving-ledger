@@ -120,7 +120,7 @@ defineProps<{
   onStartEditChild: (child: AppUser) => void;
   onUpdateChild: () => void;
   onCancelEditChild: () => void;
-  onArchiveChild: (id: string) => void;
+  onArchiveChild: (id: string) => void | Promise<void>;
   selectedChildId: string | null;
   selectedChildName: string | null;
   onSelectChild: (id: string) => void;
@@ -135,6 +135,6 @@ defineProps<{
   onStartEditAccount: (account: Account) => void;
   onUpdateAccount: () => void;
   onCancelEditAccount: () => void;
-  onCloseAccount: (account: Account) => void;
+  onCloseAccount: (account: Account) => void | Promise<void>;
 }>();
 </script>

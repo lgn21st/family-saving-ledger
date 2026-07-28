@@ -241,6 +241,7 @@ describe("AccountListPanel", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "关闭账户" }));
+    await user.click(screen.getByRole("button", { name: "确认关闭" }));
     expect(onCloseAccount).toHaveBeenCalledWith(
       expect.objectContaining({ id: "acc-1" }),
     );

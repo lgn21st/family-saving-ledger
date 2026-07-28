@@ -1,5 +1,9 @@
 <template>
   <section class="surface-card mx-auto max-w-5xl p-5 sm:p-7" data-testid="child-card">
+    <div
+      :inert="Boolean(confirmingChild) || undefined"
+      :aria-hidden="confirmingChild ? 'true' : undefined"
+    >
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <p class="section-kicker">家庭设置</p>
@@ -8,12 +12,23 @@
           新增孩子、设置登录 PIN 或更新名称。归档前需要先将孩子名下所有账户余额清零。
         </p>
       </div>
-      <span class="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700">
-        {{ childUsers.length }} 位孩子
-      </span>
+      <div class="flex shrink-0 items-center gap-2">
+        <span class="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700">
+          {{ childUsers.length }} 位孩子
+        </span>
+        <button
+          type="button"
+          class="button-secondary min-h-11 px-3 text-xs"
+          :aria-expanded="showChildCreator"
+          @click="showChildCreator = !showChildCreator"
+        >
+          {{ showChildCreator ? "收起添加" : "添加孩子" }}
+        </button>
+      </div>
     </div>
 
-    <div class="mt-7 rounded-3xl bg-slate-50 p-4 sm:p-5">
+    <div class="mt-7 flex flex-col gap-7">
+    <div v-if="showChildCreator" class="order-2 rounded-3xl bg-slate-50 p-4 sm:p-5">
       <h2 class="text-base font-semibold text-slate-950">添加孩子</h2>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
@@ -78,7 +93,7 @@
       </button>
     </div>
 
-    <div class="mt-7">
+    <div class="order-1">
       <h2 class="text-base font-semibold text-slate-950">现有孩子</h2>
       <p v-if="childUsers.length === 0" class="mt-3 text-sm text-slate-500">
         暂无孩子。
@@ -118,7 +133,7 @@
             <template v-if="editingChildId === child.id">
               <button
                 type="button"
-                class="button-primary min-h-9 px-3 py-1.5 text-xs"
+                class="button-primary min-h-11 px-3 py-1.5 text-xs"
                 :disabled="loading"
                 @click="onUpdateChild"
               >
@@ -126,7 +141,7 @@
               </button>
               <button
                 type="button"
-                class="button-quiet min-h-9 px-3 py-1.5 text-xs"
+                class="button-quiet min-h-11 px-3 py-1.5 text-xs"
                 :disabled="loading"
                 @click="onCancelEditChild"
               >
@@ -136,7 +151,7 @@
             <button
               v-else
               type="button"
-              class="button-secondary min-h-9 px-3 py-1.5 text-xs"
+              class="button-secondary min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
               @click="onStartEditChild(child)"
             >
@@ -144,9 +159,9 @@
             </button>
             <button
               type="button"
-              class="button-danger min-h-9 px-3 py-1.5 text-xs"
+              class="button-danger min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
-              @click="onArchiveChild(child.id)"
+              @click="requestArchive(child)"
             >
               归档
             </button>
@@ -154,11 +169,29 @@
         </li>
       </ul>
     </div>
+    </div>
+    </div>
+
+    <ConfirmActionDialog
+      v-if="confirmingChild"
+      title-id="archive-child-dialog-title"
+      description-id="archive-child-dialog-description"
+      kicker="保留历史记录"
+      :title="`归档「${confirmingChild.name}」？`"
+      description="孩子及其账户会从日常界面隐藏，但历史账本仍会保留。"
+      detail="归档前所有账户余额必须为零；本月尚未结算的利息不会补发。"
+      confirm-label="确认归档"
+      :loading="loading"
+      :on-cancel="cancelArchive"
+      :on-confirm="confirmArchive"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from "vue";
 import Avatar from "./Avatar.vue";
+import ConfirmActionDialog from "./ConfirmActionDialog.vue";
 import type { AppUser } from "../types";
 import type { AvatarOption } from "../config";
 
@@ -182,8 +215,29 @@ const props = defineProps<{
   onStartEditChild: (child: AppUser) => void;
   onUpdateChild: () => void;
   onCancelEditChild: () => void;
-  onArchiveChild: (id: string) => void;
+  onArchiveChild: (id: string) => void | Promise<void>;
 }>();
+
+const showChildCreator = ref(props.childUsers.length === 0);
+const confirmingChild = ref<AppUser | null>(null);
+const archiveTrigger = ref<HTMLElement | null>(null);
+
+const requestArchive = (child: AppUser) => {
+  archiveTrigger.value = document.activeElement as HTMLElement | null;
+  confirmingChild.value = child;
+};
+const cancelArchive = async () => {
+  confirmingChild.value = null;
+  await nextTick();
+  archiveTrigger.value?.focus();
+  archiveTrigger.value = null;
+};
+const confirmArchive = async () => {
+  if (!confirmingChild.value) return;
+  await props.onArchiveChild(confirmingChild.value.id);
+  confirmingChild.value = null;
+  archiveTrigger.value = null;
+};
 
 const onPinInput = (event: Event) => {
   const target = event.target as HTMLInputElement | null;

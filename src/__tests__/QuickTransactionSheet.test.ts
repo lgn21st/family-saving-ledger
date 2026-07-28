@@ -13,7 +13,7 @@ describe("QuickTransactionSheet", () => {
     const onUpdateAmount = vi.fn();
     const onUpdateNote = vi.fn();
 
-    render(QuickTransactionSheet, {
+    const { rerender } = render(QuickTransactionSheet, {
       props: {
         childUsers: [{ id: "child-1", name: "茉莉", role: "child" }],
         selectedChildId: "child-1",
@@ -50,13 +50,16 @@ describe("QuickTransactionSheet", () => {
 
     await user.clear(screen.getByLabelText("存入金额"));
     await user.type(screen.getByLabelText("存入金额"), "20");
-    await user.type(screen.getByLabelText("用途或备注"), "奖励");
+    expect(screen.getByText("请填写用途或备注。")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "确认存入" })).toBeDisabled();
+    await user.type(screen.getByLabelText(/^用途或备注/), "奖励");
     expect(onUpdateAmount).toHaveBeenLastCalledWith("20");
     expect(onUpdateNote).toHaveBeenLastCalledWith("奖励");
+    await rerender({ amountInput: "20", noteInput: "奖励" });
 
     await user.click(screen.getByRole("button", { name: "确认存入" }));
     expect(onAddTransaction).toHaveBeenCalledWith("deposit");
-    expect(await screen.findByText("已存入 1.00 CNY")).toBeTruthy();
+    expect(await screen.findByText("已存入 20.00 CNY")).toBeTruthy();
     expect(screen.getByText("茉莉 · 零花钱")).toBeTruthy();
     expect(screen.getByRole("button", { name: "完成" })).toHaveFocus();
 
@@ -156,6 +159,6 @@ describe("QuickTransactionSheet", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("余额不足。");
     expect(screen.getByLabelText("取出金额")).toHaveValue(200);
-    expect(screen.getByLabelText("用途或备注")).toHaveValue("买书");
+    expect(screen.getByLabelText(/^用途或备注/)).toHaveValue("买书");
   });
 });

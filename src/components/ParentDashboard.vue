@@ -1,6 +1,10 @@
 <template>
   <main id="main-content" class="page-container flex-1 py-5 sm:py-7">
-    <div class="space-y-5">
+    <div
+      class="space-y-5"
+      :inert="showQuickTransaction || undefined"
+      :aria-hidden="showQuickTransaction ? 'true' : undefined"
+    >
       <LedgerNavigatorPanel
         :currency-totals="currencyTotals"
         :child-users="childUsers"
@@ -44,8 +48,10 @@
         记一笔
       </button>
 
-      <QuickTransactionSheet
-        v-if="showQuickTransaction"
+    </div>
+
+    <QuickTransactionSheet
+      v-if="showQuickTransaction"
         v-model:amount-input="amountInputModel"
         v-model:note-input="noteInputModel"
         v-model:transfer-amount="transferAmountModel"
@@ -63,8 +69,7 @@
         :on-add-transaction="onAddTransaction"
         :on-transfer="onTransfer"
         :on-close="closeQuickTransaction"
-      />
-    </div>
+    />
   </main>
 </template>
 
@@ -128,6 +133,6 @@ defineProps<{
   onAddTransaction: (type: "deposit" | "withdrawal") => Promise<LedgerActionResult>;
   onTransfer: () => Promise<LedgerActionResult>;
   onLoadMore: () => void;
-  onVoidTransaction: (transaction: Transaction) => void;
+  onVoidTransaction: (transaction: Transaction) => void | Promise<void>;
 }>();
 </script>

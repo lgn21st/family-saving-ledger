@@ -1,4 +1,5 @@
 <template>
+  <Teleport to="body">
   <div
     class="fixed inset-0 z-[80] flex items-end bg-slate-950/55 backdrop-blur-sm sm:items-center sm:justify-center sm:px-4"
     role="dialog"
@@ -159,7 +160,8 @@
 
         <div>
           <label for="quick-note" class="field-label">
-            {{ mode === 'transfer' ? '备注（可选）' : '用途或备注' }}
+            <template v-if="mode === 'transfer'">备注（可选）</template>
+            <template v-else>用途或备注<span aria-hidden="true">（必填）</span></template>
           </label>
           <input
             id="quick-note"
@@ -184,6 +186,9 @@
       >
         {{ loading ? '正在保存…' : submitLabel }}
       </button>
+      <p v-if="submitDisabledReason && !loading" class="mt-2 text-center text-xs text-slate-500">
+        {{ submitDisabledReason }}
+      </p>
       <p
         v-if="submissionError"
         class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"
@@ -194,6 +199,7 @@
       </template>
     </section>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -242,6 +248,9 @@ const successDetails = ref<{
   accountLabel: string;
 } | null>(null);
 let previousBodyOverflow = "";
+let appRoot: HTMLElement | null = null;
+let appWasInert = false;
+let previousAppAriaHidden: string | null = null;
 
 const modeOptions: Array<{ value: EntryMode; label: string; activeClass: string }> = [
   { value: "deposit", label: "存入", activeClass: "bg-emerald-600 text-white shadow-sm" },
@@ -277,19 +286,40 @@ const submitClass = computed(() => ({
   transfer: "bg-sky-600 hover:bg-sky-700",
 })[mode.value]);
 const submitDisabled = computed(() =>
-  props.loading || !props.selectedAccountId || !activeAmount.value ||
+  props.loading || !props.selectedChildId || !props.selectedAccountId ||
+  !activeAmount.value || Number(activeAmount.value) <= 0 ||
+  (mode.value !== "transfer" && !activeNote.value.trim()) ||
   (mode.value === "transfer" && !props.transferTargetId),
 );
+const submitDisabledReason = computed(() => {
+  if (!props.selectedChildId) return "请先选择孩子。";
+  if (!props.selectedAccountId) return "请先选择账户。";
+  if (!activeAmount.value || Number(activeAmount.value) <= 0) return "请输入大于 0 的金额。";
+  if (mode.value !== "transfer" && !activeNote.value.trim()) return "请填写用途或备注。";
+  if (mode.value === "transfer" && !props.transferTargetId) return "请选择转入账户。";
+  return null;
+});
 
 onMounted(async () => {
   previousBodyOverflow = document.body.style.overflow;
   document.body.style.overflow = "hidden";
+  appRoot = document.getElementById("app");
+  if (appRoot) {
+    appWasInert = appRoot.hasAttribute("inert");
+    previousAppAriaHidden = appRoot.getAttribute("aria-hidden");
+    appRoot.setAttribute("inert", "");
+    appRoot.setAttribute("aria-hidden", "true");
+  }
   await nextTick();
   modeControls.value[0]?.focus();
 });
 
 onBeforeUnmount(() => {
   document.body.style.overflow = previousBodyOverflow;
+  if (!appRoot) return;
+  if (!appWasInert) appRoot.removeAttribute("inert");
+  if (previousAppAriaHidden === null) appRoot.removeAttribute("aria-hidden");
+  else appRoot.setAttribute("aria-hidden", previousAppAriaHidden);
 });
 
 const handleChildChange = (event: Event) => {

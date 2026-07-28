@@ -25,7 +25,6 @@ export const useChildren = (params: {
   editingChildId: Ref<string | null>;
   editingChildName: Ref<string>;
   cancelEditChild: () => void;
-  confirmArchiveChild: () => boolean;
   setStatus: (message: string) => void;
   setErrorStatus: (message: string) => void;
   setSuccessStatus: (message: string) => void;
@@ -44,7 +43,6 @@ export const useChildren = (params: {
     editingChildId,
     editingChildName,
     cancelEditChild,
-    confirmArchiveChild,
     setStatus,
     setErrorStatus,
     setSuccessStatus,
@@ -101,8 +99,6 @@ export const useChildren = (params: {
 
   const handleArchiveChild = async (childId: string) => {
     if (!user.value) return;
-    if (!confirmArchiveChild()) return;
-
     loading.value = true;
     const { error } = await supabase.rpc("archive_child", {
       p_child_id: childId,

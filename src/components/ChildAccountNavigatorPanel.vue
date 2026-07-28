@@ -54,7 +54,7 @@
                 ? 'border-slate-950 bg-slate-950 text-white shadow-md'
                 : 'border-slate-200 bg-white hover:border-brand-200 hover:bg-brand-50',
             ]"
-            @click="onSelectAccount(account.id)"
+            @click="selectAccount(account)"
           >
             <span class="min-w-0">
               <span
@@ -91,11 +91,12 @@
       <p class="text-sm font-medium text-slate-600">还没有储蓄账户</p>
       <p class="mt-1 text-xs text-slate-400">请让家长在设置中为你创建第一个账户。</p>
     </div>
+    <p class="sr-only" role="status" aria-live="polite">{{ accountSelectionStatus }}</p>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 import type { Account } from "../types";
 
@@ -121,4 +122,9 @@ const currencyTotals = computed(() =>
     ]),
   ),
 );
+const accountSelectionStatus = ref("");
+const selectAccount = (account: Account) => {
+  props.onSelectAccount(account.id);
+  accountSelectionStatus.value = `已切换到${account.name}，余额${props.formatAmount(props.balances[account.id] ?? 0, account.currency)}`;
+};
 </script>

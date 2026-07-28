@@ -91,7 +91,7 @@
                   ? 'border-slate-950 bg-slate-950 text-white shadow-md'
                   : 'border-slate-200 bg-white hover:border-brand-200 hover:bg-slate-50',
               ]"
-              @click="onSelectAccount(account.id)"
+              @click="selectAccount(account)"
             >
               <span class="min-w-0">
                 <span
@@ -135,15 +135,17 @@
         </section>
       </div>
     </div>
+    <p class="sr-only" role="status" aria-live="polite">{{ accountSelectionStatus }}</p>
   </section>
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import Avatar from "./Avatar.vue";
 import type { Account, AppUser } from "../types";
 import type { AvatarOption } from "../config";
 
-defineProps<{
+const props = defineProps<{
   currencyTotals: Record<string, number>;
   childUsers: AppUser[];
   selectedChildId: string | null;
@@ -157,4 +159,10 @@ defineProps<{
   onSelectAccount: (id: string) => void;
   onOpenSettings: () => void;
 }>();
+
+const accountSelectionStatus = ref("");
+const selectAccount = (account: Account) => {
+  props.onSelectAccount(account.id);
+  accountSelectionStatus.value = `已切换到${account.name}，余额${props.formatAmount(props.balances[account.id] ?? 0, account.currency)}`;
+};
 </script>
