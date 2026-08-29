@@ -1,16 +1,51 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8b5cf6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
+  /* Macaron lavender: the primary interactive color. */
+  --color-brand-50: #fbf8ff;
+  --color-brand-100: #f2eaff;
+  --color-brand-200: #e4d4fb;
+  --color-brand-300: #d1b8f3;
+  --color-brand-400: #b997e5;
+  --color-brand-500: #9a75cf;
+  --color-brand-600: #7c5aae;
+  --color-brand-700: #62468c;
+  --color-brand-800: #4f3a70;
+  --color-brand-900: #40315b;
+
+  /* Warm cocoa neutrals keep pastel surfaces readable. */
+  --color-slate-50: #fffaf7;
+  --color-slate-100: #f8efeb;
+  --color-slate-200: #eadcd6;
+  --color-slate-300: #d6c2bb;
+  --color-slate-400: #a68b83;
+  --color-slate-500: #79615b;
+  --color-slate-600: #604b46;
+  --color-slate-700: #4b3a36;
+  --color-slate-800: #382c29;
+  --color-slate-900: #2b2321;
+  --color-slate-950: #211b1a;
+
+  /* Mint, peach and blueberry accents for semantic states. */
+  --color-emerald-50: #f2fbf7;
+  --color-emerald-100: #d9f3e7;
+  --color-emerald-200: #b8e5d2;
+  --color-emerald-300: #8fd2b8;
+  --color-emerald-400: #69ba9b;
+  --color-emerald-600: #36795f;
+  --color-emerald-700: #2f624f;
+  --color-emerald-800: #294f42;
+
+  --color-rose-50: #fff5f5;
+  --color-rose-100: #ffe1e2;
+  --color-rose-200: #f7c3c8;
+  --color-rose-500: #c86b7b;
+  --color-rose-600: #a84e61;
+  --color-rose-700: #873e50;
+  --color-rose-800: #713747;
+
+  --color-sky-600: #3f7198;
+  --color-sky-700: #345e7f;
 }
 
 @layer base {
@@ -20,11 +55,16 @@
 
   html {
     min-width: 320px;
-    background: #f7f7fb;
+    background: #fff8f2;
   }
 
   body {
     @apply min-h-screen overflow-x-hidden bg-slate-50 text-slate-950 antialiased;
+    background-image:
+      radial-gradient(circle at 8% 4%, rgb(255 218 229 / 55%), transparent 28rem),
+      radial-gradient(circle at 92% 14%, rgb(205 238 225 / 58%), transparent 30rem),
+      linear-gradient(145deg, #fffaf5 0%, #fbf7ff 52%, #f4fbf8 100%);
+    background-attachment: fixed;
     font-family:
       Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -55,11 +95,16 @@
   }
 
   .surface-card {
-    @apply rounded-3xl border border-slate-200/80 bg-white shadow-sm;
+    @apply rounded-3xl border border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-sm;
+    box-shadow: 0 16px 40px rgb(98 70 140 / 8%);
   }
 
   .surface-muted {
-    @apply rounded-2xl border border-slate-200/80 bg-slate-50;
+    @apply rounded-2xl border border-slate-200/80 bg-brand-50/60;
+  }
+
+  .app-canvas {
+    background: transparent;
   }
 
   .section-kicker {

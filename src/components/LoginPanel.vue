@@ -1,44 +1,44 @@
 <template>
   <main
     id="main-content"
-    class="relative flex min-h-screen items-start overflow-hidden bg-slate-950 px-4 py-6 text-white sm:px-6 lg:items-center lg:py-16"
+    class="relative flex min-h-screen items-start overflow-hidden bg-brand-100 px-4 py-6 text-slate-950 sm:px-6 lg:items-center lg:py-16"
   >
     <div
-      class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.4),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.2),transparent_38%)]"
+      class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,199,214,0.88),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(190,234,217,0.92),transparent_40%),linear-gradient(135deg,#fff8f1_0%,#eee5ff_56%,#e9f8f3_100%)]"
       aria-hidden="true"
     />
     <div
       class="relative mx-auto grid w-full max-w-6xl items-center gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16"
     >
       <section class="max-w-xl text-center lg:text-left">
-        <p class="section-kicker text-brand-300">Family Saving Ledger</p>
+        <p class="section-kicker text-brand-700">Family Saving Ledger</p>
         <h1
-          class="mt-2 text-balance text-2xl font-semibold tracking-[-0.04em] text-white sm:mt-4 sm:text-5xl lg:text-6xl"
+          class="mt-2 text-balance text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:mt-4 sm:text-5xl lg:text-6xl"
         >
           让每一笔储蓄，都变成看得见的成长
         </h1>
-        <p class="mt-5 hidden text-pretty text-base leading-7 text-slate-300 sm:text-lg lg:block">
+        <p class="mt-5 hidden text-pretty text-base leading-7 text-slate-600 sm:text-lg lg:block">
           家长负责记录，孩子随时查看。余额、转账和每月利息，都在一个清晰的家庭账本里。
         </p>
         <div
           class="mx-auto mt-8 hidden max-w-md grid-cols-3 gap-3 text-left lg:mx-0 lg:grid"
         >
-          <div class="rounded-2xl border border-white/10 bg-white/6 p-3">
-            <p class="text-sm font-semibold text-white">共同管理</p>
-            <p class="mt-1 text-xs leading-5 text-slate-400">家长记账</p>
+          <div class="rounded-2xl border border-white/70 bg-white/55 p-3 shadow-sm backdrop-blur-sm">
+            <p class="text-sm font-semibold text-slate-800">共同管理</p>
+            <p class="mt-1 text-xs leading-5 text-slate-600">家长记账</p>
           </div>
-          <div class="rounded-2xl border border-white/10 bg-white/6 p-3">
-            <p class="text-sm font-semibold text-white">清晰可见</p>
-            <p class="mt-1 text-xs leading-5 text-slate-400">孩子只读</p>
+          <div class="rounded-2xl border border-white/70 bg-white/55 p-3 shadow-sm backdrop-blur-sm">
+            <p class="text-sm font-semibold text-slate-800">清晰可见</p>
+            <p class="mt-1 text-xs leading-5 text-slate-600">孩子只读</p>
           </div>
-          <div class="rounded-2xl border border-white/10 bg-white/6 p-3">
-            <p class="text-sm font-semibold text-white">持续成长</p>
-            <p class="mt-1 text-xs leading-5 text-slate-400">按月结息</p>
+          <div class="rounded-2xl border border-white/70 bg-white/55 p-3 shadow-sm backdrop-blur-sm">
+            <p class="text-sm font-semibold text-slate-800">持续成长</p>
+            <p class="mt-1 text-xs leading-5 text-slate-600">按月结息</p>
           </div>
         </div>
       </section>
 
-      <section class="rounded-[2rem] bg-white p-5 text-slate-950 shadow-2xl sm:p-8">
+      <section class="rounded-[2rem] border border-white/80 bg-white/90 p-5 text-slate-950 shadow-2xl shadow-brand-900/10 backdrop-blur-md sm:p-8">
         <div class="flex items-start justify-between gap-4">
           <div>
             <p class="section-kicker">安全进入</p>
