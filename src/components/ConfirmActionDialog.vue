@@ -4,13 +4,15 @@
     ref="dialogElement"
     class="fixed inset-0 z-[90] flex items-center justify-center overscroll-contain bg-slate-950/55 px-4 backdrop-blur-sm"
     role="dialog"
+    tabindex="-1"
+    :aria-busy="isBusy"
     aria-modal="true"
     :aria-labelledby="titleId"
     :aria-describedby="descriptionId"
-    @click.self="onCancel"
+    @click.self="requestCancel"
     @keydown="handleKeydown"
   >
-    <section class="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+    <section class="max-h-[90dvh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl bg-white p-6 shadow-2xl">
       <p class="section-kicker" :class="tone === 'danger' ? 'text-rose-600' : 'text-brand-700'">
         {{ kicker }}
       </p>
@@ -20,17 +22,17 @@
       </p>
       <p v-if="detail" class="mt-2 text-sm leading-6 text-slate-500">{{ detail }}</p>
       <div class="mt-6 grid grid-cols-2 gap-3">
-        <button ref="cancelButton" type="button" class="button-secondary min-h-11" :disabled="loading" @click="onCancel">
+        <button ref="cancelButton" type="button" class="button-secondary min-h-11" :disabled="isBusy" @click="requestCancel">
           取消
         </button>
         <button
           type="button"
           class="min-h-11 rounded-2xl px-4 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
           :class="tone === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand-700 hover:bg-brand-800'"
-          :disabled="loading"
-          @click="onConfirm"
+          :disabled="isBusy"
+          @click="confirm"
         >
-          {{ loading ? "处理中…" : confirmLabel }}
+          {{ isBusy ? "处理中…" : confirmLabel }}
         </button>
       </div>
     </section>
@@ -39,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = withDefaults(defineProps<{
   titleId: string;
@@ -60,12 +62,33 @@ const props = withDefaults(defineProps<{
   loading: false,
 });
 
+const confirming = ref(false);
+const isBusy = computed(() => props.loading || confirming.value);
+const requestCancel = () => {
+  if (!isBusy.value) props.onCancel();
+};
+const confirm = async () => {
+  if (isBusy.value) return;
+  confirming.value = true;
+  try {
+    await props.onConfirm();
+  } finally {
+    confirming.value = false;
+  }
+};
+
 const dialogElement = ref<HTMLElement | null>(null);
 const cancelButton = ref<HTMLButtonElement | null>(null);
 let previousBodyOverflow = "";
 let appRoot: HTMLElement | null = null;
 let appWasInert = false;
 let previousAppAriaHidden: string | null = null;
+
+watch(isBusy, async (busy) => {
+  await nextTick();
+  if (busy) dialogElement.value?.focus();
+  else if (document.activeElement === dialogElement.value) cancelButton.value?.focus();
+});
 
 onMounted(async () => {
   previousBodyOverflow = document.body.style.overflow;
@@ -90,9 +113,9 @@ onBeforeUnmount(() => {
 });
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === "Escape" && !props.loading) {
+  if (event.key === "Escape") {
     event.preventDefault();
-    props.onCancel();
+    requestCancel();
     return;
   }
   if (event.key !== "Tab" || !dialogElement.value) return;
@@ -101,7 +124,11 @@ const handleKeydown = (event: KeyboardEvent) => {
   ));
   const first = controls[0];
   const last = controls[controls.length - 1];
-  if (!first || !last) return;
+  if (!first || !last) {
+    event.preventDefault();
+    dialogElement.value.focus();
+    return;
+  }
   if (event.shiftKey && document.activeElement === first) {
     event.preventDefault();
     last.focus();
