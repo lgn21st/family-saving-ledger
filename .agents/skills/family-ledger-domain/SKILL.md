@@ -1,6 +1,6 @@
 ---
 name: family-ledger-domain
-description: Preserve Family Saving Ledger business semantics. Use when changing or reviewing users, roles, accounts, transactions, balances, transfers, voiding, account closure, child archival, interest settlement, database RPCs, constraints, migrations, or related tests and documentation.
+description: "Preserve business semantics in the family-saving-ledger project. Use for its roles, accounts, transactions, balances, transfers, interest, database RPCs, migrations, and related tests; not for unrelated ledger or database projects."
 ---
 
 # Family Ledger Domain

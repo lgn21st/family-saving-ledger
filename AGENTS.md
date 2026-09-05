@@ -12,9 +12,9 @@ Always inspect the current files and Git status. Do not rely on line counts, tes
 
 Use the project skills when applicable:
 
-- `skills/vue-ledger-ui` for Vue components, application assembly and frontend tests.
-- `skills/family-ledger-domain` for ledger rules, RPCs, balances, transfers, closing, archival and interest.
-- `skills/supabase-ledger-ops` for local/remote migrations, reset, seed, dump/restore and database troubleshooting.
+- `.agents/skills/vue-ledger-ui` for Vue components, application assembly and frontend tests.
+- `.agents/skills/family-ledger-domain` for ledger rules, RPCs, balances, transfers, closing, archival and interest.
+- `.agents/skills/supabase-ledger-ops` for local/remote migrations, reset, seed, dump/restore and database troubleshooting.
 
 Read only the references required by the selected skill, but read each selected `SKILL.md` completely.
 

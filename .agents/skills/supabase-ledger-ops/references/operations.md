@@ -36,7 +36,7 @@ supabase db push --linked --dry-run
 supabase db push --linked
 ```
 
-Direct project endpoints normally require IPv6. For IPv4-only networks, copy the Session Pooler URL from Dashboard → Connect and use port `5432`:
+Direct project endpoints normally require IPv6. For IPv4-only networks, copy the Session Pooler URL from Dashboard -> Connect and use port `5432`:
 
 ```bash
 supabase db push --db-url '<SESSION_POOLER_URL>' --dry-run

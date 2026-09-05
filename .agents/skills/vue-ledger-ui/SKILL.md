@@ -1,6 +1,6 @@
 ---
 name: vue-ledger-ui
-description: Maintain and refactor the Family Saving Ledger Vue 3 frontend. Use when changing App.vue, src/app assembly, components, composables, frontend types, UI behavior, accessibility, PWA behavior, or Vitest and Testing Library coverage.
+description: "Maintain the Vue 3 frontend of the family-saving-ledger project. Use for its App.vue, components, composables, frontend contracts, accessibility, PWA behavior, and UI tests; not for unrelated Vue apps."
 ---
 
 # Vue Ledger UI
