@@ -123,6 +123,23 @@
     @apply min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-950 shadow-xs transition-[border-color,box-shadow] placeholder:text-slate-400 focus-visible:border-brand-500 focus-visible:ring-3 focus-visible:ring-brand-100 focus-visible:outline-none;
   }
 
+  .ledger-workspace {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .quick-entry-trigger {
+    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .transaction-sheet {
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+
+  .sheet-footer {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  }
+
   .button-primary {
     @apply inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-[background-color,transform,box-shadow] hover:bg-brand-800 focus-visible:ring-3 focus-visible:ring-brand-200 focus-visible:outline-none active:translate-y-px disabled:opacity-55;
   }
@@ -141,6 +158,15 @@
 
   .numeric {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  @media (max-width: 639px) {
+    /* Keep iOS from zooming the viewport when a form field receives focus. */
+    .app-input {
+      font-size: 1rem;
+    }
   }
 }
 

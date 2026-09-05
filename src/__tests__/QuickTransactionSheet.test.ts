@@ -162,3 +162,60 @@ describe("QuickTransactionSheet", () => {
     expect(screen.getByLabelText(/^用途或备注/)).toHaveValue("买书");
   });
 });
+
+const entryProps = () => ({
+  childUsers: [{ id: "child-1", name: "茉莉", role: "child" as const }],
+  selectedChildId: "child-1",
+  selectedChildAccounts: [{ id: "acc-1", name: "零花钱", currency: "CNY", owner_child_id: "child-1" }],
+  selectedAccountId: "acc-1",
+  amountInput: "20",
+  noteInput: "奖励",
+  transferAmount: "",
+  transferTargetId: "",
+  transferNote: "",
+  transferTargets: [],
+  formattedBalance: "100.00 CNY",
+  loading: false,
+  onSelectChild: vi.fn(),
+  onSelectAccount: vi.fn(),
+  onAddTransaction: vi.fn(async () => ({ ok: true as const })),
+  onTransfer: vi.fn(async () => ({ ok: true as const })),
+  onClose: vi.fn(),
+});
+
+describe("QuickTransactionSheet submission lifecycle", () => {
+  it("supports Enter submission and blocks dismissal and duplicate submits until saving finishes", async () => {
+    const user = userEvent.setup();
+    let finish!: (result: { ok: true }) => void;
+    const props = entryProps();
+    props.onAddTransaction = vi.fn(() => new Promise<{ ok: true }>((resolve) => { finish = resolve; }));
+    render(QuickTransactionSheet, { props });
+
+    await user.click(screen.getByLabelText(/^用途或备注/));
+    await user.keyboard("{Enter}");
+    expect(props.onAddTransaction).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "正在保存…" })).toBeDisabled();
+    await user.click(screen.getByRole("dialog"));
+    await user.keyboard("{Escape}{Tab}{Enter}");
+    await user.click(screen.getByRole("button", { name: "关闭" }));
+    expect(props.onClose).not.toHaveBeenCalled();
+    expect(props.onAddTransaction).toHaveBeenCalledTimes(1);
+
+    finish({ ok: true });
+    expect(await screen.findByText("已存入 20.00 CNY")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "完成" }));
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the draft and recovers controls when a callback unexpectedly rejects", async () => {
+    const user = userEvent.setup();
+    const props = entryProps();
+    props.onAddTransaction.mockRejectedValueOnce(new Error("offline"));
+    render(QuickTransactionSheet, { props });
+    await user.click(screen.getByRole("button", { name: "确认存入" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("请稍后查看交易记录再操作");
+    expect(screen.getByLabelText("存入金额")).toHaveValue(20);
+    expect(screen.getByRole("button", { name: "关闭" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "确认存入" })).toBeEnabled();
+  });
+});

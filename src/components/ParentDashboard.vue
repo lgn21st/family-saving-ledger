@@ -1,5 +1,5 @@
 <template>
-  <main id="main-content" class="page-container flex-1 py-5 sm:py-7">
+  <main id="main-content" class="page-container ledger-workspace flex-1 pt-5 sm:pt-7">
     <div
       class="space-y-5"
       :inert="showQuickTransaction || undefined"
@@ -40,7 +40,7 @@
       <button
         ref="quickTransactionTrigger"
         type="button"
-        class="button-primary fixed right-4 bottom-4 z-40 min-h-12 rounded-2xl px-5 shadow-xl shadow-brand-900/20 sm:right-6 sm:bottom-6 xl:right-8"
+        class="button-primary quick-entry-trigger fixed right-4 z-40 min-h-12 rounded-2xl px-5 shadow-xl shadow-brand-900/20 sm:right-6 xl:right-8"
         aria-haspopup="dialog"
         :aria-expanded="showQuickTransaction"
         @click="showQuickTransaction = true"

@@ -5,14 +5,16 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="quick-transaction-title"
-    @click.self="onClose"
+    @click.self="requestClose"
     @keydown="handleKeydown"
   >
     <section
       ref="panelElement"
-      class="max-h-[92vh] w-full overflow-y-auto rounded-t-[2rem] bg-white p-5 shadow-2xl sm:max-w-lg sm:rounded-[2rem] sm:p-6"
+      class="transaction-sheet flex w-full flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-2xl sm:max-w-lg sm:rounded-[2rem]"
+      tabindex="-1"
+      :aria-busy="isBusy"
     >
-      <div class="flex items-start justify-between gap-4">
+      <div class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 p-5 sm:p-6">
         <div>
           <p class="section-kicker">快捷记账</p>
           <h2 id="quick-transaction-title" class="mt-1 text-xl font-semibold text-slate-950">
@@ -20,12 +22,12 @@
           </h2>
           <p class="mt-1 text-sm text-slate-500">{{ modeDescription }}</p>
         </div>
-        <button type="button" class="button-quiet min-h-10" @click="onClose">关闭</button>
+        <button type="button" class="button-quiet min-h-11" :disabled="isBusy" @click="requestClose">关闭</button>
       </div>
 
       <div
         v-if="successDetails"
-        class="mt-8 text-center"
+        class="overflow-y-auto overscroll-contain p-5 text-center sm:p-6"
         role="status"
         aria-live="polite"
       >
@@ -55,7 +57,8 @@
         </div>
       </div>
 
-      <template v-else>
+      <form v-else class="flex min-h-0 flex-1 flex-col" @submit.prevent="submit">
+      <div class="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6">
       <div class="mt-5 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1" aria-label="记账类型">
         <button
           v-for="option in modeOptions"
@@ -65,7 +68,7 @@
           class="min-h-11 rounded-xl px-2 text-sm font-semibold transition"
           :class="mode === option.value ? option.activeClass : 'text-slate-500 hover:text-slate-900'"
           :aria-pressed="mode === option.value"
-          :disabled="loading"
+          :disabled="isBusy"
           @click="selectMode(option.value)"
         >
           {{ option.label }}
@@ -79,7 +82,7 @@
             id="quick-child"
             class="app-input"
             :value="selectedChildId ?? ''"
-            :disabled="loading"
+            :disabled="isBusy"
             @change="handleChildChange"
           >
             <option value="" disabled>选择孩子</option>
@@ -96,7 +99,7 @@
             id="quick-account"
             class="app-input"
             :value="selectedAccountId ?? ''"
-            :disabled="loading || !selectedChildId || selectedChildAccounts.length === 0"
+            :disabled="isBusy || !selectedChildId || selectedChildAccounts.length === 0"
             @change="handleAccountChange"
           >
             <option value="" disabled>选择账户</option>
@@ -126,13 +129,14 @@
               :value="activeAmount"
               name="quick-amount"
               type="number"
-              min="0"
+              min="0.01"
+              required
               step="0.01"
               inputmode="decimal"
               autocomplete="off"
               placeholder="0.00"
               class="app-input numeric h-14 pr-16 text-xl font-semibold"
-              :disabled="loading"
+              :disabled="isBusy"
               @input="onAmountInput"
             />
             <span class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs font-semibold text-slate-400">
@@ -147,7 +151,7 @@
             id="quick-transfer-target"
             :value="transferTargetId"
             class="app-input"
-            :disabled="loading || !selectedAccountId || transferTargets.length === 0"
+            :disabled="isBusy || !selectedAccountId || transferTargets.length === 0"
             @change="onTransferTargetChange"
           >
             <option value="">{{ transferTargetPlaceholder }}</option>
@@ -171,23 +175,26 @@
             autocomplete="off"
             :placeholder="notePlaceholder"
             class="app-input"
-            :disabled="loading"
+            :disabled="isBusy"
+            :required="mode !== 'transfer'"
             @input="onNoteInput"
           />
         </div>
       </div>
 
+      </div>
+      <div class="sheet-footer shrink-0 border-t border-slate-100 bg-white px-5 pt-4 sm:px-6">
       <button
-        type="button"
-        class="mt-6 min-h-12 w-full rounded-2xl px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+        type="submit"
+        class="min-h-12 w-full rounded-2xl px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
         :class="submitClass"
         :disabled="submitDisabled"
-        @click="submit"
+        aria-describedby="quick-submit-help"
       >
-        {{ loading ? '正在保存…' : submitLabel }}
+        {{ isBusy ? '正在保存…' : submitLabel }}
       </button>
-      <p v-if="submitDisabledReason && !loading" class="mt-2 text-center text-xs text-slate-500">
-        {{ submitDisabledReason }}
+      <p id="quick-submit-help" class="mt-2 text-center text-xs text-slate-500" role="status">
+        {{ isBusy ? '正在保存，请稍候…' : (submitDisabledReason ?? '确认账户和金额后提交。') }}
       </p>
       <p
         v-if="submissionError"
@@ -196,14 +203,15 @@
       >
         {{ submissionError }}
       </p>
-      </template>
+      </div>
+      </form>
     </section>
   </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import type { Account, AppUser, LedgerActionResult, TransferTarget } from "../types";
 
@@ -242,6 +250,8 @@ const panelElement = ref<HTMLElement | null>(null);
 const modeControls = ref<HTMLButtonElement[]>([]);
 const completeButton = ref<HTMLButtonElement | null>(null);
 const submissionError = ref<string | null>(null);
+const submitting = ref(false);
+const isBusy = computed(() => props.loading || submitting.value);
 const successDetails = ref<{
   actionLabel: string;
   formattedAmount: string;
@@ -285,19 +295,23 @@ const submitClass = computed(() => ({
   withdrawal: "bg-rose-600 hover:bg-rose-700",
   transfer: "bg-sky-600 hover:bg-sky-700",
 })[mode.value]);
-const submitDisabled = computed(() =>
-  props.loading || !props.selectedChildId || !props.selectedAccountId ||
-  !activeAmount.value || Number(activeAmount.value) <= 0 ||
-  (mode.value !== "transfer" && !activeNote.value.trim()) ||
-  (mode.value === "transfer" && !props.transferTargetId),
-);
 const submitDisabledReason = computed(() => {
   if (!props.selectedChildId) return "请先选择孩子。";
   if (!props.selectedAccountId) return "请先选择账户。";
-  if (!activeAmount.value || Number(activeAmount.value) <= 0) return "请输入大于 0 的金额。";
+  if (!activeAmount.value || !Number.isFinite(Number(activeAmount.value)) || Number(activeAmount.value) <= 0) return "请输入大于 0 的金额。";
   if (mode.value !== "transfer" && !activeNote.value.trim()) return "请填写用途或备注。";
   if (mode.value === "transfer" && !props.transferTargetId) return "请选择转入账户。";
   return null;
+});
+
+const submitDisabled = computed(() => isBusy.value || Boolean(submitDisabledReason.value));
+
+watch(isBusy, async (busy) => {
+  await nextTick();
+  if (busy) panelElement.value?.focus();
+  else if (document.activeElement === panelElement.value) {
+    panelElement.value?.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
+  }
 });
 
 onMounted(async () => {
@@ -352,7 +366,12 @@ const selectMode = (nextMode: EntryMode) => {
   submissionError.value = null;
   mode.value = nextMode;
 };
+const requestClose = () => {
+  if (!isBusy.value) props.onClose();
+};
 const submit = async () => {
+  if (submitDisabled.value) return;
+  submitting.value = true;
   submissionError.value = null;
   const submittedMode = mode.value;
   const amount = Number.parseFloat(activeAmount.value);
@@ -363,9 +382,17 @@ const submit = async () => {
   const transferTarget = props.transferTargets.find(
     (account) => account.id === props.transferTargetId,
   );
-  const result = submittedMode === "transfer"
-    ? await props.onTransfer()
-    : await props.onAddTransaction(submittedMode);
+  let result: LedgerActionResult;
+  try {
+    result = submittedMode === "transfer"
+      ? await props.onTransfer()
+      : await props.onAddTransaction(submittedMode);
+  } catch {
+    submissionError.value = "暂时无法确认保存结果，请稍后查看交易记录再操作。";
+    return;
+  } finally {
+    submitting.value = false;
+  }
 
   if (!result.ok) {
     submissionError.value = result.message;
@@ -397,7 +424,7 @@ const startAnotherEntry = async () => {
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === "Escape") {
     event.preventDefault();
-    props.onClose();
+    requestClose();
     return;
   }
   if (event.key !== "Tab" || !panelElement.value) return;
@@ -406,7 +433,11 @@ const handleKeydown = (event: KeyboardEvent) => {
   ));
   const first = controls[0];
   const last = controls[controls.length - 1];
-  if (!first || !last) return;
+  if (!first || !last) {
+    event.preventDefault();
+    panelElement.value.focus();
+    return;
+  }
   if (event.shiftKey && document.activeElement === first) {
     event.preventDefault();
     last.focus();
