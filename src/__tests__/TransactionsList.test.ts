@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 
+import type { Transaction } from "../types";
 import TransactionsList from "../components/TransactionsList.vue";
 
 const baseTransaction = {
@@ -135,5 +136,37 @@ describe("TransactionsList", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+});
+
+describe("TransactionsList loading and search feedback", () => {
+  const props = {
+    transactions: [baseTransaction], hasMore: true, loading: false,
+    transactionLabels: { deposit: "增加", withdrawal: "减少", transfer_in: "转入", transfer_out: "转出", interest: "利息" },
+    formatSignedAmount: () => "+10.00 CNY", transactionTone: () => "text-emerald-600",
+    getTransactionNote: (transaction: Transaction) => transaction.note,
+    formatTimestamp: () => "now", onLoadMore: vi.fn(),
+  };
+
+  it("distinguishes initial loading from an empty account", async () => {
+    const { rerender } = render(TransactionsList, { props: { ...props, transactions: [], loading: true } });
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载交易记录");
+    expect(screen.queryByText("暂无交易")).toBeNull();
+    await rerender({ loading: false });
+    expect(screen.getByText("暂无交易")).toBeTruthy();
+  });
+
+  it("explains partial search results and lets users load more without losing the query", async () => {
+    const user = userEvent.setup();
+    render(TransactionsList, { props });
+    await user.type(screen.getByRole("searchbox", { name: "搜索交易" }), "书");
+    expect(screen.getByRole("status")).toHaveTextContent("找到 0 笔");
+    expect(screen.getByText("已加载记录中没有匹配的交易")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "加载更多" }));
+    expect(props.onLoadMore).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("searchbox")).toHaveValue("书");
+    await user.click(screen.getByRole("button", { name: "清除筛选" }));
+    expect(screen.getByText("测试")).toBeTruthy();
+    expect(screen.getByRole("searchbox")).toHaveValue("");
   });
 });

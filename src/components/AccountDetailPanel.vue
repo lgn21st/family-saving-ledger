@@ -1,6 +1,7 @@
 <template>
   <div v-if="selectedAccount" class="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-start">
     <TransactionsList
+      :key="selectedAccount.id"
       class="xl:order-2"
       :transactions="pagedTransactions"
       :has-more="hasMoreTransactions"

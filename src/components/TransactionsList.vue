@@ -23,6 +23,7 @@
         name="transaction-search"
         autocomplete="off"
         placeholder="搜索备注、金额或类型"
+        aria-describedby="transaction-search-scope"
         class="app-input"
       />
       <label class="sr-only" for="transaction-type-filter">交易类型</label>
@@ -39,7 +40,20 @@
       </select>
     </div>
 
-    <div v-if="transactions.length === 0" class="mt-5 rounded-2xl bg-slate-50 px-5 py-10 text-center">
+    <div v-if="transactions.length > 0" class="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <p id="transaction-search-scope" class="text-xs leading-5 text-slate-500" role="status">
+        <template v-if="hasFilters">找到 {{ filteredTransactions.length }} 笔 · </template>
+        {{ hasMore ? '仅搜索已加载记录，可加载更多历史交易。' : '已加载全部交易记录。' }}
+      </p>
+      <button v-if="hasFilters" type="button" class="button-quiet min-h-11 text-xs" @click="clearFilters">
+        清除筛选
+      </button>
+    </div>
+
+    <div v-if="transactions.length === 0 && loading" class="mt-5 rounded-2xl bg-slate-50 px-5 py-10 text-center" role="status">
+      <p class="text-sm font-medium text-slate-600">正在加载交易记录…</p>
+    </div>
+    <div v-else-if="transactions.length === 0" class="mt-5 rounded-2xl bg-slate-50 px-5 py-10 text-center">
       <p class="text-sm font-medium text-slate-600">暂无交易</p>
       <p class="mt-1 text-xs text-slate-400">记录第一笔收支后会显示在这里。</p>
     </div>
@@ -48,8 +62,8 @@
         v-if="filteredTransactions.length === 0"
         class="mt-5 rounded-2xl bg-slate-50 px-5 py-10 text-center"
       >
-        <p class="text-sm font-medium text-slate-600">没有匹配的交易</p>
-        <button type="button" class="button-quiet mt-2" @click="clearFilters">清除筛选</button>
+        <p class="text-sm font-medium text-slate-600">{{ hasMore ? '已加载记录中没有匹配的交易' : '没有匹配的交易' }}</p>
+        <p v-if="hasMore" class="mt-2 text-xs text-slate-500">试试加载更早的记录，或调整搜索条件。</p>
       </div>
       <ul v-else class="mt-5">
         <template v-for="(transaction, index) in filteredTransactions" :key="transaction.id">
@@ -162,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, toRefs } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, toRefs } from "vue";
 import ConfirmActionDialog from "./ConfirmActionDialog.vue";
 import TransactionIcon from "./TransactionIcon.vue";
 import type { Transaction } from "../types";
@@ -195,6 +209,7 @@ const startY = ref(0);
 const confirmingTransaction = ref<Transaction | null>(null);
 const searchTerm = ref("");
 const typeFilter = ref<"all" | Transaction["type"]>("all");
+const hasFilters = computed(() => Boolean(searchTerm.value.trim()) || typeFilter.value !== "all");
 const returnFocusElement = ref<HTMLElement | null>(null);
 const monthFormatter = new Intl.DateTimeFormat("zh-CN", {
   year: "numeric",
@@ -268,6 +283,8 @@ const cancelLongPress = () => {
   clearPressTimer();
   pressTargetId.value = null;
 };
+
+onBeforeUnmount(cancelLongPress);
 
 const handlePointerMove = (event: PointerEvent) => {
   if (pressTimer.value === null) return;
