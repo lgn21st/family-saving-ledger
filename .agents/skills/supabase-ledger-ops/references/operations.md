@@ -5,29 +5,28 @@
 ```bash
 supabase status
 supabase projects list
-supabase migration list --local
+docker context show
+npm run db:start
+npm run db:migrate
 git status --short --branch
 ```
 
-Confirm `.env.local` points to the intended local or remote API without printing key values.
+Confirm `.env.local` points to the remote MagicDNS host on port `54321` without printing key values.
+The Mac and remote development host must share a Tailscale network with MagicDNS enabled.
 
-## Incremental local migration
+## Incremental remote development migration
 
 ```bash
-supabase migration up --local
+npm run db:migrate
 npm run test:db
-supabase db lint --local --level warning
+npm run db:lint
 ```
 
 ## Destructive local rebuild
 
-Obtain explicit confirmation because this removes local data:
-
-```bash
-supabase db reset --local
-```
-
-Reset applies all files in `supabase/migrations/`, then `supabase/seed.sql`.
+Obtain explicit confirmation before resetting the remote development database. A reset removes its data, applies
+all migrations, then loads `supabase/seed.sql`. Do not use `--local` without an SSH tunnel because
+the Supabase CLI resolves it to `127.0.0.1`; use the remote DB URL runtime helper.
 
 ## Remote push
 
@@ -60,7 +59,7 @@ Do not store the URL when it contains a password.
 
 ```bash
 npm run test:db
-supabase db lint --local --level warning
+npm run db:lint
 npm run check
 ```
 

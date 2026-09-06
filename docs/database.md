@@ -10,9 +10,8 @@ RLS、policy 和视图安全属性。控制台临时修复必须补 forward-only
 ## Migration
 
 ```bash
-# jarvis 增量更新
-supabase migration list --local
-supabase migration up --local
+# 远程开发库增量更新（通过 Tailscale）
+npm run db:migrate
 
 # production：先 dry-run
 supabase db push --linked --dry-run
@@ -47,7 +46,7 @@ supabase db push --db-url '<SESSION_POOLER_URL>'
 
 ```bash
 npm run test:db
-supabase db lint --local --level warning
+npm run db:lint
 ```
 
-production 数据同步见 [Production → jarvis-sg](production-data-sync.md)。
+production 数据同步见 [Production → 远程开发环境](production-data-sync.md)。

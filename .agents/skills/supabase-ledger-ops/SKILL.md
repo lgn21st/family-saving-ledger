@@ -6,8 +6,8 @@ description: Operate and troubleshoot Supabase for Family Saving Ledger. Use for
 # Supabase Ledger Operations
 
 1. Read `references/operations.md` for the requested workflow.
-2. Confirm the working directory, linked project and local service status before database operations.
-3. Prefer `migration up --local` for incremental local changes; treat `db reset --local` as destructive.
+2. Confirm the working directory, linked project, remote Docker context and remote service status before database operations.
+3. Prefer `npm run db:migrate` for incremental remote development changes; treat any database reset as destructive.
 4. Run remote pushes with `--dry-run` first. Use the Session Pooler on IPv4-only networks.
 5. Before replacing local data, create a local backup and validate the remote dump table scope.
 6. Never print, commit or persist database passwords, temporary login credentials, anon/service keys or data dumps.

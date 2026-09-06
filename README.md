@@ -10,31 +10,28 @@
 mise install
 npm install --global npm@12.0.1
 npm install
-supabase start
-supabase migration up --local
+docker context use remote
+npm run db:start
+npm run db:migrate
 npm run dev
 ```
 
 创建 `.env.local`：
 
 ```bash
-VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_URL=http://<REMOTE_MAGICDNS_NAME>:54321
 VITE_SUPABASE_ANON_KEY=<supabase status 输出的本地 anon key>
 ```
 
-如果需要从零重建并写入开发种子数据：
-
-```bash
-supabase db reset --local
-```
-
-`db reset` 会清空本地数据。已有本地账本时应使用 `supabase migration up --local`。
+本机与远程开发主机必须加入同一 Tailscale 网络并启用 MagicDNS。日常数据库更新使用
+`npm run db:migrate`；重建会清空远程开发数据，操作前必须确认并备份。
 
 ## 质量门禁
 
 ```bash
 npm run check     # lint + unit tests + typecheck/build
 npm run test:db   # 回滚式数据库业务风险测试
+npm run db:lint   # 远程开发数据库 schema lint
 ```
 
 ## 项目结构

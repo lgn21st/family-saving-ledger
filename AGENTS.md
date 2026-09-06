@@ -73,11 +73,10 @@ Any change to these rules requires a migration, relevant frontend changes, datab
 `supabase/migrations/` is the only schema source. Do not recreate a parallel `schema.sql` snapshot.
 
 ```bash
-supabase migration up --local   # incremental, preserves local data
-supabase db reset --local       # destructive rebuild + seed
+npm run db:migrate   # incremental on the remote development database over Tailscale
 ```
 
-Confirm before destructive reset or replacing local data. For remote pushes, run `--dry-run` first. On IPv4-only networks use the Supabase Session Pooler URL as described in `docs/database.md`.
+Confirm before destructive reset or replacing remote development data. For remote pushes, run `--dry-run` first. On IPv4-only networks use the Supabase Session Pooler URL as described in `docs/database.md`.
 
 ## Verification
 
@@ -92,7 +91,7 @@ For database, RPC, ledger semantics or full-project changes:
 ```bash
 npm run check
 npm run test:db
-supabase db lint --local --level warning
+npm run db:lint
 git diff --check
 ```
 
