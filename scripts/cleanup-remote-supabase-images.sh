@@ -13,8 +13,8 @@ done
 
 [[ "$(docker context show)" == "remote" ]] || docker context use remote >/dev/null
 docker_endpoint="$(docker context inspect remote --format '{{.Endpoints.docker.Host}}')"
-[[ "$docker_endpoint" == "ssh://jarvis-sg" ]] \
-  || die "remote context 指向 $docker_endpoint，而不是 ssh://jarvis-sg"
+[[ "$docker_endpoint" == ssh://* ]] \
+  || die "remote context 不是 SSH endpoint"
 
 unused_image_ids=""
 for image_id in $(docker image ls --filter 'reference=public.ecr.aws/supabase/*' -q | sort -u); do
@@ -34,8 +34,8 @@ for image_id in $unused_image_ids; do
   docker image inspect "$image_id" --format '  {{join .RepoTags ", "}}  {{.Size}} bytes'
 done
 
-read -r -p '输入 PRUNE jarvis-sg 继续: ' confirmation
-[[ "$confirmation" == "PRUNE jarvis-sg" ]] || die "已取消"
+read -r -p '输入 PRUNE remote 继续: ' confirmation
+[[ "$confirmation" == "PRUNE remote" ]] || die "已取消"
 
 docker image rm $unused_image_ids
 docker system df

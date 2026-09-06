@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+source "$script_dir/lib/remote-db.sh"
+db_url="$(remote_db_url)"
+
 run_rollback_test() {
   local file="$1"
   local sentinel="$2"
@@ -9,7 +13,7 @@ run_rollback_test() {
   local status
 
   set +e
-  output="$(supabase db query --local --file "$file" 2>&1)"
+  output="$(supabase db query --db-url "$db_url" --file "$file" 2>&1)"
   status=$?
   set -e
 

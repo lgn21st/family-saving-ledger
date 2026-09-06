@@ -4,7 +4,6 @@ set -euo pipefail
 umask 077
 
 readonly DB_CONTAINER="supabase_db_family-saving-ledger"
-readonly TUNNEL_HOST="jarvis-supabase"
 readonly APP_TABLES="accounts app_users interest_log settings transactions"
 readonly MINIMAL_EXCLUDES="edge-runtime,imgproxy,logflare,mailpit,postgres-meta,realtime,storage-api,studio,supavisor,vector"
 
@@ -17,18 +16,18 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(cd "$script_dir/.." && pwd -P)"
 cd "$repo_root"
 
-[[ $# -eq 0 ]] || die "用法：scripts/sync-production-to-jarvis.sh"
+[[ $# -eq 0 ]] || die "用法：scripts/sync-production-to-remote.sh"
 backup_root="$repo_root/.local-backups/production-sync"
 
-for command_name in supabase docker git ssh lsof awk sort shasum; do
+for command_name in supabase docker git awk sort shasum; do
   command -v "$command_name" >/dev/null 2>&1 || die "缺少命令：$command_name"
 done
 
 [[ -f supabase/.temp/project-ref ]] || die "当前仓库尚未 link 到 production Supabase 项目"
 [[ "$(docker context show)" == "remote" ]] || docker context use remote >/dev/null
 docker_endpoint="$(docker context inspect remote --format '{{.Endpoints.docker.Host}}')"
-[[ "$docker_endpoint" == "ssh://jarvis-sg" ]] \
-  || die "remote context 指向 $docker_endpoint，而不是 ssh://jarvis-sg"
+[[ "$docker_endpoint" == ssh://* ]] \
+  || die "remote context 不是 SSH endpoint"
 
 mkdir -p "$backup_root"
 backup_root="$(cd "$backup_root" && pwd -P)"
@@ -39,7 +38,7 @@ bundle_dir="$backup_root/production-$timestamp"
 mkdir "$bundle_dir"
 chmod 700 "$bundle_dir"
 production_dump="$bundle_dir/public-data.sql"
-jarvis_backup="$bundle_dir/jarvis-before-sync.sql"
+remote_backup="$bundle_dir/remote-before-sync.sql"
 
 printf '1/5 从 linked production 导出 public 数据...\n'
 supabase db dump --linked --data-only --use-copy --schema public --file "$production_dump"
@@ -63,32 +62,23 @@ expected_tables="$(printf '%s\n' $APP_TABLES | LC_ALL=C sort)"
 [[ "$actual_tables" == "$expected_tables" ]] || die "production dump 的业务表范围不符"
 shasum -a 256 "$production_dump" > "$production_dump.sha256"
 
-printf '2/5 启动 jarvis-sg 最小 Supabase 服务集...\n'
-if ! ssh -O check "$TUNNEL_HOST" >/dev/null 2>&1; then
-  for port in 54321 54322; do
-    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1 \
-      && die "本机端口 $port 已被占用"
-  done
-  ssh -fN "$TUNNEL_HOST"
-fi
-ssh -O check "$TUNNEL_HOST" >/dev/null 2>&1 \
-  || die "无法建立 $TUNNEL_HOST SSH 隧道"
+printf '2/5 启动远程开发环境的最小 Supabase 服务集...\n'
 supabase start --exclude "$MINIMAL_EXCLUDES" >/dev/null
 docker inspect "$DB_CONTAINER" >/dev/null 2>&1 || die "找不到 $DB_CONTAINER"
-supabase migration up --local
+"$script_dir/run-on-remote-db.sh" migration up
 
-printf '3/5 备份并清空 jarvis 当前业务数据...\n'
+printf '3/5 备份并清空远程开发数据库当前业务数据...\n'
 docker exec "$DB_CONTAINER" pg_dump -U postgres -d postgres \
   --data-only --no-owner --no-privileges --schema=public \
   --table=public.app_users --table=public.accounts \
   --table=public.transactions --table=public.settings \
-  --table=public.interest_log > "$jarvis_backup"
-chmod 600 "$jarvis_backup"
-shasum -a 256 "$jarvis_backup" > "$jarvis_backup.sha256"
+  --table=public.interest_log > "$remote_backup"
+chmod 600 "$remote_backup"
+shasum -a 256 "$remote_backup" > "$remote_backup.sha256"
 
 printf '\n归档目录：%s\n' "$bundle_dir"
-read -r -p '输入 SYNC jarvis-sg 以覆盖开发数据: ' confirmation
-[[ "$confirmation" == "SYNC jarvis-sg" ]] || die "已取消"
+read -r -p '输入 SYNC remote 以覆盖开发数据: ' confirmation
+[[ "$confirmation" == "SYNC remote" ]] || die "已取消"
 
 docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
   -c 'TRUNCATE TABLE public.interest_log, public.transactions, public.accounts, public.app_users, public.settings RESTART IDENTITY CASCADE;'
@@ -103,5 +93,5 @@ printf '5/5 验证账本数据...\n'
 docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres \
   -v ON_ERROR_STOP=1 --file - < "$script_dir/sql/validate-synced-ledger.sql"
 
-printf '\n同步完成。\nproduction 归档：%s\njarvis 回滚备份：%s\n' \
-  "$production_dump" "$jarvis_backup"
+printf '\n同步完成。\nproduction 归档：%s\n远程开发库回滚备份：%s\n' \
+  "$production_dump" "$remote_backup"
