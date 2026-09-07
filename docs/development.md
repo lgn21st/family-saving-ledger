@@ -30,8 +30,8 @@ docker context use remote
 
 ### 依赖升级说明（2026-09-07）
 
-Node 从 24 升至 26.8.1，npm 固定为 12.0.2。Node 26 当前仍处于
-[Current 阶段](https://github.com/nodejs/Release#release-schedule)，尚未进入 LTS。
+曾尝试升到 Node 26.8.1，随后为兼容 Vercel 的 Node 24 运行时回退到
+24.20.0（见 `mise.toml` 与 `package.json` 的 `engines.node` `24.x`）。
 Vue 3.5.42、Vite 8.2.2、Vitest 5.0.0、jsdom 30.0.1 及其余直接依赖
 已核对 npm registry 的稳定版本，传递依赖随锁文件更新。
 

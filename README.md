@@ -49,7 +49,7 @@ supabase/
 ├── tests/          # 数据库集成测试
 └── seed.sql        # 仅用于本地 reset 的开发数据
 docs/               # 架构、开发、数据库和审查记录
-skills/             # 可版本化、可安装的项目专用 Codex skills
+.agents/skills/     # 可版本化、可安装的项目专用 agent skills
 ```
 
 ## 文档
