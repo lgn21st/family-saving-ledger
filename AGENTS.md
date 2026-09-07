@@ -59,7 +59,7 @@ Components must not query Supabase directly. Authoritative balance, role and con
 ## Ledger invariants
 
 - Only active parents mutate ledger data; children are read-only.
-- Amounts are positive; withdrawals and outgoing transfers cannot create negative balances.
+- Amounts are positive; withdrawals, outgoing transfers and voids cannot create negative balances.
 - Transfers require different active accounts with the same currency. Both rows share a group ID and are voided together.
 - Voided rows do not affect balances or interest.
 - Accounts and children close/archive only at an authoritative zero balance; history is retained.

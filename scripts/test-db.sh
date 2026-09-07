@@ -17,7 +17,7 @@ run_rollback_test() {
   status=$?
   set -e
 
-  if [[ ${status} -ne 0 && "${output}" == *"${sentinel}"* ]]; then
+  if [[ ${status} -ne 0 && "${output}" == *"error: ${sentinel}"* ]]; then
     echo "${label} passed (transaction rolled back)."
     return 0
   fi

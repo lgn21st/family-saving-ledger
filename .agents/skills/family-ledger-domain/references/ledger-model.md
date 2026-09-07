@@ -21,7 +21,8 @@
 - Types: `deposit`, `withdrawal`, `transfer_in`, `transfer_out`, `interest`.
 - Amounts are positive; withdrawal and transfer-out contribute negative balance.
 - Voided transactions are excluded from balances and interest.
-- Withdrawal and transfer RPCs reject insufficient balances inside the database transaction.
+- Withdrawal, transfer and void RPCs reject insufficient or negative resulting balances inside the database transaction.
+- Voiding locks affected accounts in UUID order and refuses inactive accounts.
 
 ## Transfers
 
@@ -33,6 +34,7 @@
 
 - Use `settings.annual_rate` and `settings.timezone`.
 - Compute monthly interest from daily balances.
+- Stamp catch-up interest at the next month start in `settings.timezone` so later months compound.
 - Enforce one non-void interest transaction and one log per account/month.
 - Serialize settlement per account/month and process accounts in deterministic order.
 
@@ -43,6 +45,10 @@
 - `void_transaction`
 - `close_account`
 - `archive_child`
+- `create_child`
+- `update_child_name`
+- `create_account`
+- `update_account_name`
 - `run_monthly_interest`
 - `get_account_balance`
 - `get_balance_before_date`

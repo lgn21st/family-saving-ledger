@@ -24,10 +24,13 @@ begin
       'public.void_transaction(uuid,uuid)',
       'public.close_account(uuid,uuid)',
       'public.archive_child(uuid,uuid)',
+      'public.create_child(text,text,text,uuid)',
+      'public.update_child_name(uuid,text,uuid)',
+      'public.create_account(text,text,uuid,uuid)',
+      'public.update_account_name(uuid,text,uuid)',
       'public.get_account_balance(uuid)',
       'public.get_balance_before_date(uuid,timestamp with time zone)',
-      'public.is_active_parent(uuid)',
-      'public.run_monthly_interest()'
+      'public.is_active_parent(uuid)'
     ] loop
       if not has_function_privilege(role_name, function_name, 'EXECUTE') then
         raise exception '% lacks EXECUTE on %', role_name, function_name;
@@ -37,6 +40,14 @@ begin
 
   if has_function_privilege(
     'anon',
+    'public.run_monthly_interest()',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.run_monthly_interest()',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'anon',
     'public.run_monthly_interest_impl()',
     'EXECUTE'
   ) or has_function_privilege(
@@ -44,7 +55,7 @@ begin
     'public.run_monthly_interest_impl()',
     'EXECUTE'
   ) then
-    raise exception 'Internal interest implementation is exposed to API roles';
+    raise exception 'Monthly interest settlement is exposed to API roles';
   end if;
 
   execute 'set local role anon';
