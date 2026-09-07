@@ -2,7 +2,7 @@
 
 ## 环境
 
-- Node.js 24 LTS、npm 12
+- Node.js 26.8.1（Current）、npm 12
 - Supabase CLI、独立 Docker CLI
 - 本机与远程开发主机加入同一 Tailscale 网络，并启用 MagicDNS
 - Docker context `remote` → `ssh://<REMOTE_SSH_ALIAS>`
@@ -28,10 +28,27 @@ Host *
 
 ```bash
 mise install
-npm install --global npm@12.0.1
-npm install
+npm install --global npm@12.0.2
+npm ci
 docker context use remote
 ```
+
+### 依赖升级说明（2026-09-07）
+
+Node 从 24 升至 26.8.1，npm 固定为 12.0.2。Node 26 当前仍处于
+[Current 阶段](https://github.com/nodejs/Release#release-schedule)，尚未进入 LTS。
+Vue 3.5.42、Vite 8.2.2、Vitest 5.0.0、jsdom 30.0.1 及其余直接依赖
+已核对 npm registry 的稳定版本，传递依赖随锁文件更新。
+
+TypeScript 保留在 `~6.0.3`：实测 TypeScript 7.0.2 会导致当前
+`typescript-eslint` 启动失败。TypeScript 7 尚未提供工具链需要的编译器 API，
+参见[官方兼容说明](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0)。
+待 Vue 类型检查和 ESLint 工具链支持后再升级；不要通过忽略 peer dependency 强行安装。
+
+升级验证：lint、38 个测试文件中的 103 个测试、Vue 类型检查和 PWA 生产构建通过，
+npm audit 为 0 漏洞。PWA 插件仍会产生 `inlineDynamicImports` 弃用提示，构建正常完成。
+数据库业务风险及 API 权限集成测试均通过，
+测试事务已回滚；数据库 lint 未发现 schema 错误。本次没有修改数据库结构或业务数据。
 
 ## 日常开发
 

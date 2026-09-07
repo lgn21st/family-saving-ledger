@@ -4,12 +4,12 @@
 
 ## 快速开始
 
-项目固定使用 Node.js 24 LTS 和 npm 12；可通过 `mise.toml` 或 `.nvmrc` 安装匹配版本。
+项目固定使用 Node.js 26.8.1（Current）和 npm 12；通过 `mise.toml` 管理 Node 版本。
 
 ```bash
 mise install
-npm install --global npm@12.0.1
-npm install
+npm install --global npm@12.0.2
+npm ci
 docker context use remote
 npm run db:start
 npm run db:migrate
