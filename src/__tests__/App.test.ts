@@ -38,9 +38,13 @@ type Transaction = {
   currency: string;
   note: string | null;
   related_account_id: string | null;
+  transfer_group_id?: string | null;
   created_by: string;
   created_at: string;
   interest_month?: string | null;
+  is_void?: boolean;
+  voided_at?: string | null;
+  voided_by?: string | null;
 };
 
 type Settings = {
@@ -96,17 +100,26 @@ function createSupabaseMock() {
     return filters.reduce((result, filter) => result.filter(filter), rows);
   };
 
+  const isActiveParent = (userId: string) =>
+    dataStore.app_users.some(
+      (entry) =>
+        entry.id === userId &&
+        entry.role === "parent" &&
+        entry.is_active !== false,
+    );
+
+  const signedAmount = (transaction: Transaction) =>
+    transaction.type === "withdrawal" || transaction.type === "transfer_out"
+      ? -transaction.amount
+      : transaction.amount;
+
   const computeAccountBalances = () => {
     const totals = new Map<string, number>();
     dataStore.transactions.forEach((transaction) => {
-      const delta =
-        transaction.type === "withdrawal" ||
-        transaction.type === "transfer_out"
-          ? -transaction.amount
-          : transaction.amount;
+      if (transaction.is_void) return;
       totals.set(
         transaction.account_id,
-        (totals.get(transaction.account_id) ?? 0) + delta,
+        (totals.get(transaction.account_id) ?? 0) + signedAmount(transaction),
       );
     });
     return Array.from(totals.entries()).map(([account_id, balance]) => ({
@@ -342,6 +355,13 @@ function createSupabaseMock() {
           });
         }
 
+        if (!isActiveParent(createdBy)) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Only an active parent can create transactions" },
+          });
+        }
+
         const inserted = {
           id: nextId(),
           account_id: accountId,
@@ -352,6 +372,7 @@ function createSupabaseMock() {
           related_account_id: null,
           created_by: createdBy,
           created_at: now(),
+          is_void: false,
         } satisfies Transaction;
 
         dataStore = {
@@ -403,6 +424,14 @@ function createSupabaseMock() {
           });
         }
 
+        if (!isActiveParent(createdBy)) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Only an active parent can transfer funds" },
+          });
+        }
+
+        const transferGroupId = nextId();
         const noteSuffix = note.trim() ? ` - ${note.trim()}` : " （无备注）";
         const sourceOwner =
           dataStore.app_users.find(
@@ -421,8 +450,10 @@ function createSupabaseMock() {
           currency: source.currency,
           note: `转出至 ${targetOwner} ${target.name}${noteSuffix}`,
           related_account_id: targetId,
+          transfer_group_id: transferGroupId,
           created_by: createdBy,
           created_at: now(),
+          is_void: false,
         };
 
         const targetRow = {
@@ -433,8 +464,10 @@ function createSupabaseMock() {
           currency: target.currency,
           note: `来自 ${sourceOwner} ${source.name}${noteSuffix}`,
           related_account_id: sourceId,
+          transfer_group_id: transferGroupId,
           created_by: createdBy,
           created_at: now(),
+          is_void: false,
         };
 
         dataStore = {
@@ -542,6 +575,177 @@ function createSupabaseMock() {
         return Promise.resolve({ data: closedAccount, error: null });
       }
 
+      if (fnName === "void_transaction") {
+        const transactionId = String(payload.p_transaction_id);
+        const voidedBy = String(payload.p_voided_by);
+        if (!isActiveParent(voidedBy)) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Only an active parent can void transactions" },
+          });
+        }
+
+        const target = dataStore.transactions.find(
+          (entry) => entry.id === transactionId,
+        );
+        if (!target) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Transaction not found" },
+          });
+        }
+        if (target.is_void) {
+          return Promise.resolve({ data: 0, error: null });
+        }
+
+        const groupRows = target.transfer_group_id
+          ? dataStore.transactions.filter(
+              (entry) => entry.transfer_group_id === target.transfer_group_id,
+            )
+          : [target];
+        const accountIds = [...new Set(groupRows.map((entry) => entry.account_id))];
+        const inactive = accountIds.some((accountId) => {
+          const account = dataStore.accounts.find((entry) => entry.id === accountId);
+          return !account || !account.is_active;
+        });
+        if (inactive) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Cannot void a transaction on an inactive account" },
+          });
+        }
+
+        for (const accountId of accountIds) {
+          const current = getBalance(accountId);
+          const delta = groupRows
+            .filter((entry) => entry.account_id === accountId && !entry.is_void)
+            .reduce((sum, entry) => sum + signedAmount(entry), 0);
+          if (current - delta < 0) {
+            return Promise.resolve({
+              data: null,
+              error: { message: "Void would result in a negative balance" },
+            });
+          }
+        }
+
+        const voidedAt = now();
+        dataStore = {
+          ...dataStore,
+          transactions: dataStore.transactions.map((entry) =>
+            groupRows.some((row) => row.id === entry.id)
+              ? {
+                  ...entry,
+                  is_void: true,
+                  voided_at: voidedAt,
+                  voided_by: voidedBy,
+                }
+              : entry,
+          ),
+        };
+        return Promise.resolve({ data: groupRows.length, error: null });
+      }
+
+      if (fnName === "create_child") {
+        const createdBy = String(payload.p_created_by);
+        if (!isActiveParent(createdBy)) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Only an active parent can create children" },
+          });
+        }
+        const created = {
+          id: nextId(),
+          name: String(payload.p_name),
+          role: "child" as const,
+          pin: String(payload.p_pin),
+          avatar_id: String(payload.p_avatar_id),
+          is_active: true,
+          created_at: now(),
+        };
+        dataStore = {
+          ...dataStore,
+          app_users: [...dataStore.app_users, created],
+        };
+        return Promise.resolve({ data: created.id, error: null });
+      }
+
+      if (fnName === "update_child_name") {
+        const updatedBy = String(payload.p_updated_by);
+        const childId = String(payload.p_child_id);
+        if (!isActiveParent(updatedBy)) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Only an active parent can update children" },
+          });
+        }
+        const [updated] = updateRows(
+          "app_users",
+          { name: String(payload.p_name) },
+          [
+            (entry) =>
+              entry.id === childId &&
+              entry.role === "child" &&
+              entry.is_active !== false,
+          ],
+        );
+        if (!updated) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Child not found or inactive" },
+          });
+        }
+        return Promise.resolve({ data: null, error: null });
+      }
+
+      if (fnName === "create_account") {
+        const createdBy = String(payload.p_created_by);
+        if (!isActiveParent(createdBy)) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Only an active parent can create accounts" },
+          });
+        }
+        const created = {
+          id: nextId(),
+          name: String(payload.p_name),
+          currency: String(payload.p_currency),
+          owner_child_id: String(payload.p_owner_child_id),
+          created_by: createdBy,
+          is_active: true,
+          created_at: now(),
+        };
+        dataStore = {
+          ...dataStore,
+          accounts: [...dataStore.accounts, created],
+        };
+        return Promise.resolve({ data: created.id, error: null });
+      }
+
+      if (fnName === "update_account_name") {
+        const updatedBy = String(payload.p_updated_by);
+        if (!isActiveParent(updatedBy)) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Only an active parent can update accounts" },
+          });
+        }
+        const [updated] = updateRows(
+          "accounts",
+          { name: String(payload.p_name) },
+          [
+            (entry) =>
+              entry.id === String(payload.p_account_id) && entry.is_active,
+          ],
+        );
+        if (!updated) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "Account not found or inactive" },
+          });
+        }
+        return Promise.resolve({ data: null, error: null });
+      }
+
       if (fnName === "get_balance_before_date") {
         const accountId = String(payload.p_account_id);
         const before = String(payload.p_before);
@@ -549,16 +753,10 @@ function createSupabaseMock() {
           .filter(
             (transaction) =>
               transaction.account_id === accountId &&
+              !transaction.is_void &&
               transaction.created_at < before,
           )
-          .reduce((sum, transaction) => {
-            const delta =
-              transaction.type === "withdrawal" ||
-              transaction.type === "transfer_out"
-                ? -transaction.amount
-                : transaction.amount;
-            return sum + delta;
-          }, 0);
+          .reduce((sum, transaction) => sum + signedAmount(transaction), 0);
 
         return Promise.resolve({ data: Number(total.toFixed(2)), error: null });
       }
@@ -784,6 +982,53 @@ describe("Home Bank UI", () => {
     await user.click(screen.getByRole("button", { name: "确认存入" }));
 
     expect(await screen.findByText("零花钱发放")).toBeInTheDocument();
+  });
+
+  it("voids a deposit through the database RPC", async () => {
+    loadMockData({
+      app_users: [
+        { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小女儿", role: "child", pin: "1111" },
+      ],
+      accounts: [
+        {
+          id: "acc-1",
+          name: "零花钱",
+          currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
+          created_at: "2024-01-01T08:00:00Z",
+        },
+      ],
+      transactions: [
+        {
+          id: "t-1",
+          account_id: "acc-1",
+          type: "deposit",
+          amount: 20,
+          currency: "CNY",
+          note: "可作废存款",
+          related_account_id: null,
+          created_by: "parent",
+          created_at: "2024-01-02T10:00:00Z",
+          is_void: false,
+        },
+      ],
+    });
+
+    render(App);
+    const user = userEvent.setup();
+
+    await loginAs(user, "爸爸", "1234");
+    await selectChild(user, "小女儿");
+    await selectAccount(user, "零花钱");
+
+    expect(await screen.findByText("可作废存款")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^撤销交易：/ }));
+    await user.click(screen.getByRole("button", { name: "确认撤销" }));
+
+    expect(await screen.findByText("已作废")).toBeInTheDocument();
   });
 
   it("filters transfer targets by currency", async () => {

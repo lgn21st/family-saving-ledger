@@ -7,6 +7,7 @@ App.vue
   └─ app/useLedgerApp.ts        页面装配与跨功能协调
        ├─ composables/*         数据访问、业务动作、派生状态
        ├─ config/*              静态产品配置
+       ├─ utils/timezone.ts     账本时区下的日切窗口
        ├─ types/domain.ts       账本领域模型
        ├─ types/supabase.ts     Supabase 最小适配接口
        └─ supabaseClient.ts     基础设施客户端

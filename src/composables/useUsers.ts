@@ -13,6 +13,9 @@
 import { ref } from "vue";
 import type { AppUser, SupabaseFromClient } from "../types";
 
+export const APP_USER_PUBLIC_COLUMNS =
+  "id, name, role, avatar_id, is_active, created_at, archived_at, archived_by";
+
 export const useUsers = (params: {
   supabase: SupabaseFromClient;
   setErrorStatus: (message: string) => void;
@@ -25,7 +28,7 @@ export const useUsers = (params: {
   const loadChildUsers = async () => {
     const { data, error } = await supabase
       .from("app_users")
-      .select("*")
+      .select(APP_USER_PUBLIC_COLUMNS)
       .eq("role", "child")
       .order("created_at");
 
@@ -42,7 +45,7 @@ export const useUsers = (params: {
   const loadLoginUsers = async () => {
     const { data, error } = await supabase
       .from("app_users")
-      .select("*")
+      .select(APP_USER_PUBLIC_COLUMNS)
       .order("created_at");
 
     if (error) {

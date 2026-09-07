@@ -105,7 +105,7 @@
     <div v-else class="mt-6 flex min-h-48 flex-1 items-center justify-center rounded-2xl bg-slate-50 p-4">
       <div class="text-center">
         <p class="text-sm font-medium text-slate-600">暂无数据</p>
-        <p class="mt-1 text-xs text-slate-400">记录第一笔交易后会在这里显示。</p>
+        <p class="mt-1 text-xs text-slate-400">近 30 天没有新的交易。</p>
       </div>
     </div>
   </section>

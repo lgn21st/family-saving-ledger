@@ -4,19 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { useAccountEditor } from "../composables/useAccountEditor";
 
 const createSupabaseMock = () => {
-  const insert = vi.fn(() => Promise.resolve({ error: null }));
-  const update = vi.fn(() => ({
-    eq: vi.fn(() => Promise.resolve({ error: null })),
-  }));
-
+  const rpc = vi.fn(() => Promise.resolve({ error: null }));
   return {
-    from: () => ({
-      insert,
-      update,
-    }),
-    spies: { insert, update },
+    rpc,
+    spies: { rpc },
   };
 };
+
+const parentUser = { id: "parent", name: "爸爸", role: "parent" as const };
 
 describe("useAccountEditor", () => {
   it("validates account creation inputs", async () => {
@@ -33,7 +28,7 @@ describe("useAccountEditor", () => {
     const editingAccountId = ref<string | null>(null);
     const editingAccountName = ref("");
     const loading = ref(false);
-    const user = ref({ id: "parent" });
+    const user = ref(parentUser);
 
     const { handleCreateAccount } = useAccountEditor({
       supabase,
@@ -54,7 +49,7 @@ describe("useAccountEditor", () => {
 
     await handleCreateAccount();
     expect(setStatus).toHaveBeenCalledWith("请输入账户名称。");
-    expect(supabase.spies.insert).not.toHaveBeenCalled();
+    expect(supabase.spies.rpc).not.toHaveBeenCalled();
   });
 
   it("creates an account and clears form", async () => {
@@ -71,7 +66,7 @@ describe("useAccountEditor", () => {
     const editingAccountId = ref<string | null>(null);
     const editingAccountName = ref("");
     const loading = ref(false);
-    const user = ref({ id: "parent" });
+    const user = ref(parentUser);
 
     const { handleCreateAccount } = useAccountEditor({
       supabase,
@@ -91,10 +86,16 @@ describe("useAccountEditor", () => {
     });
 
     await handleCreateAccount();
-    expect(supabase.spies.insert).toHaveBeenCalled();
+    expect(supabase.spies.rpc).toHaveBeenCalledWith("create_account", {
+      p_name: "零花钱",
+      p_currency: "CNY",
+      p_owner_child_id: "child-1",
+      p_created_by: "parent",
+    });
     expect(newAccountName.value).toBe("");
     expect(setSuccessStatus).toHaveBeenCalledWith("账户已创建。");
     expect(loadAccounts).toHaveBeenCalled();
+    expect(loading.value).toBe(false);
   });
 
   it("updates account name with validation", async () => {
@@ -111,7 +112,7 @@ describe("useAccountEditor", () => {
     const editingAccountId = ref<string | null>("acc-1");
     const editingAccountName = ref("");
     const loading = ref(false);
-    const user = ref({ id: "parent" });
+    const user = ref(parentUser);
 
     const { handleUpdateAccount } = useAccountEditor({
       supabase,
@@ -135,7 +136,11 @@ describe("useAccountEditor", () => {
 
     editingAccountName.value = "新名称";
     await handleUpdateAccount();
-    expect(supabase.spies.update).toHaveBeenCalled();
+    expect(supabase.spies.rpc).toHaveBeenCalledWith("update_account_name", {
+      p_account_id: "acc-1",
+      p_name: "新名称",
+      p_updated_by: "parent",
+    });
     expect(cancelEditAccount).toHaveBeenCalled();
     expect(setSuccessStatus).toHaveBeenCalledWith("账户名称已更新。");
   });

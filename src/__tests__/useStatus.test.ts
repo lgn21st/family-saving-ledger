@@ -22,6 +22,12 @@ describe("useStatus", () => {
 
     setErrorStatus("All child account balances must be zero before archiving");
     expect(status.value).toBe("请先将该孩子所有账户余额清零后再归档。");
+
+    setErrorStatus("Cannot void a transaction on an inactive account");
+    expect(status.value).toBe("无法作废已关闭账户上的交易。");
+
+    setErrorStatus("Void would result in a negative balance");
+    expect(status.value).toBe("作废后余额不能为负。");
   });
 
   it("tracks success tone independently from message text", () => {

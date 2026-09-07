@@ -18,11 +18,13 @@ describe("useChartData", () => {
     const chartBaseBalance = ref(100);
     const chartTransactions = ref([
       {
+        account_id: "acc-1",
         type: "deposit" as const,
         amount: 10,
         created_at: new Date(Date.UTC(2024, 0, 5, 12, 0, 0)).toISOString(),
       },
       {
+        account_id: "acc-1",
         type: "withdrawal" as const,
         amount: 5,
         created_at: new Date(Date.UTC(2024, 0, 10, 8, 0, 0)).toISOString(),
@@ -45,14 +47,15 @@ describe("useChartData", () => {
     expect(chartPoints.value[29]?.balance).toBe(105);
   });
 
-  it("returns no points when there are no transactions", () => {
+  it("emits a flat 30-day series from the base balance when there are no recent transactions", () => {
     const { chartPoints } = useChartData({
       selectedAccount: ref({ id: "acc-1" }),
       chartTransactions: ref([]),
-      chartBaseBalance: ref(0),
+      chartBaseBalance: ref(50),
       signedAmount: () => 0,
     });
 
-    expect(chartPoints.value).toEqual([]);
+    expect(chartPoints.value).toHaveLength(30);
+    expect(chartPoints.value.every((point) => point.balance === 50)).toBe(true);
   });
 });

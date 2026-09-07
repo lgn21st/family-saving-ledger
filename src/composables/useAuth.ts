@@ -9,6 +9,7 @@
  */
 import type { Ref } from "vue";
 import type { AppUser, SupabaseFromClient } from "../types";
+import { APP_USER_PUBLIC_COLUMNS } from "./useUsers";
 
 export const useAuth = (params: {
   supabase: SupabaseFromClient;
@@ -53,7 +54,7 @@ export const useAuth = (params: {
     loading.value = true;
     const { data, error } = await supabase
       .from("app_users")
-      .select("*")
+      .select(APP_USER_PUBLIC_COLUMNS)
       .eq("id", selectedLoginUserId.value)
       .eq("pin", loginPin.value)
       .maybeSingle();
@@ -80,7 +81,7 @@ export const useAuth = (params: {
     loading.value = true;
     const { data, error } = await supabase
       .from("app_users")
-      .select("*")
+      .select(APP_USER_PUBLIC_COLUMNS)
       .eq("id", userId)
       .maybeSingle();
 

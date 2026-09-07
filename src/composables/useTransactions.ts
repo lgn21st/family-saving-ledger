@@ -1,33 +1,27 @@
-/**
- * 交易记录管理
- * 加载交易列表和图表数据
- *
- * 功能：
- * - 分页加载交易记录（每页 10 条）
- * - 支持加载更多（无限滚动基础）
- * - 加载近 30 天交易用于图表展示
- * - 包含作废交易筛选
- *
- * 状态：
- * - transactions: 当前加载的交易列表
- * - chartTransactions: 近 30 天交易（用于图表）
- * - chartBaseBalance: 图表起始余额
- */
 import { computed, ref, type Ref } from "vue";
 import type {
   SupabaseClient,
   SupabaseFilterBuilder,
   Transaction,
 } from "../types";
+import {
+  addZonedDays,
+  DEFAULT_LEDGER_TIMEZONE,
+  startOfZonedDay,
+} from "../utils/timezone";
 
 const PAGE_SIZE = 10;
 
 export const useTransactions = (params: {
   supabase: SupabaseClient;
   includeVoided: Ref<boolean>;
+  timeZone?: Ref<string>;
   setErrorStatus: (message: string) => void;
 }) => {
   const { supabase, includeVoided, setErrorStatus } = params;
+  const timeZone = computed(
+    () => params.timeZone?.value || DEFAULT_LEDGER_TIMEZONE,
+  );
 
   const transactions = ref<Transaction[]>([]);
   const chartTransactions = ref<Transaction[]>([]);
@@ -35,25 +29,34 @@ export const useTransactions = (params: {
   const transactionTotal = ref(0);
   const transactionPage = ref(0);
   const transactionLoading = ref(false);
+  const loadedAccountId = ref<string | null>(null);
+  let loadGeneration = 0;
 
   const hasMoreTransactions = computed(
     () => transactions.value.length < transactionTotal.value,
   );
 
   const clearTransactions = () => {
+    loadGeneration += 1;
     transactions.value = [];
     chartTransactions.value = [];
     chartBaseBalance.value = 0;
     transactionTotal.value = 0;
     transactionPage.value = 0;
     transactionLoading.value = false;
+    loadedAccountId.value = null;
   };
 
   const applyVoidFilter = <T>(query: SupabaseFilterBuilder<T>) => {
     return includeVoided.value ? query : query.eq("is_void", false);
   };
 
-  const loadTransactionsPage = async (accountId: string, page: number) => {
+  const loadTransactionsPage = async (
+    accountId: string,
+    page: number,
+    generation = loadGeneration,
+  ) => {
+    if (generation !== loadGeneration) return;
     transactionLoading.value = true;
     const start = (page - 1) * PAGE_SIZE;
     const end = page * PAGE_SIZE - 1;
@@ -65,6 +68,8 @@ export const useTransactions = (params: {
       .order("created_at", { ascending: false })
       .range(start, end);
 
+    if (generation !== loadGeneration) return;
+
     if (error) {
       setErrorStatus(error.message);
       transactionLoading.value = false;
@@ -74,17 +79,21 @@ export const useTransactions = (params: {
     const resolvedData = (data ?? []) as Transaction[];
     transactionTotal.value = count ?? resolvedData.length ?? 0;
     transactionPage.value = page;
-    const nextData = resolvedData;
+    loadedAccountId.value = accountId;
     transactions.value =
-      page === 1 ? nextData : [...transactions.value, ...nextData];
+      page === 1 ? resolvedData : [...transactions.value, ...resolvedData];
     transactionLoading.value = false;
   };
 
-  const loadChartTransactions = async (accountId: string) => {
-    const endDate = new Date(Date.now());
-    const startDate = new Date(endDate);
-    startDate.setDate(endDate.getDate() - 29);
-    startDate.setHours(0, 0, 0, 0);
+  const loadChartTransactions = async (
+    accountId: string,
+    generation = loadGeneration,
+  ) => {
+    const startDate = addZonedDays(
+      startOfZonedDay(new Date(), timeZone.value),
+      -29,
+      timeZone.value,
+    );
 
     const { data: baseData, error: baseError } = await supabase.rpc(
       "get_balance_before_date",
@@ -93,6 +102,8 @@ export const useTransactions = (params: {
         p_before: startDate.toISOString(),
       },
     );
+
+    if (generation !== loadGeneration) return;
 
     if (baseError) {
       setErrorStatus(baseError.message);
@@ -109,6 +120,8 @@ export const useTransactions = (params: {
       ascending: true,
     });
 
+    if (generation !== loadGeneration) return;
+
     if (error) {
       setErrorStatus(error.message);
       return;
@@ -119,12 +132,23 @@ export const useTransactions = (params: {
   };
 
   const resetSelectedAccountData = async (accountId: string) => {
-    await loadTransactionsPage(accountId, 1);
-    await loadChartTransactions(accountId);
+    const generation = loadGeneration + 1;
+    loadGeneration = generation;
+    transactions.value = [];
+    chartTransactions.value = [];
+    chartBaseBalance.value = 0;
+    transactionTotal.value = 0;
+    transactionPage.value = 0;
+    loadedAccountId.value = accountId;
+    await Promise.all([
+      loadTransactionsPage(accountId, 1, generation),
+      loadChartTransactions(accountId, generation),
+    ]);
   };
 
   const handleLoadMoreTransactions = async (accountId: string) => {
     if (transactionLoading.value || !hasMoreTransactions.value) return;
+    if (loadedAccountId.value !== accountId) return;
     await loadTransactionsPage(accountId, transactionPage.value + 1);
   };
 
@@ -135,6 +159,7 @@ export const useTransactions = (params: {
     transactionTotal,
     transactionPage,
     transactionLoading,
+    loadedAccountId,
     hasMoreTransactions,
     clearTransactions,
     loadTransactionsPage,

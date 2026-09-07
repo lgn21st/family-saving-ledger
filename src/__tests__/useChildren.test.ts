@@ -4,30 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import { useChildren } from "../composables/useChildren";
 
 const createSupabaseMock = () => {
-  const insert = vi.fn(() => Promise.resolve({ error: null }));
-  const update = vi.fn(() => ({
-    eq: vi.fn(() => Promise.resolve({ error: null })),
-  }));
-  const deleteFn = vi.fn(() => ({
-    eq: vi.fn(() => Promise.resolve({ error: null })),
-    in: vi.fn(() => Promise.resolve({ error: null })),
-  }));
-  const select = vi.fn(() => ({
-    eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
-  }));
   const rpc = vi.fn(() => Promise.resolve({ data: 1, error: null }));
 
   return {
-    from: () => ({
-      insert,
-      update,
-      delete: deleteFn,
-      select,
-    }),
     rpc,
-    spies: { insert, update, deleteFn, select, rpc },
+    spies: { rpc },
   };
 };
+
+const parentUser = { id: "parent", name: "爸爸", role: "parent" as const };
 
 describe("useChildren", () => {
   it("validates child creation inputs", async () => {
@@ -45,7 +30,7 @@ describe("useChildren", () => {
     const editingChildId = ref<string | null>(null);
     const editingChildName = ref("");
     const loading = ref(false);
-    const user = ref({ id: "parent" });
+    const user = ref(parentUser);
 
     const { handleCreateChild } = useChildren({
       supabase,
@@ -68,7 +53,7 @@ describe("useChildren", () => {
 
     await handleCreateChild();
     expect(setStatus).toHaveBeenCalledWith("请输入孩子姓名。");
-    expect(supabase.spies.insert).not.toHaveBeenCalled();
+    expect(supabase.spies.rpc).not.toHaveBeenCalled();
   });
 
   it("creates child and resets form", async () => {
@@ -86,7 +71,7 @@ describe("useChildren", () => {
     const editingChildId = ref<string | null>(null);
     const editingChildName = ref("");
     const loading = ref(false);
-    const user = ref({ id: "parent" });
+    const user = ref(parentUser);
 
     const { handleCreateChild } = useChildren({
       supabase,
@@ -109,13 +94,19 @@ describe("useChildren", () => {
 
     await handleCreateChild();
 
-    expect(supabase.spies.insert).toHaveBeenCalled();
+    expect(supabase.spies.rpc).toHaveBeenCalledWith("create_child", {
+      p_name: "小宝",
+      p_pin: "1234",
+      p_avatar_id: "child-2",
+      p_created_by: "parent",
+    });
     expect(newChildName.value).toBe("");
     expect(newChildPin.value).toBe("");
     expect(newChildAvatarId.value).toBe("child-1");
     expect(loadChildUsers).toHaveBeenCalled();
     expect(loadLoginUsersAndSelect).toHaveBeenCalled();
     expect(setSuccessStatus).toHaveBeenCalledWith("孩子用户已创建。");
+    expect(loading.value).toBe(false);
   });
 
   it("archives child through one RPC and reloads data", async () => {
@@ -134,7 +125,7 @@ describe("useChildren", () => {
     const editingChildId = ref<string | null>(null);
     const editingChildName = ref("");
     const loading = ref(false);
-    const user = ref({ id: "parent" });
+    const user = ref(parentUser);
 
     const { handleArchiveChild } = useChildren({
       supabase,
@@ -169,6 +160,42 @@ describe("useChildren", () => {
     );
   });
 
+  it("maps archive RPC errors", async () => {
+    const supabase = {
+      rpc: vi.fn(() =>
+        Promise.resolve({
+          error: { message: "All child account balances must be zero before archiving" },
+        }),
+      ),
+    };
+    const setErrorStatus = vi.fn();
+    const user = ref(parentUser);
+
+    const { handleArchiveChild } = useChildren({
+      supabase,
+      user,
+      loading: ref(false),
+      newChildName: ref(""),
+      newChildPin: ref(""),
+      newChildAvatarId: ref("child-1"),
+      defaultAvatarId: "child-1",
+      editingChildId: ref(null),
+      editingChildName: ref(""),
+      cancelEditChild: vi.fn(),
+      setStatus: vi.fn(),
+      setErrorStatus,
+      setSuccessStatus: vi.fn(),
+      loadChildUsers: vi.fn(async () => undefined),
+      loadLoginUsersAndSelect: vi.fn(async () => undefined),
+      loadAccounts: vi.fn(async () => undefined),
+    });
+
+    await handleArchiveChild("child-1");
+    expect(setErrorStatus).toHaveBeenCalledWith(
+      "All child account balances must be zero before archiving",
+    );
+  });
+
   it("updates child name with validation", async () => {
     const supabase = createSupabaseMock();
     const setStatus = vi.fn();
@@ -185,7 +212,7 @@ describe("useChildren", () => {
     const editingChildId = ref<string | null>("child-1");
     const editingChildName = ref("");
     const loading = ref(false);
-    const user = ref({ id: "parent" });
+    const user = ref(parentUser);
 
     const { handleUpdateChild } = useChildren({
       supabase,
@@ -211,7 +238,11 @@ describe("useChildren", () => {
 
     editingChildName.value = "小宝";
     await handleUpdateChild();
-    expect(supabase.spies.update).toHaveBeenCalled();
+    expect(supabase.spies.rpc).toHaveBeenCalledWith("update_child_name", {
+      p_child_id: "child-1",
+      p_name: "小宝",
+      p_updated_by: "parent",
+    });
     expect(cancelEditChild).toHaveBeenCalled();
     expect(setSuccessStatus).toHaveBeenCalledWith("已更新名称。");
   });

@@ -249,4 +249,89 @@ describe("useTransactions", () => {
     await loadTransactionsPage("acc-1", 1);
     expect(loaded.value.map((row) => row.id)).toEqual(["t-1", "t-2"]);
   });
+
+  it("ignores a stale page response after the selected account changes", async () => {
+    let resolveFirst: ((value: {
+      data: Transaction[];
+      error: null;
+      count: number;
+    }) => void) | undefined;
+
+    const supabase = {
+      from: () => ({
+        select: () => {
+          const query = {
+            eq: () => query,
+            gte: () => query,
+            order: () => ({
+              range: () => {
+                if (!resolveFirst) {
+                  return new Promise((resolve) => {
+                    resolveFirst = resolve;
+                  });
+                }
+                return Promise.resolve({
+                  data: [
+                    {
+                      id: "b-1",
+                      account_id: "acc-2",
+                      type: "deposit" as const,
+                      amount: 2,
+                      currency: "CNY",
+                      note: "B",
+                      related_account_id: null,
+                      is_void: false,
+                      created_by: "parent",
+                      created_at: "2024-01-02T00:00:00Z",
+                    },
+                  ],
+                  error: null,
+                  count: 1,
+                });
+              },
+              then: (
+                onfulfilled?: (value: {
+                  data: Transaction[];
+                  error: null;
+                }) => void,
+              ) => Promise.resolve({ data: [], error: null }).then(onfulfilled),
+            }),
+          };
+          return query;
+        },
+      }),
+      rpc: () => Promise.resolve({ data: 0, error: null }),
+    };
+
+    const { transactions: loaded, resetSelectedAccountData } = useTransactions({
+      supabase,
+      includeVoided: ref(false),
+      setErrorStatus: vi.fn(),
+    });
+
+    const firstLoad = resetSelectedAccountData("acc-1");
+    const secondLoad = resetSelectedAccountData("acc-2");
+    await secondLoad;
+    resolveFirst?.({
+      data: [
+        {
+          id: "a-1",
+          account_id: "acc-1",
+          type: "deposit",
+          amount: 1,
+          currency: "CNY",
+          note: "A",
+          related_account_id: null,
+          is_void: false,
+          created_by: "parent",
+          created_at: "2024-01-01T00:00:00Z",
+        },
+      ],
+      error: null,
+      count: 1,
+    });
+    await firstLoad;
+
+    expect(loaded.value.map((row) => row.id)).toEqual(["b-1"]);
+  });
 });

@@ -41,25 +41,27 @@ export const useTransactionActions = (params: {
     }
 
     loading.value = true;
-    const { error } = await supabase.rpc("apply_transaction", {
-      p_account_id: selectedAccountId.value,
-      p_type: type,
-      p_amount: amount,
-      p_note: trimmedNote,
-      p_created_by: userId.value,
-    });
+    try {
+      const { error } = await supabase.rpc("apply_transaction", {
+        p_account_id: selectedAccountId.value,
+        p_type: type,
+        p_amount: amount,
+        p_note: trimmedNote,
+        p_created_by: userId.value,
+      });
 
-    if (error) {
+      if (error) {
+        return { ok: false, message: mapErrorMessage(error.message) };
+      }
+
+      amountInput.value = "";
+      noteInput.value = "";
+      setSuccessStatus("已保存交易。");
+      await refreshAccountData();
+      return { ok: true };
+    } finally {
       loading.value = false;
-      return { ok: false, message: mapErrorMessage(error.message) };
     }
-
-    amountInput.value = "";
-    noteInput.value = "";
-    setSuccessStatus("已保存交易。");
-    await refreshAccountData();
-    loading.value = false;
-    return { ok: true };
   };
 
   return {

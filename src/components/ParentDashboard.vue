@@ -27,7 +27,7 @@
         :paged-transactions="pagedTransactions"
         :has-more-transactions="hasMoreTransactions"
         :transaction-loading="transactionLoading"
-        :can-void="canEdit"
+        :can-void="canEdit && !transactionLoading"
         :transaction-labels="transactionLabels"
         :format-signed-amount="formatSignedAmount"
         :transaction-tone="transactionTone"

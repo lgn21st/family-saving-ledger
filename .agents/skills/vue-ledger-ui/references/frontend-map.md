@@ -24,6 +24,7 @@
 - Actions: `useAuth`, `useChildren`, `useAccountEditor`, `useTransactionActions`, `useTransfers`.
 - Selection/session: `useAccountSelection`, `useSelectionSync`, `useSession`, `useBootstrap`.
 - Display: `useCurrency`, `useTransactionDisplay`, `useChartData`, `useStatus`.
+- Time: `src/utils/timezone.ts` for ledger-timezone day windows (default `Asia/Singapore`).
 
 ## Boundaries
 

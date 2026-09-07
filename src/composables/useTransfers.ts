@@ -63,26 +63,28 @@ export const useTransfers = (params: {
     }
 
     loading.value = true;
-    const { error } = await supabase.rpc("transfer_between_accounts", {
-      p_source_account_id: sourceAccount.id,
-      p_target_account_id: targetAccount.id,
-      p_amount: amount,
-      p_note: transferNote.value.trim(),
-      p_created_by: userId.value,
-    });
+    try {
+      const { error } = await supabase.rpc("transfer_between_accounts", {
+        p_source_account_id: sourceAccount.id,
+        p_target_account_id: targetAccount.id,
+        p_amount: amount,
+        p_note: transferNote.value.trim(),
+        p_created_by: userId.value,
+      });
 
-    if (error) {
+      if (error) {
+        return { ok: false, message: mapErrorMessage(error.message) };
+      }
+
+      transferAmount.value = "";
+      transferTargetId.value = "";
+      transferNote.value = "";
+      setSuccessStatus("转账完成。");
+      await refreshAccountData();
+      return { ok: true };
+    } finally {
       loading.value = false;
-      return { ok: false, message: mapErrorMessage(error.message) };
     }
-
-    transferAmount.value = "";
-    transferTargetId.value = "";
-    transferNote.value = "";
-    setSuccessStatus("转账完成。");
-    await refreshAccountData();
-    loading.value = false;
-    return { ok: true };
   };
 
   return {

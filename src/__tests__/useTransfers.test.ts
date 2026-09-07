@@ -63,11 +63,49 @@ describe("useTransfers", () => {
     });
 
     expect(await handleTransfer()).toEqual({ ok: true });
-    expect(supabase.rpc).toHaveBeenCalled();
+    expect(supabase.rpc).toHaveBeenCalledWith("transfer_between_accounts", {
+      p_source_account_id: "acc-1",
+      p_target_account_id: "acc-2",
+      p_amount: 5,
+      p_note: "备注",
+      p_created_by: "parent",
+    });
     expect(transferAmount.value).toBe("");
     expect(transferTargetId.value).toBe("");
     expect(transferNote.value).toBe("");
     expect(setSuccessStatus).toHaveBeenCalledWith("转账完成。");
     expect(refreshAccountData).toHaveBeenCalled();
+  });
+
+  it("returns a mapped error when the transfer RPC fails", async () => {
+    const supabase = {
+      rpc: vi.fn(() =>
+        Promise.resolve({ error: { message: "Insufficient balance" } }),
+      ),
+    };
+    const loading = ref(false);
+
+    const { handleTransfer } = useTransfers({
+      supabase,
+      userId: ref("parent"),
+      selectedAccountId: ref("acc-1"),
+      transferAmount: ref("5"),
+      transferTargetId: ref("acc-2"),
+      transferNote: ref(""),
+      accounts: ref([
+        { id: "acc-1", currency: "CNY" },
+        { id: "acc-2", currency: "CNY" },
+      ]),
+      balances: ref({ "acc-1": 10 }),
+      loading,
+      setSuccessStatus: vi.fn(),
+      refreshAccountData: vi.fn(async () => undefined),
+    });
+
+    expect(await handleTransfer()).toEqual({
+      ok: false,
+      message: "余额不足。",
+    });
+    expect(loading.value).toBe(false);
   });
 });

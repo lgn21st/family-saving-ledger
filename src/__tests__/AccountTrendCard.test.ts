@@ -13,6 +13,7 @@ describe("AccountTrendCard", () => {
     });
 
     expect(screen.getByText("暂无数据")).toBeTruthy();
+    expect(screen.getByText("近 30 天没有新的交易。")).toBeTruthy();
     expect(screen.getByText("CNY")).toBeTruthy();
   });
 

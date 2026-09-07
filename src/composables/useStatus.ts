@@ -17,6 +17,14 @@ export const mapErrorMessage = (message: string) => {
     return "请选择不同的账户。";
   if (message.includes("Unsupported transaction type"))
     return "交易类型不支持。";
+  if (message.includes("inactive account"))
+    return "无法作废已关闭账户上的交易。";
+  if (message.includes("negative balance"))
+    return "作废后余额不能为负。";
+  if (message.includes("PIN must be 4 digits")) return "请输入 4 位 PIN。";
+  if (message.includes("Unsupported currency")) return "请选择有效币种。";
+  if (message.includes("Account owner must be an active child"))
+    return "请选择孩子账户归属。";
   return message;
 };
 

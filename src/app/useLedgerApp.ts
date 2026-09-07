@@ -26,6 +26,7 @@ import type {
   Transaction,
 } from "../types";
 import { sanitizePin } from "../utils/formatting";
+import { DEFAULT_LEDGER_TIMEZONE } from "../utils/timezone";
 
 export const useLedgerApp = () => {
   const childAvatars = avatarOptions.filter((avatar) => avatar.role === "child");
@@ -53,6 +54,7 @@ export const useLedgerApp = () => {
   const selectedChildId = ref<string | null>(null);
   const showSettings = ref(false);
   const showAccountCreator = ref(false);
+  const ledgerTimeZone = ref(DEFAULT_LEDGER_TIMEZONE);
 
   const { status, statusTone, setStatus, setErrorStatus, setSuccessStatus, clearStatus } =
     useStatus();
@@ -94,6 +96,7 @@ export const useLedgerApp = () => {
   } = useTransactions({
     supabase: supabaseClient,
     includeVoided: includeVoidedTransactions,
+    timeZone: ledgerTimeZone,
     setErrorStatus,
   });
   const {
@@ -117,9 +120,13 @@ export const useLedgerApp = () => {
         (entry) => entry.id === selectedLoginUserId.value,
       ) ?? null,
   );
-  const pagedTransactions = computed(() =>
-    selectedAccount.value ? transactions.value : [],
-  );
+  const pagedTransactions = computed(() => {
+    const accountId = selectedAccount.value?.id;
+    if (!accountId) return [];
+    return transactions.value.filter(
+      (transaction) => transaction.account_id === accountId,
+    );
+  });
   const selectedAccountBalance = computed(() =>
     selectedAccount.value
       ? formatAmount(
@@ -133,6 +140,7 @@ export const useLedgerApp = () => {
     chartTransactions,
     chartBaseBalance,
     signedAmount,
+    timeZone: ledgerTimeZone,
   });
 
   const { handleLogin, checkSession } = useAuth({
@@ -155,7 +163,7 @@ export const useLedgerApp = () => {
     loadAccounts,
     loadChildUsers,
   });
-  const { selectLoginUser, refreshAccountData, handleLogout } = useSession({
+  const { selectLoginUser, refreshAccountData, handleLogout: clearSession } = useSession({
     user,
     accounts,
     balances,
@@ -218,7 +226,7 @@ export const useLedgerApp = () => {
   });
   const { handleCreateAccount, handleUpdateAccount, startEditAccount } =
     useAccountEditor({
-      supabase: supabaseFrom,
+      supabase: supabaseRpc,
       user,
       supportedCurrencies,
       loading,
@@ -246,41 +254,77 @@ export const useLedgerApp = () => {
 
   const handleVoidTransaction = async (transaction: Transaction) => {
     if (!user.value || transaction.is_void) return;
+    if (transaction.account_id !== selectedAccountId.value) return;
+    if (transactionLoading.value) return;
     loading.value = true;
-    const { error } = await supabaseRpc.rpc("void_transaction", {
-      p_transaction_id: transaction.id,
-      p_voided_by: user.value.id,
-    });
-    if (error) {
-      setErrorStatus(error.message);
+    try {
+      const { error } = await supabaseRpc.rpc("void_transaction", {
+        p_transaction_id: transaction.id,
+        p_voided_by: user.value.id,
+      });
+      if (error) {
+        setErrorStatus(error.message);
+        return;
+      }
+      setSuccessStatus("交易已作废。");
+      await refreshAccountData();
+    } finally {
       loading.value = false;
-      return;
     }
-    setSuccessStatus("交易已作废。");
-    await refreshAccountData();
-    loading.value = false;
   };
 
   const handleCloseAccount = async (account: { id: string; name: string }) => {
-    if (!user.value) return;
+    if (!user.value || user.value.role !== "parent") return;
     loading.value = true;
-    const { error } = await supabaseRpc.rpc("close_account", {
-      p_account_id: account.id,
-      p_closed_by: user.value.id,
-    });
+    try {
+      const { error } = await supabaseRpc.rpc("close_account", {
+        p_account_id: account.id,
+        p_closed_by: user.value.id,
+      });
+      if (error) {
+        setErrorStatus(error.message);
+        return;
+      }
+      if (selectedAccountId.value === account.id) {
+        selectedAccountId.value = null;
+        clearTransactions();
+      }
+      if (editingAccountId.value === account.id) cancelEditAccount();
+      setSuccessStatus("账户已关闭。");
+      await loadAccounts(user.value);
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    amountInput.value = "";
+    noteInput.value = "";
+    transferAmount.value = "";
+    transferTargetId.value = "";
+    transferNote.value = "";
+    newAccountName.value = "";
+    newAccountCurrency.value = "SGD";
+    newAccountOwnerId.value = "";
+    newChildName.value = "";
+    newChildPin.value = "";
+    newChildAvatarId.value = childAvatars[0]?.id ?? "";
+    cancelEditChild();
+    cancelEditAccount();
+  };
+
+  const loadLedgerTimeZone = async () => {
+    const { data, error } = await supabaseFrom
+      .from("settings")
+      .select("timezone")
+      .limit(1);
     if (error) {
       setErrorStatus(error.message);
-      loading.value = false;
       return;
     }
-    if (selectedAccountId.value === account.id) {
-      selectedAccountId.value = null;
-      clearTransactions();
-    }
-    if (editingAccountId.value === account.id) cancelEditAccount();
-    setSuccessStatus("账户已关闭。");
-    await loadAccounts(user.value);
-    loading.value = false;
+    const row = ((data ?? [])[0] ?? null) as { timezone?: string | null } | null;
+    if (row?.timezone) ledgerTimeZone.value = row.timezone;
   };
 
   const selectChild = (childId: string) => {
@@ -313,7 +357,10 @@ export const useLedgerApp = () => {
     resetSelectedAccountData,
   });
 
-  onMounted(bootstrap);
+  onMounted(async () => {
+    await loadLedgerTimeZone();
+    await bootstrap();
+  });
 
   return {
     amountInput,

@@ -1,21 +1,8 @@
-/**
- * 孩子用户管理
- * 创建、编辑、归档孩子账户
- *
- * 功能：
- * - 创建新孩子用户（需姓名、4位PIN、头像）
- * - 编辑孩子姓名
- * - 归档余额已清零的孩子及账户，保留账本记录
- *
- * 依赖：
- * - 需要外部调用 loadChildUsers 刷新列表
- * - 需要外部调用 loadAccounts 刷新账户
- */
 import type { Ref } from "vue";
-import type { AppUser, SupabaseClient } from "../types";
+import type { AppUser, SupabaseRpcClient } from "../types";
 
 export const useChildren = (params: {
-  supabase: SupabaseClient;
+  supabase: SupabaseRpcClient;
   user: Ref<AppUser | null>;
   loading: Ref<boolean>;
   newChildName: Ref<string>;
@@ -51,8 +38,18 @@ export const useChildren = (params: {
     loadAccounts,
   } = params;
 
+  const requireParent = () => {
+    if (!user.value) return null;
+    if (user.value.role !== "parent") {
+      setStatus("仅家长可以执行此操作。");
+      return null;
+    }
+    return user.value;
+  };
+
   const handleCreateChild = async () => {
-    if (!user.value) return;
+    const currentUser = requireParent();
+    if (!currentUser) return;
 
     const trimmedName = newChildName.value.trim();
     const trimmedPin = newChildPin.value.trim();
@@ -73,53 +70,58 @@ export const useChildren = (params: {
     }
 
     loading.value = true;
-    const { error } = await supabase.from("app_users").insert([
-      {
-        name: trimmedName,
-        role: "child",
-        pin: trimmedPin,
-        avatar_id: newChildAvatarId.value,
-      },
-    ]);
+    try {
+      const { error } = await supabase.rpc("create_child", {
+        p_name: trimmedName,
+        p_pin: trimmedPin,
+        p_avatar_id: newChildAvatarId.value,
+        p_created_by: currentUser.id,
+      });
 
-    if (error) {
-      setErrorStatus(error.message);
+      if (error) {
+        setErrorStatus(error.message);
+        return;
+      }
+
+      newChildName.value = "";
+      newChildPin.value = "";
+      newChildAvatarId.value = defaultAvatarId;
+      setSuccessStatus("孩子用户已创建。");
+      await loadChildUsers();
+      await loadLoginUsersAndSelect();
+    } finally {
       loading.value = false;
-      return;
     }
-
-    newChildName.value = "";
-    newChildPin.value = "";
-    newChildAvatarId.value = defaultAvatarId;
-    setSuccessStatus("孩子用户已创建。");
-    await loadChildUsers();
-    await loadLoginUsersAndSelect();
-    loading.value = false;
   };
 
   const handleArchiveChild = async (childId: string) => {
-    if (!user.value) return;
+    const currentUser = requireParent();
+    if (!currentUser) return;
+
     loading.value = true;
-    const { error } = await supabase.rpc("archive_child", {
-      p_child_id: childId,
-      p_archived_by: user.value.id,
-    });
+    try {
+      const { error } = await supabase.rpc("archive_child", {
+        p_child_id: childId,
+        p_archived_by: currentUser.id,
+      });
 
-    if (error) {
-      setErrorStatus(error.message);
+      if (error) {
+        setErrorStatus(error.message);
+        return;
+      }
+
+      await loadChildUsers();
+      await loadAccounts(currentUser);
+      await loadLoginUsersAndSelect();
+      setSuccessStatus("孩子及其账户已归档，账本记录已保留。");
+    } finally {
       loading.value = false;
-      return;
     }
-
-    await loadChildUsers();
-    await loadAccounts(user.value);
-    await loadLoginUsersAndSelect();
-    setSuccessStatus("孩子及其账户已归档，账本记录已保留。");
-    loading.value = false;
   };
 
   const handleUpdateChild = async () => {
-    if (!user.value || !editingChildId.value) return;
+    const currentUser = requireParent();
+    if (!currentUser || !editingChildId.value) return;
 
     const trimmedName = editingChildName.value.trim();
     if (!trimmedName) {
@@ -128,22 +130,25 @@ export const useChildren = (params: {
     }
 
     loading.value = true;
-    const { error } = await supabase
-      .from("app_users")
-      .update({ name: trimmedName })
-      .eq("id", editingChildId.value);
+    try {
+      const { error } = await supabase.rpc("update_child_name", {
+        p_child_id: editingChildId.value,
+        p_name: trimmedName,
+        p_updated_by: currentUser.id,
+      });
 
-    if (error) {
-      setErrorStatus(error.message);
+      if (error) {
+        setErrorStatus(error.message);
+        return;
+      }
+
+      await loadChildUsers();
+      await loadLoginUsersAndSelect();
+      setSuccessStatus("已更新名称。");
+      cancelEditChild();
+    } finally {
       loading.value = false;
-      return;
     }
-
-    await loadChildUsers();
-    await loadLoginUsersAndSelect();
-    setSuccessStatus("已更新名称。");
-    cancelEditChild();
-    loading.value = false;
   };
 
   return {

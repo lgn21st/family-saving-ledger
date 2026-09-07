@@ -300,11 +300,24 @@ const submitDisabledReason = computed(() => {
   if (!props.selectedAccountId) return "请先选择账户。";
   if (!activeAmount.value || !Number.isFinite(Number(activeAmount.value)) || Number(activeAmount.value) <= 0) return "请输入大于 0 的金额。";
   if (mode.value !== "transfer" && !activeNote.value.trim()) return "请填写用途或备注。";
-  if (mode.value === "transfer" && !props.transferTargetId) return "请选择转入账户。";
+  if (mode.value === "transfer" && !props.transferTargets.some((account) => account.id === props.transferTargetId)) {
+    return "请选择转入账户。";
+  }
   return null;
 });
 
 const submitDisabled = computed(() => isBusy.value || Boolean(submitDisabledReason.value));
+
+watch(
+  () => [props.selectedAccountId, props.transferTargets] as const,
+  () => {
+    if (!props.transferTargetId) return;
+    const stillValid = props.transferTargets.some(
+      (account) => account.id === props.transferTargetId,
+    );
+    if (!stillValid) emit("update:transferTargetId", "");
+  },
+);
 
 watch(isBusy, async (busy) => {
   await nextTick();

@@ -1,8 +1,8 @@
 import type { Ref } from "vue";
-import type { Account, AppUser, SupabaseFromClient } from "../types";
+import type { Account, AppUser, SupabaseRpcClient } from "../types";
 
 export const useAccountEditor = (params: {
-  supabase: SupabaseFromClient;
+  supabase: SupabaseRpcClient;
   user: Ref<AppUser | null>;
   supportedCurrencies: string[];
   loading: Ref<boolean>;
@@ -34,8 +34,18 @@ export const useAccountEditor = (params: {
     cancelEditAccount,
   } = params;
 
+  const requireParent = () => {
+    if (!user.value) return null;
+    if (user.value.role !== "parent") {
+      setStatus("仅家长可以执行此操作。");
+      return null;
+    }
+    return user.value;
+  };
+
   const handleCreateAccount = async () => {
-    if (!user.value) return;
+    const currentUser = requireParent();
+    if (!currentUser) return;
 
     const trimmedName = newAccountName.value.trim();
     const trimmedCurrency = newAccountCurrency.value.trim().toUpperCase();
@@ -56,30 +66,30 @@ export const useAccountEditor = (params: {
     }
 
     loading.value = true;
-    const { error } = await supabase.from("accounts").insert([
-      {
-        name: trimmedName,
-        currency: trimmedCurrency,
-        owner_child_id: newAccountOwnerId.value,
-        created_by: user.value.id,
-        is_active: true,
-      },
-    ]);
+    try {
+      const { error } = await supabase.rpc("create_account", {
+        p_name: trimmedName,
+        p_currency: trimmedCurrency,
+        p_owner_child_id: newAccountOwnerId.value,
+        p_created_by: currentUser.id,
+      });
 
-    if (error) {
-      setErrorStatus(error.message);
+      if (error) {
+        setErrorStatus(error.message);
+        return;
+      }
+
+      newAccountName.value = "";
+      setSuccessStatus("账户已创建。");
+      await loadAccounts(currentUser);
+    } finally {
       loading.value = false;
-      return;
     }
-
-    newAccountName.value = "";
-    setSuccessStatus("账户已创建。");
-    await loadAccounts(user.value);
-    loading.value = false;
   };
 
   const handleUpdateAccount = async () => {
-    if (!user.value || !editingAccountId.value) return;
+    const currentUser = requireParent();
+    if (!currentUser || !editingAccountId.value) return;
 
     const trimmedName = editingAccountName.value.trim();
     if (!trimmedName) {
@@ -88,21 +98,24 @@ export const useAccountEditor = (params: {
     }
 
     loading.value = true;
-    const { error } = await supabase
-      .from("accounts")
-      .update({ name: trimmedName })
-      .eq("id", editingAccountId.value);
+    try {
+      const { error } = await supabase.rpc("update_account_name", {
+        p_account_id: editingAccountId.value,
+        p_name: trimmedName,
+        p_updated_by: currentUser.id,
+      });
 
-    if (error) {
-      setErrorStatus(error.message);
+      if (error) {
+        setErrorStatus(error.message);
+        return;
+      }
+
+      await loadAccounts(currentUser);
+      setSuccessStatus("账户名称已更新。");
+      cancelEditAccount();
+    } finally {
       loading.value = false;
-      return;
     }
-
-    await loadAccounts(user.value);
-    setSuccessStatus("账户名称已更新。");
-    cancelEditAccount();
-    loading.value = false;
   };
 
   const startEditAccount = (account: Account) => {
