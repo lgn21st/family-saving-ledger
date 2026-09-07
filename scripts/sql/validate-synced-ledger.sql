@@ -1,5 +1,3 @@
-\set ON_ERROR_STOP on
-
 do $$
 declare
   violation_count bigint;
@@ -56,5 +54,3 @@ begin
   end if;
 end
 $$;
-
-select 'ledger_sync_validation_ok' as result;

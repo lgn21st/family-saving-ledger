@@ -2,8 +2,9 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-source "$script_dir/lib/remote-db.sh"
-db_url="$(remote_db_url)"
+source "$script_dir/lib/dev-db.sh"
+cd "$_fsl_repo_root"
+db_url="$(dev_db_url)"
 
 run_rollback_test() {
   local file="$1"
