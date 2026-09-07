@@ -7,23 +7,12 @@
 - 本机与远程开发主机加入同一 Tailscale 网络，并启用 MagicDNS
 - Docker context `remote` → `ssh://<REMOTE_SSH_ALIAS>`
 
-本机 `~/.ssh/config` 只需要 Docker/远程管理 alias。不要记录真实公网 IP：
+在 `~/.ssh/config` 中配置远程管理 alias：
 
 ```sshconfig
 Host <REMOTE_SSH_ALIAS>
   HostName <REMOTE_MAGICDNS_NAME>
   User <REMOTE_SSH_USER>
-  TCPKeepAlive yes
-  ForwardAgent no
-
-Host *
-  IdentityAgent ~/.config/1password/agent.sock
-  ControlMaster auto
-  ControlPath /tmp/ssh_mux_%h_%p_%r
-  ControlPersist 10m
-  ServerAliveInterval 10
-  ServerAliveCountMax 3
-  GSSAPIAuthentication no
 ```
 
 ```bash
