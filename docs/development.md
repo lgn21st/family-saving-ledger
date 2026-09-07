@@ -2,7 +2,7 @@
 
 ## 环境
 
-- Node.js 26.8.1（Current）、npm 12
+- Node.js 24.20.0（LTS）、npm 12
 - Supabase CLI、独立 Docker CLI
 - 本机与远程开发主机加入同一 Tailscale 网络，并启用 MagicDNS
 - Docker context `remote` → `ssh://<REMOTE_SSH_ALIAS>`
@@ -21,6 +21,12 @@ npm install --global npm@12.0.2
 npm ci
 docker context use remote
 ```
+
+### Vercel 部署兼容性
+
+项目通过 `mise.toml` 固定 Node.js 24.20.0，`package.json` 的 `engines.node`
+设为 `24.x`，与 Vercel 支持的 Node 版本保持一致。npm 12.0.2 支持 Node
+24.15.0 及以上的 24.x 版本，继续保留。
 
 ### 依赖升级说明（2026-09-07）
 
