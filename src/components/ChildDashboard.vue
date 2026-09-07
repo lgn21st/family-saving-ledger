@@ -8,7 +8,7 @@
       :on-select-account="onSelectAccount"
     />
 
-    <AccountOverviewPanel
+    <AccountDetailPanel
       v-if="selectedAccount"
       :selected-account="selectedAccount"
       :chart-points="chartPoints"
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import AccountOverviewPanel from "./AccountOverviewPanel.vue";
+import AccountDetailPanel from "./AccountDetailPanel.vue";
 import ChildAccountNavigatorPanel from "./ChildAccountNavigatorPanel.vue";
 import type { Account, Transaction } from "../types";
 import type { ChartPoint } from "../composables/useChartData";

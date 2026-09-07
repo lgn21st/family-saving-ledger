@@ -3,49 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import App from "../App.vue";
 import { vi } from "vitest";
-
-type Role = "parent" | "child";
-
-type AppUser = {
-  id: string;
-  name: string;
-  role: Role;
-  pin: string;
-  avatar_id?: string | null;
-  is_active?: boolean;
-  archived_at?: string | null;
-  archived_by?: string | null;
-  created_at?: string;
-};
-
-type Account = {
-  id: string;
-  name: string;
-  currency: string;
-  owner_child_id: string;
-  created_by: string;
-  is_active: boolean;
-  closed_at?: string | null;
-  closed_by?: string | null;
-  created_at?: string;
-};
-
-type Transaction = {
-  id: string;
-  account_id: string;
-  type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "interest";
-  amount: number;
-  currency: string;
-  note: string | null;
-  related_account_id: string | null;
-  transfer_group_id?: string | null;
-  created_by: string;
-  created_at: string;
-  interest_month?: string | null;
-  is_void?: boolean;
-  voided_at?: string | null;
-  voided_by?: string | null;
-};
+import type { Account, AppUser, Transaction } from "../types";
 
 type Settings = {
   id: string;

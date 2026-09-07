@@ -75,4 +75,53 @@ describe("AccountDetailPanel", () => {
     expect(screen.getByRole("searchbox")).toHaveValue("");
     expect(screen.getByText("备注")).toBeTruthy();
   });
+
+  it("loads more transactions without showing a void action when read-only", async () => {
+    const user = userEvent.setup();
+    const onLoadMore = vi.fn();
+
+    render(AccountDetailPanel, {
+      props: {
+        selectedAccount: {
+          id: "acc-1",
+          name: "零钱",
+          currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
+        },
+        chartPoints: [
+          { date: new Date("2024-01-01"), balance: 8 },
+          { date: new Date("2024-01-30"), balance: 10 },
+        ],
+        pagedTransactions: [
+          {
+            id: "t-1",
+            account_id: "acc-1",
+            type: "deposit",
+            amount: 1,
+            currency: "CNY",
+            note: "备注",
+            related_account_id: null,
+            created_by: "parent",
+            created_at: "2024-01-01T00:00:00Z",
+          },
+        ],
+        hasMoreTransactions: true,
+        transactionLoading: false,
+        canVoid: false,
+        transactionLabels,
+        formatSignedAmount,
+        transactionTone,
+        getTransactionNote,
+        formatTimestamp,
+        onLoadMore,
+      },
+    });
+
+    expect(screen.queryByText("零钱")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^撤销交易：/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "加载更多" }));
+    expect(onLoadMore).toHaveBeenCalled();
+  });
 });

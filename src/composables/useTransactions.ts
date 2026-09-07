@@ -159,7 +159,6 @@ export const useTransactions = (params: {
     transactionTotal,
     transactionPage,
     transactionLoading,
-    loadedAccountId,
     hasMoreTransactions,
     clearTransactions,
     loadTransactionsPage,

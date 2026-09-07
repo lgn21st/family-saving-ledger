@@ -32,13 +32,13 @@ defineProps<{
   pagedTransactions: Transaction[];
   hasMoreTransactions: boolean;
   transactionLoading: boolean;
-  canVoid: boolean;
+  canVoid?: boolean;
   transactionLabels: Record<Transaction["type"], string>;
   formatSignedAmount: (transaction: Transaction) => string;
   transactionTone: (transaction: Transaction) => string;
   getTransactionNote: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
-  onVoidTransaction: (transaction: Transaction) => void | Promise<void>;
+  onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;
 }>();
 </script>
