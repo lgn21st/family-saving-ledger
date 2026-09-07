@@ -20,31 +20,7 @@ Read only the references required by the selected skill, but read each selected 
 
 ## Architecture
 
-```text
-src/
-├── App.vue              # thin view entry
-├── app/                 # page assembly and cross-feature coordination
-├── components/          # prop-driven presentation and interaction
-├── composables/         # independently meaningful/testable capabilities
-├── config/              # static product configuration
-├── types/               # domain and Supabase boundary types
-└── test/                # test runtime setup
-supabase/
-├── migrations/          # database schema source of truth
-├── tests/               # rollback-only database integration tests
-└── seed.sql             # disposable local development data
-```
-
-See `docs/architecture.md`, `docs/development.md` and `docs/database.md` for details.
-
-Dependency direction:
-
-```text
-components → app assembly → composables → Supabase client
-                         ↘ domain/config types
-```
-
-Components must not query Supabase directly. Authoritative balance, role and concurrency checks belong in database RPCs, not only in the UI.
+See `docs/architecture.md`. Components must not query Supabase. Authoritative balance, role and concurrency checks belong in database RPCs.
 
 ## Code conventions
 
@@ -58,25 +34,13 @@ Components must not query Supabase directly. Authoritative balance, role and con
 
 ## Ledger invariants
 
-- Only active parents mutate ledger data; children are read-only.
-- Amounts are positive; withdrawals, outgoing transfers and voids cannot create negative balances.
-- Transfers require different active accounts with the same currency. Both rows share a group ID and are voided together.
-- Voided rows do not affect balances or interest.
-- Accounts and children close/archive only at an authoritative zero balance; history is retained.
-- Interest is monthly and idempotent per account/month.
-- Lock related rows in deterministic UUID order for concurrent multi-row operations.
-
-Any change to these rules requires a migration, relevant frontend changes, database integration coverage and documentation updates.
+Canonical list: `.agents/skills/family-ledger-domain/references/ledger-model.md`.
+Changing those rules requires a migration, frontend updates, database tests and an edit to that file.
 
 ## Database workflow
 
 `supabase/migrations/` is the only schema source. Do not recreate a parallel `schema.sql` snapshot.
-
-```bash
-npm run db:migrate   # incremental on the remote development database over Tailscale
-```
-
-Confirm before destructive reset or replacing remote development data. For remote pushes, run `--dry-run` first. On IPv4-only networks use the Supabase Session Pooler URL as described in `docs/database.md`.
+Commands, production push, and prod→dev sync live in `docs/database.md`. Confirm before destructive reset or replacing development data.
 
 ## Verification
 
