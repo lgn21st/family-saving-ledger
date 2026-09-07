@@ -1,12 +1,3 @@
-/**
- * 账户数据管理
- * 加载账户列表和余额信息
- *
- * 功能：
- * - 根据用户角色加载对应账户（家长看全部，孩子看自己的）
- * - 加载账户余额（从 account_balances 视图）
- * - 余额按账户 ID 索引，便于快速查询
- */
 import { ref } from "vue";
 import type { Account, AppUser, SupabaseFromClient } from "../types";
 
