@@ -20,8 +20,15 @@ Host <REMOTE_SSH_ALIAS>
 mise install
 npm install --global npm@12.0.2
 npm ci
+docker context create remote --docker host=ssh://<REMOTE_SSH_ALIAS>
 docker context use remote
+docker --context remote version
 ```
+
+`context create` 只需首次执行；已有配置用 `docker context inspect remote` 检查目标。
+Context 保存在 `${DOCKER_CONFIG:-$HOME/.docker}`，安装 CLI 或拉取仓库不会创建它。
+缺失时先检查 SSH 连通性，再创建；选择异常时检查 `DOCKER_HOST`、`DOCKER_CONTEXT`、
+`DOCKER_CONFIG` 是否覆盖本机配置。Docker 的 SSH 通道与 API/PostgreSQL 直连分别检查。
 
 ## 日常开发
 
@@ -42,7 +49,7 @@ npm run db:start      # 容器未运行时
 npm run dev
 ```
 
-前端验证：`npm run check`。数据库验证见 [数据库与运维](database.md)。
+前端验证：`npm run check`（含测试文件的 TypeScript 检查）。数据库验证见 [数据库与运维](database.md)。
 
 ## 网络边界
 
