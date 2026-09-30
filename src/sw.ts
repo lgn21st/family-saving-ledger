@@ -10,7 +10,7 @@ import { NavigationRoute, registerRoute } from "workbox-routing";
 declare let self: ServiceWorkerGlobalScope;
 
 clientsClaim();
-self.skipWaiting();
+// Activate updates after every ledger page closes, preserving drafts and pending writes.
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);

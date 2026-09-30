@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     vue(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['icons/home-bank.svg'],
       strategies: 'injectManifest',
       srcDir: 'src',
