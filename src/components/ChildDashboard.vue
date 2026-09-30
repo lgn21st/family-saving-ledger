@@ -4,6 +4,8 @@
       :grouped-accounts="groupedAccounts"
       :selected-account-id="selectedAccountId"
       :balances="balances"
+      :month-changes="monthChanges"
+      :loading="transactionLoading"
       :format-amount="formatAmount"
       :on-select-account="onSelectAccount"
     />
@@ -21,6 +23,7 @@
       :get-transaction-note="getTransactionNote"
       :format-timestamp="formatTimestamp"
       :on-load-more="onLoadMore"
+      :on-load-all="onLoadAll"
     />
   </main>
 </template>
@@ -39,6 +42,7 @@ defineProps<{
   formatAmount: (amount: number, currency: string) => string;
   onSelectAccount: (id: string) => void;
   chartPoints: ChartPoint[];
+  monthChanges: Record<Transaction["type"], number> | null;
   pagedTransactions: Transaction[];
   hasMoreTransactions: boolean;
   transactionLoading: boolean;
@@ -48,5 +52,6 @@ defineProps<{
   getTransactionNote: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
+  onLoadAll?: () => void | Promise<void>;
 }>();
 </script>

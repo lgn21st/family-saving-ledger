@@ -193,4 +193,22 @@ describe("TransactionsList loading and search feedback", () => {
     expect(screen.getByText("测试")).toBeTruthy();
     expect(screen.getByRole("searchbox")).toHaveValue("");
   });
+  it("offers full-history search, retains the query and reports completion only after all pages load", async () => {
+    const user = userEvent.setup();
+    const onLoadAll = vi.fn();
+    const { rerender } = render(TransactionsList, { props: { ...props, onLoadAll } });
+    expect(screen.queryByRole("button", { name: "搜索全部历史" })).toBeNull();
+    await user.type(screen.getByRole("searchbox"), "书");
+    await user.click(screen.getByRole("button", { name: "搜索全部历史" }));
+    expect(onLoadAll).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(screen.getByRole("searchbox"));
+    await rerender({ loading: true });
+    expect(screen.getByRole("button", { name: "正在加载历史…" })).toBeDisabled();
+    await rerender({ loading: false, hasMore: false, transactions: [baseTransaction, { ...baseTransaction, id: "old", note: "买书" }] });
+    expect(screen.getByRole("searchbox")).toHaveValue("书");
+    expect(screen.getByRole("status")).toHaveTextContent("找到 1 笔 · 已加载全部交易记录。");
+    expect(screen.getByText("买书")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "搜索全部历史" })).toBeNull();
+  });
+
 });

@@ -62,6 +62,7 @@
       :get-transaction-context="getTransactionContext"
       :format-timestamp="formatTimestamp"
       :on-load-more="handleLoadMoreForSelected"
+      :on-load-all="handleLoadAllForSelected"
       :on-void-transaction="handleVoidTransaction"
     >
       <template #entry="{ onClose }">
@@ -78,6 +79,7 @@
       :format-amount="formatAmount"
       :on-select-account="selectAccount"
       :chart-points="chartPoints"
+      :month-changes="monthChanges"
       :paged-transactions="pagedTransactions"
       :has-more-transactions="hasMoreTransactions"
       :transaction-loading="transactionLoading"
@@ -87,6 +89,7 @@
       :get-transaction-note="getTransactionNote"
       :format-timestamp="formatTimestamp"
       :on-load-more="handleLoadMoreForSelected"
+      :on-load-all="handleLoadAllForSelected"
     />
   </AppShell>
 </template>
@@ -133,6 +136,7 @@ const {
   selectAccount,
   selectedAccount,
   chartPoints,
+  monthChanges,
   pagedTransactions,
   hasMoreTransactions,
   transactionLoading,
@@ -143,6 +147,7 @@ const {
   getTransactionContext,
   formatTimestamp,
   handleLoadMoreForSelected,
+  handleLoadAllForSelected,
   handleVoidTransaction,
   groupedAccounts,
   members,

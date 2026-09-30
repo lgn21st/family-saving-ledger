@@ -45,6 +45,7 @@ describe("ChildDashboard", () => {
         formatAmount: (amount: number, currency: string) =>
           `${amount.toFixed(2)} ${currency}`,
         onSelectAccount,
+        monthChanges: { deposit: 1, withdrawal: 0, transfer_in: 0, transfer_out: 0, interest: 0 },
         chartPoints: [
           { date: new Date("2024-01-01"), balance: 8 },
           { date: new Date("2024-01-30"), balance: 10 },
@@ -73,9 +74,9 @@ describe("ChildDashboard", () => {
       },
     });
 
-    expect(screen.getByRole("heading", { name: "账户与余额" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "按币种汇总" })).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: /零钱/ }));
+    expect(screen.getByRole("heading", { name: "我的储蓄" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "全部账户" })).toBeTruthy();
+    await user.selectOptions(screen.getByRole("combobox", { name: "选择账户" }), "acc-1");
     expect(onSelectAccount).toHaveBeenCalledWith("acc-1");
 
     await user.click(screen.getByRole("button", { name: "加载更多" }));

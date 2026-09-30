@@ -48,6 +48,17 @@ describe("useChartData", () => {
     expect(chartPoints.value[29]?.balance).toBe(105);
   });
 
+  it("includes the extra month-start day in the balance without adding a 31st chart point", () => {
+    vi.setSystemTime(new Date("2024-01-31T12:00:00Z"));
+    const { chartPoints } = useChartData({
+      selectedAccount: ref(accountFixture()), chartBaseBalance: ref(100),
+      chartTransactions: ref([transactionFixture({ amount: 10, created_at: "2023-12-31T16:00:00Z" })]),
+      signedAmount: (transaction) => transaction.amount, timeZone: ref("Asia/Singapore"),
+    });
+    expect(chartPoints.value).toHaveLength(30);
+    expect(chartPoints.value.every(point => point.balance === 110)).toBe(true);
+  });
+
   it("emits a flat 30-day series from the base balance when there are no recent transactions", () => {
     const { chartPoints } = useChartData({
       selectedAccount: ref(accountFixture()),

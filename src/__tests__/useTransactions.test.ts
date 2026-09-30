@@ -34,21 +34,14 @@ const createSupabaseMock = (params: {
 
         let pageRange: { from: number; to: number } | null = null;
         const query = queryMock(() => {
-          if (pageRange) {
-            const filtered = applyFilters(transactions, filters);
-            return {
-              data: filtered.slice(pageRange.from, pageRange.to + 1),
-              error: null,
-              count: options?.count ? filtered.length : null,
-            };
-          }
-          const filtered = applyFilters(chartTransactions, filters).filter(
-            (row) =>
-              !gteColumn ||
-              !gteValue ||
-              row[gteColumn as "created_at"] >= gteValue,
+          const filtered = applyFilters(gteColumn ? chartTransactions : transactions, filters).filter(
+            (row) => !gteColumn || !gteValue || row[gteColumn as "created_at"] >= gteValue,
           );
-          return { data: filtered, error: null };
+          return {
+            data: pageRange ? filtered.slice(pageRange.from, pageRange.to + 1) : filtered,
+            error: null,
+            count: options?.count ? filtered.length : null,
+          };
         });
         query.eq.mockImplementation((column, value) => {
           filters[column] = value;
@@ -117,6 +110,33 @@ describe("useTransactions", () => {
     expect(hasMoreTransactions.value).toBe(false);
   });
 
+  it("loads all remaining history and stops on a failure without losing loaded pages", async () => {
+    const rows = Array.from({ length: 25 }, (_, index) => transactionFixture({ id: `all-${index}`, is_void: false }));
+    const pages = useTransactions({
+      supabase: createSupabaseMock({ transactions: rows, chartTransactions: [], baseBalance: 0 }),
+      includeVoided: ref(false), setErrorStatus: vi.fn(),
+    });
+    await pages.loadTransactionsPage("acc-1", 1);
+    await pages.handleLoadAllTransactions("other-account");
+    expect(pages.transactions.value).toHaveLength(10);
+    await pages.handleLoadAllTransactions("acc-1");
+    expect(pages.transactions.value).toHaveLength(25);
+    expect(pages.hasMoreTransactions.value).toBe(false);
+
+    const read = vi.fn().mockResolvedValueOnce({ data: rows.slice(0, 10), count: 25, error: null })
+      .mockRejectedValueOnce(new Error("offline"));
+    const failed = useTransactions({
+      supabase: { from: () => ({ select: () => queryMock(read) }), rpc: vi.fn() },
+      includeVoided: ref(false), setErrorStatus: vi.fn(),
+    });
+    await failed.loadTransactionsPage("acc-1", 1);
+    await failed.handleLoadAllTransactions("acc-1");
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(failed.transactions.value).toHaveLength(10);
+    expect(failed.hasMoreTransactions.value).toBe(true);
+    expect(failed.transactionLoading.value).toBe(false);
+  });
+
   it("loads chart base balance and recent transactions", async () => {
     const chartTransactions = [
       {
@@ -152,6 +172,55 @@ describe("useTransactions", () => {
     await loadChartTransactions("acc-1");
     expect(chartBaseBalance.value).toBe(12);
     expect(loaded.value).toHaveLength(1);
+  });
+
+  it("reads the entire month at a 31-day month end, including multiple read pages", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-31T12:00:00Z"));
+    try {
+      const rows = Array.from({ length: 205 }, (_, i) => transactionFixture({ id: `window-${i}`, is_void: false, created_at: "2025-12-31T16:00:00Z" }));
+      const supabase = createSupabaseMock({ transactions: [], chartTransactions: rows, baseBalance: 12 });
+      const rpc = vi.spyOn(supabase, "rpc");
+      const pages = useTransactions({ supabase, includeVoided: ref(false), timeZone: ref("Asia/Singapore"), setErrorStatus: vi.fn() });
+      expect(await pages.loadChartTransactions("acc-1")).toBe(true);
+      expect(rpc).toHaveBeenCalledWith("get_balance_before_date", { p_account_id: "acc-1", p_before: "2025-12-31T16:00:00.000Z" });
+      expect(pages.chartTransactions.value).toHaveLength(205);
+      expect(pages.chartReady.value).toBe(true);
+      expect(pages.chartLoading.value).toBe(false);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("does not publish a partial monthly window after a later page fails", async () => {
+    const rows = Array.from({ length: 100 }, (_, i) => transactionFixture({ id: `partial-${i}` }));
+    const read = vi.fn().mockResolvedValueOnce({ data: rows, count: 205, error: null })
+      .mockResolvedValueOnce({ data: null, count: null, error: { message: "offline" } });
+    const pages = useTransactions({
+      supabase: { from: () => ({ select: () => queryMock(read) }), rpc: async () => ({ data: 100, error: null }) },
+      includeVoided: ref(false), setErrorStatus: vi.fn(),
+    });
+    expect(await pages.loadChartTransactions("acc-1")).toBe(false);
+    expect(pages.chartReady.value).toBe(false);
+    expect(pages.chartTransactions.value).toEqual([]);
+    expect(pages.chartLoading.value).toBe(false);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops a full-history search after the account changes", async () => {
+    const rows = Array.from({ length: 25 }, (_, i) => transactionFixture({ id: `old-${i}` }));
+    let finish!: (result: { data: Transaction[]; count: number; error: null }) => void;
+    const read = vi.fn().mockResolvedValueOnce({ data: rows.slice(0, 10), count: 25, error: null })
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
+      .mockResolvedValueOnce({ data: [transactionFixture({ id: "new", account_id: "acc-2" })], count: 1, error: null });
+    const pages = useTransactions({ supabase: { from: () => ({ select: () => queryMock(read) }), rpc: vi.fn() }, includeVoided: ref(false), setErrorStatus: vi.fn() });
+    await pages.loadTransactionsPage("acc-1", 1);
+    const oldSearch = pages.handleLoadAllTransactions("acc-1");
+    await Promise.resolve();
+    pages.clearTransactions();
+    await pages.loadTransactionsPage("acc-2", 1);
+    finish({ data: rows.slice(10, 20), count: 25, error: null });
+    await oldSearch;
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(pages.transactions.value.map(row => row.id)).toEqual(["new"]);
   });
 
   it("filters voided transactions when includeVoided is false", async () => {

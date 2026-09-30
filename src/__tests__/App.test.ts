@@ -104,19 +104,17 @@ function createSupabaseMock() {
     let limitValue: number | null = null;
     let rangeValue: { from: number; to: number } | null = null;
     let countMode: "exact" | null = null;
-    let orderValue: { field: string; ascending: boolean } | null = null;
+    const ordering: { field: string; ascending: boolean }[] = [];
 
     const execute = (single = false) => {
       const filtered = applyFilters(getRows(table), filters);
-      const ordered = orderValue
-        ? [...filtered].sort((a, b) =>
-            String(a[orderValue!.field as keyof typeof a]).localeCompare(
-              String(b[orderValue!.field as keyof typeof b]),
-            ),
-          )
-        : [...filtered];
-      const sorted =
-        orderValue && !orderValue.ascending ? ordered.reverse() : ordered;
+      const sorted = [...filtered].sort((a, b) => {
+        for (const { field, ascending } of ordering) {
+          const comparison = String(a[field as keyof typeof a]).localeCompare(String(b[field as keyof typeof b]));
+          if (comparison) return comparison * (ascending ? 1 : -1);
+        }
+        return 0;
+      });
       const ranged = rangeValue
         ? sorted.slice(rangeValue.from, rangeValue.to + 1)
         : sorted;
@@ -145,10 +143,10 @@ function createSupabaseMock() {
         field: keyof DataStore[typeof table][number],
         options?: { ascending?: boolean },
       ) => {
-        orderValue = {
+        ordering.push({
           field: String(field),
           ascending: options?.ascending ?? true,
-        };
+        });
         return builder;
       },
       in: (field: keyof DataStore[typeof table][number], values: unknown[]) => {
@@ -1295,13 +1293,24 @@ describe("Home Bank UI", () => {
       await screen.findByRole("heading", { name: "大女儿" }),
     ).toBeInTheDocument();
 
-    expect(screen.queryByText("新增/扣减")).not.toBeInTheDocument();
-    expect(screen.queryByText("同币种转账")).not.toBeInTheDocument();
-
-    await user.click(
-      await screen.findByRole("button", { name: /大女儿-日常/ }),
-    );
+    expect(screen.queryByRole("button", { name: "记一笔" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^撤销交易/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "选择账户" })).toHaveValue("acc-1");
     expect(screen.getByText("家务奖励")).toBeInTheDocument();
+  });
+
+  it("explains the child's full month rather than only the first history page", async () => {
+    loadMockData({
+      app_users: [{ id: "child-1", name: "小乐", role: "child", pin: "1111" }],
+      accounts: [{ id: "acc-1", name: "日常", currency: "CNY", owner_child_id: "child-1", created_by: "parent", is_active: true }],
+      transactions: Array.from({ length: 15 }, (_, i) => ({ id: `month-${i}`, account_id: "acc-1", type: "deposit", amount: 1, currency: "CNY", note: "奖励", related_account_id: null, is_void: false, created_by: "parent", created_at: new Date().toISOString() })),
+    });
+    render(App);
+    const user = userEvent.setup();
+    await loginAs(user, "小乐", "1111");
+    expect(await screen.findByText("本月比月初多 15.00 CNY")).toBeInTheDocument();
+    expect(screen.getByText("10 笔已加载")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^撤销交易/ })).toBeNull();
   });
 
   it("renders interest transaction with interest_month", async () => {
@@ -1344,7 +1353,7 @@ describe("Home Bank UI", () => {
     await user.type(screen.getByPlaceholderText("PIN"), "1111");
     await user.click(screen.getByRole("button", { name: "登录 小朋友" }));
 
-    await user.click(await screen.findByRole("button", { name: /利息账户/ }));
+    expect(await screen.findByRole("combobox", { name: "选择账户" })).toHaveValue("acc-1");
 
     expect(
       await screen.findByText("利息", { selector: "span" }),

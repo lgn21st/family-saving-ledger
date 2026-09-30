@@ -12,6 +12,7 @@ import type { Feedback } from "../features/contracts";
 import { useTransactions } from "./useTransactions";
 import { useChartData } from "./useChartData";
 import { useTransactionDisplay } from "./useTransactionDisplay";
+import { addZonedDays, startOfZonedMonth } from "../utils/timezone";
 
 export const useAccountHistory = (
   params: Feedback & {
@@ -35,12 +36,27 @@ export const useAccountHistory = (
     chartBaseBalance: pages.chartBaseBalance,
     signedAmount: display.signedAmount,
   });
+  const monthChanges = computed(() => {
+    if (!pages.chartReady.value || !params.selectedAccount.value) return null;
+    const start = startOfZonedMonth(new Date(), params.timeZone.value);
+    // Every calendar month has fewer than 32 days.
+    const end = startOfZonedMonth(addZonedDays(start, 32, params.timeZone.value), params.timeZone.value);
+    const totals = { deposit: 0, withdrawal: 0, transfer_in: 0, transfer_out: 0, interest: 0 };
+    for (const transaction of pages.chartTransactions.value) {
+      const date = new Date(transaction.created_at);
+      if (transaction.account_id !== params.selectedAccount.value.id || transaction.is_void || date < start || date >= end) continue;
+      totals[transaction.type] += Math.round(Number(transaction.amount) * 100);
+    }
+    for (const type of Object.keys(totals) as Transaction["type"][]) totals[type] /= 100;
+    return totals;
+  });
   const voiding = ref(false);
   let active = true;
   let voidGeneration = 0;
   if (getCurrentScope())
     onScopeDispose(() => {
       active = false;
+      pages.clearTransactions();
     });
   const refresh = async () => {
     const id = params.selectedAccount.value?.id;
@@ -61,6 +77,10 @@ export const useAccountHistory = (
   const handleLoadMoreForSelected = async () => {
     const id = params.selectedAccount.value?.id;
     if (id) await pages.handleLoadMoreTransactions(id);
+  };
+  const handleLoadAllForSelected = async () => {
+    const id = params.selectedAccount.value?.id;
+    if (id) await pages.handleLoadAllTransactions(id);
   };
   const handleVoidTransaction = async (transaction: Transaction) => {
     if (
@@ -88,6 +108,7 @@ export const useAccountHistory = (
   return {
     ...display,
     chartPoints,
+    monthChanges,
     pagedTransactions: computed(() =>
       pages.transactions.value.filter(
         (row) => row.account_id === params.selectedAccount.value?.id,
@@ -95,10 +116,11 @@ export const useAccountHistory = (
     ),
     hasMoreTransactions: pages.hasMoreTransactions,
     transactionLoading: computed(
-      () => pages.transactionLoading.value || voiding.value,
+      () => pages.transactionLoading.value || pages.chartLoading.value || voiding.value,
     ),
     refresh,
     handleLoadMoreForSelected,
+    handleLoadAllForSelected,
     handleVoidTransaction,
   };
 };

@@ -1,3 +1,4 @@
+import { queryMock, transactionFixture } from "../test/setup";
 import type { AppUser, Transaction, LedgerActionResult } from "../types";
 import { effectScope, ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
@@ -105,4 +106,37 @@ describe("useAccountHistory", () => {
     expect(history.transactionLoading.value).toBe(false);
     scope.stop();
   });
+  it("explains the complete current month in ledger time, excluding voids and other accounts", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-31T12:00:00Z"));
+    const rows = [
+      transactionFixture({ amount: 0.1, created_at: "2025-12-31T16:00:00Z" }),
+      transactionFixture({ amount: 0.2, created_at: "2026-01-10T00:00:00Z" }),
+      transactionFixture({ type: "withdrawal", amount: 0.1, created_at: "2026-01-10T00:00:00Z" }),
+      transactionFixture({ type: "transfer_in", amount: 10, created_at: "2026-01-10T00:00:00Z" }),
+      transactionFixture({ type: "transfer_out", amount: 3, created_at: "2026-01-10T00:00:00Z" }),
+      transactionFixture({ type: "interest", amount: 0.01, interest_month: "2025-12", created_at: "2025-12-31T16:00:00Z" }),
+      transactionFixture({ amount: 100, created_at: "2025-12-31T15:59:59Z" }),
+      transactionFixture({ amount: 100, created_at: "2026-01-31T16:00:00Z" }),
+      transactionFixture({ amount: 999, is_void: true, created_at: "2026-01-10T00:00:00Z" }),
+      transactionFixture({ amount: 999, account_id: "other", created_at: "2026-01-10T00:00:00Z" }),
+    ];
+    const read = vi.fn(() => ({ data: rows, count: rows.length, error: null }));
+    const scope = effectScope();
+    try {
+      const history = scope.run(() => useAccountHistory({
+        supabase: { from: () => ({ select: () => queryMock(read) }), rpc: async () => ({ data: 0, error: null }) },
+        user: ref<AppUser | null>({ id: "child-1", name: "小乐", role: "child" }),
+        accounts: ref([account]), childUsers: ref([]), selectedAccount: ref(account), timeZone: ref("Asia/Singapore"),
+        voidTransaction: vi.fn(), setErrorStatus: vi.fn(), setSuccessStatus: vi.fn(),
+      }))!;
+      expect(history.monthChanges.value).toBeNull();
+      expect(await history.refresh()).toBe(true);
+      expect(history.monthChanges.value).toEqual({ deposit: 0.3, withdrawal: 0.1, transfer_in: 10, transfer_out: 3, interest: 0.01 });
+      read.mockImplementation(() => { throw new Error("offline"); });
+      expect(await history.refresh()).toBe(false);
+      expect(history.monthChanges.value).toBeNull();
+    } finally { scope.stop(); vi.useRealTimers(); }
+  });
+
 });

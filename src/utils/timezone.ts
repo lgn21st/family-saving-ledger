@@ -61,6 +61,11 @@ export const startOfZonedDay = (date: Date, timeZone: string): Date => {
   return zonedWallTimeToUtc(parts.year, parts.month, parts.day, 0, 0, 0, timeZone);
 };
 
+export const startOfZonedMonth = (date: Date, timeZone: string): Date => {
+  const parts = zonedParts(date, timeZone);
+  return zonedWallTimeToUtc(parts.year, parts.month, 1, 0, 0, 0, timeZone);
+};
+
 export const addZonedDays = (
   date: Date,
   days: number,

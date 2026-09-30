@@ -18,6 +18,7 @@
       <label class="sr-only" for="transaction-search">搜索交易</label>
       <input
         id="transaction-search"
+        ref="searchInput"
         v-model="searchTerm"
         type="search"
         name="transaction-search"
@@ -45,6 +46,15 @@
         <template v-if="hasFilters">找到 {{ filteredTransactions.length }} 笔 · </template>
         {{ hasMore ? '仅搜索已加载记录，可加载更多历史交易。' : '已加载全部交易记录。' }}
       </p>
+      <button
+        v-if="hasFilters && hasMore && onLoadAll"
+        type="button"
+        class="button-secondary min-h-11 text-xs"
+        :disabled="loading"
+        @click="searchAllHistory"
+      >
+        {{ loading ? '正在加载历史…' : '搜索全部历史' }}
+      </button>
       <button v-if="hasFilters" type="button" class="button-quiet min-h-11 text-xs" @click="clearFilters">
         清除筛选
       </button>
@@ -212,6 +222,7 @@ const props = defineProps<{
   getTransactionContext?: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
+  onLoadAll?: () => void | Promise<void>;
   onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;
 }>();
 
@@ -227,7 +238,16 @@ const pressTargetId = ref<string | null>(null);
 const startX = ref(0);
 const startY = ref(0);
 const confirmingTransaction = ref<Transaction | null>(null);
+const searchInput = ref<HTMLInputElement | null>(null);
 const searchTerm = ref("");
+const searchAllHistory = async () => {
+  try {
+    await props.onLoadAll?.();
+  } finally {
+    await nextTick();
+    searchInput.value?.focus({ preventScroll: true });
+  }
+};
 const typeFilter = ref<"all" | Transaction["type"]>("all");
 const hasFilters = computed(() => Boolean(searchTerm.value.trim()) || typeFilter.value !== "all");
 const returnFocusElement = ref<HTMLElement | null>(null);

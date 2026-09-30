@@ -14,6 +14,7 @@
       :get-transaction-context="getTransactionContext"
       :format-timestamp="formatTimestamp"
       :on-load-more="onLoadMore"
+      :on-load-all="onLoadAll"
       :on-void-transaction="onVoidTransaction"
     />
     <AccountTrendCard class="xl:order-1" :chart-points="chartPoints" :currency="selectedAccount.currency" />
@@ -41,6 +42,7 @@ defineProps<{
   getTransactionContext?: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
+  onLoadAll?: () => void | Promise<void>;
   onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;
 }>();
 </script>
