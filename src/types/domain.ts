@@ -49,9 +49,9 @@ export type Transaction = {
 export type StatusTone = "success" | "error";
 
 export type LedgerActionResult =
-  { ok: true; warning?: string } | { ok: false; message: string };
+  { ok: true; warning?: string } | { ok: false; message: string; uncertain?: boolean };
 
-// Value inputs capture the operation before asynchronous work.
+// Value inputs; request IDs are added by the command boundary.
 export type CreateChildInput = { name: string; pin: string; avatarId: string };
 export type CreateAccountInput = {
   name: string;

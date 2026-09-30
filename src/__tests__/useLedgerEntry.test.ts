@@ -16,6 +16,7 @@ const setup = () => {
     balances: ref({ "acc-1": 20 }),
     transferTargets: ref([{ ...source, id: "acc-2", ownerName: "小宝" }]),
     addTransaction: vi.fn(async (): Promise<LedgerActionResult> => ({ ok: true })),
+    retryPending: vi.fn(async (): Promise<LedgerActionResult> => ({ ok: true })),
     transfer: vi.fn(async (): Promise<LedgerActionResult> => ({ ok: true })),
     setSuccessStatus: vi.fn(),
     setErrorStatus: vi.fn(),

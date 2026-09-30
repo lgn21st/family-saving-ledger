@@ -19,8 +19,8 @@ begin
     end loop;
 
     foreach function_name in array array[
-      'public.apply_transaction(uuid,text,numeric,text,uuid)',
-      'public.transfer_between_accounts(uuid,uuid,numeric,text,uuid)',
+      'public.apply_transaction(uuid,text,numeric,text,uuid,uuid)',
+      'public.transfer_between_accounts(uuid,uuid,numeric,text,uuid,uuid)',
       'public.void_transaction(uuid,uuid)',
       'public.close_account(uuid,uuid)',
       'public.archive_child(uuid,uuid)',

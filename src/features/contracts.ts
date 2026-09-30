@@ -26,7 +26,7 @@ export type AccountServices = Feedback &
     selectAccount: (id: string) => void;
   };
 export type EntryServices = Feedback &
-  Pick<LedgerCommands, "addTransaction" | "transfer"> & {
+  Pick<LedgerCommands, "addTransaction" | "transfer" | "retryPending"> & {
     childUsers: Readonly<Ref<AppUser[]>>;
     selectedChildId: Readonly<Ref<string | null>>;
     selectedChildAccounts: Readonly<Ref<Account[]>>;
@@ -35,6 +35,7 @@ export type EntryServices = Feedback &
     selectedAccountBalance: Readonly<Ref<string>>;
     balances: Readonly<Ref<Record<string, number>>>;
     transferTargets: Readonly<Ref<TransferTarget[]>>;
+    pendingWrite: Readonly<Ref<LedgerCommands["pendingWrite"]["value"]>>;
     selectChild: (id: string) => void;
     selectAccount: (id: string) => void;
   };

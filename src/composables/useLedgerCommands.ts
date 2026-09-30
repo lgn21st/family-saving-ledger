@@ -1,4 +1,4 @@
-import type { Ref } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import type {
   AppUser,
   LedgerActionResult,
@@ -17,29 +17,105 @@ export const useLedgerCommands = (params: {
   user: Readonly<Ref<AppUser | null>>;
   onChanged: (change: LedgerChange) => Promise<void>;
 }) => {
+  type PendingWrite = {
+    actorId: string;
+    requestId: string;
+    fn: "apply_transaction" | "transfer_between_accounts";
+    args: Record<string, unknown>;
+  };
+  const pending = ref<PendingWrite | null>(null);
+  const inFlight = new Set<string>();
+  const storageKey = (actorId: string) => `homebank.pending-write.${actorId}`;
+  const uncertain = (): LedgerActionResult => ({
+    ok: false,
+    uncertain: true,
+    message: "交易结果尚未确认，请重试确认原操作，勿重复记账。",
+  });
+  const readPending = (actorId: string): PendingWrite | null => {
+    const raw = localStorage.getItem(storageKey(actorId));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as PendingWrite;
+    const args = value.args;
+    if (
+      value.actorId !== actorId ||
+      typeof value.requestId !== "string" ||
+      !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value.requestId) ||
+      !args ||
+      typeof args.p_amount !== "number" ||
+      !Number.isFinite(args.p_amount) ||
+      args.p_amount <= 0 ||
+      typeof args.p_note !== "string" ||
+      (value.fn === "apply_transaction"
+        ? typeof args.p_account_id !== "string" ||
+          !["deposit", "withdrawal"].includes(String(args.p_type))
+        : value.fn !== "transfer_between_accounts" ||
+          typeof args.p_source_account_id !== "string" ||
+          typeof args.p_target_account_id !== "string")
+    ) {
+      throw new Error("Invalid pending transaction");
+    }
+    return value;
+  };
+  watch(
+    params.user,
+    (actor) => {
+      try {
+        pending.value = actor?.role === "parent" ? readPending(actor.id) : null;
+      } catch {
+        pending.value = null;
+      }
+    },
+    { immediate: true, flush: "sync" },
+  );
+  const clearPending = (receipt: PendingWrite) => {
+    if (readPending(receipt.actorId)?.requestId !== receipt.requestId) return;
+    localStorage.removeItem(storageKey(receipt.actorId));
+    if (params.user.value?.id === receipt.actorId) pending.value = null;
+  };
   const run = async (
     fn: string,
     args: Record<string, unknown>,
     actorParameter: string,
     change: LedgerChange,
+    receipt?: PendingWrite,
   ): Promise<LedgerActionResult> => {
     const actor = params.user.value;
     if (!actor || actor.role !== "parent" || actor.is_active === false)
       return { ok: false, message: "仅家长可以执行此操作。" };
     let warning: string | undefined;
     try {
-      const { error } = await params.supabase.rpc(fn, {
+      const { error, status } = await params.supabase.rpc(fn, {
         ...args,
         [actorParameter]: actor.id,
+        ...(receipt ? { p_request_id: receipt.requestId } : {}),
       });
       if (error) {
+        // Gateway/transport failures may arrive after the transaction commits.
+        const databaseRejected =
+          /^[0-9A-Z]{5}$/.test(error.code ?? "") &&
+          !/^(08|40003)/.test(error.code ?? "");
+        if (
+          receipt &&
+          !databaseRejected &&
+          !(status && status >= 400 && status < 500 && status !== 408)
+        )
+          return uncertain();
+        if (receipt) clearPending(receipt);
         return { ok: false, message: mapErrorMessage(error.message) };
       }
     } catch (error) {
+      if (receipt) return uncertain();
       return {
         ok: false,
         message: error instanceof Error ? error.message : "操作失败，请重试。",
       };
+    }
+    if (receipt) {
+      try {
+        clearPending(receipt);
+      } catch {
+        warning = "交易已保存，但本机恢复信息未清除，下次确认仍不会重复入账。";
+      }
     }
     if (params.user.value !== actor)
       return { ok: true, ...(warning ? { warning } : {}) };
@@ -51,7 +127,65 @@ export const useLedgerCommands = (params: {
     }
     return { ok: true, ...(warning ? { warning } : {}) };
   };
+  const writeMoney = async (
+    fn: PendingWrite["fn"],
+    args: Record<string, unknown>,
+    retryReceipt?: PendingWrite,
+  ): Promise<LedgerActionResult> => {
+    const actor = params.user.value;
+    if (!actor || actor.role !== "parent" || actor.is_active === false)
+      return { ok: false, message: "仅家长可以执行此操作。" };
+    if (inFlight.has(actor.id))
+      return { ok: false, message: "正在保存，请稍候…" };
+    let receipt: PendingWrite;
+    try {
+      const existing = readPending(actor.id);
+      if (
+        existing &&
+        (existing.fn !== fn ||
+          JSON.stringify(existing.args) !== JSON.stringify(args) ||
+          (retryReceipt && existing.requestId !== retryReceipt.requestId))
+      ) {
+        pending.value = existing;
+        return uncertain();
+      }
+      receipt = existing ??
+        retryReceipt ?? {
+          actorId: actor.id,
+          requestId: crypto.randomUUID(),
+          fn,
+          args: { ...args },
+        };
+      localStorage.setItem(storageKey(actor.id), JSON.stringify(receipt));
+      pending.value = receipt;
+    } catch {
+      return {
+        ok: false,
+        message: "无法读取或保存交易恢复信息，请检查浏览器存储后再操作。",
+      };
+    }
+    inFlight.add(actor.id);
+    try {
+      return await run(
+        receipt.fn,
+        receipt.args,
+        "p_created_by",
+        { kind: "transactions" },
+        receipt,
+      );
+    } finally {
+      inFlight.delete(actor.id);
+    }
+  };
+
   return {
+    pendingWrite: computed(() => pending.value),
+    retryPending: async (): Promise<LedgerActionResult> => {
+      const receipt = pending.value;
+      if (!receipt || receipt.actorId !== params.user.value?.id)
+        return { ok: false, message: "没有待确认交易。" };
+      return writeMoney(receipt.fn, receipt.args, receipt);
+    },
     createChild: (input: CreateChildInput) =>
       run(
         "create_child",
@@ -113,19 +247,19 @@ export const useLedgerCommands = (params: {
         { kind: "accounts" },
       ),
     addTransaction: (input: TransactionInput) =>
-      run("apply_transaction", {
+      writeMoney("apply_transaction", {
         p_account_id: input.accountId,
         p_type: input.type,
         p_amount: input.amount,
         p_note: input.note,
-      }, "p_created_by", { kind: "transactions" }),
+      }),
     transfer: (input: TransferInput) =>
-      run("transfer_between_accounts", {
+      writeMoney("transfer_between_accounts", {
         p_source_account_id: input.sourceAccountId,
         p_target_account_id: input.targetAccountId,
         p_amount: input.amount,
         p_note: input.note,
-      }, "p_created_by", { kind: "transactions" }),
+      }),
     voidTransaction: (transactionId: string) =>
       run(
         "void_transaction",

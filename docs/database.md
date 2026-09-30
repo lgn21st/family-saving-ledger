@@ -106,7 +106,8 @@ unset FSL_SYNC_DIR
 
 ## API 权限
 
-`20260726165000_restore_api_privileges.sql` 维护 API 对象权限。
+`20260726165000_restore_api_privileges.sql` 恢复 API 对象权限；后续替换 RPC 签名的迁移
+必须同时维护授权（例如交易请求 ID 迁移）。
 `run_monthly_interest()` 与 `run_monthly_interest_impl()` 不允许
 `anon` / `authenticated` 执行，由 postgres cron / `service_role` 结算。
 `supabase/tests/api_privileges.sql` 验证角色权限。

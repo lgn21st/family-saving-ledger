@@ -64,6 +64,19 @@
         </div>
       </div>
 
+      <div v-else-if="pendingWrite" class="space-y-4 overflow-y-auto p-5 sm:p-6">
+        <p class="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+          {{ loading ? '正在确认交易，请稍候…' : (submissionError ?? '交易结果尚未确认，请先确认原操作，勿重复记账。') }}
+        </p>
+        <p class="text-sm text-slate-600">
+          {{ pendingWrite.fn === 'transfer_between_accounts' ? '转账' : pendingWrite.args.p_type === 'withdrawal' ? '取出' : '存入' }}
+          {{ pendingWrite.args.p_amount }} · {{ pendingWrite.args.p_note || '无备注' }}
+        </p>
+        <button type="button" data-recover class="button-primary w-full" :disabled="loading" @click="recover">
+          {{ loading ? '正在确认…' : '确认原交易结果' }}
+        </button>
+      </div>
+
       <form v-else class="flex min-h-0 flex-1 flex-col" @submit.prevent="submit">
       <div class="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6">
       <div class="mt-5 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1" aria-label="记账类型">
@@ -228,9 +241,9 @@ type EntryMode = "deposit" | "withdrawal" | "transfer";
 
 const { services, onClose } = defineProps<{ services: EntryServices; onClose: () => void }>();
 const { childUsers, selectedChildId, selectedChildAccounts, selectedAccountId,
-  selectedAccount, selectedAccountBalance: formattedBalance, transferTargets } = services;
+  selectedAccount, selectedAccountBalance: formattedBalance, transferTargets, pendingWrite } = services;
 const { amountInput, noteInput, transferAmount, transferTargetId, transferNote,
-  loading, handleAddTransaction, handleTransfer } = useLedgerEntry(services);
+  loading, handleAddTransaction, handleTransfer, handleRetryPending } = useLedgerEntry(services);
 
 const mode = ref<EntryMode>("deposit");
 const panelElement = ref<HTMLElement | null>(null);
@@ -308,7 +321,7 @@ watch(loading, async (busy) => {
   await nextTick();
   if (busy) panelElement.value?.focus();
   else if (document.activeElement === panelElement.value) {
-    panelElement.value?.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
+    panelElement.value?.querySelector<HTMLButtonElement>(pendingWrite.value ? '[data-recover]' : 'button[type="submit"]')?.focus();
   }
 });
 
@@ -323,7 +336,8 @@ onMounted(async () => {
     appRoot.setAttribute("aria-hidden", "true");
   }
   await nextTick();
-  modeControls.value[0]?.focus();
+  if (pendingWrite.value) panelElement.value?.querySelector<HTMLButtonElement>("[data-recover]")?.focus();
+  else modeControls.value[0]?.focus();
 });
 
 onBeforeUnmount(() => {
@@ -366,6 +380,16 @@ const selectMode = (nextMode: EntryMode) => {
 };
 const requestClose = () => {
   if (!loading.value) onClose();
+};
+const recover = async () => {
+  submissionError.value = null;
+  try {
+    const result = await handleRetryPending();
+    if (result.ok) onClose();
+    else submissionError.value = result.message;
+  } catch {
+    submissionError.value = "交易结果尚未确认，请稍后重试确认。";
+  }
 };
 const submit = async () => {
   if (submitDisabled.value) return;

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/vue";
+import { render, screen, waitFor, within } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
 
 import App from "../App.vue";
@@ -1468,5 +1468,69 @@ describe("Home Bank UI", () => {
     await user.click(screen.getByRole("button", { name: "账户" }));
     await user.click(screen.getByRole("button", { name: "创建账户" }));
     expect(screen.getByLabelText("账户名称", { exact: true })).toHaveValue("");
+  });
+  it("recovers a committed transaction after a lost response and app reload", async () => {
+    loadMockData({
+      app_users: [
+        { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小女儿", role: "child", pin: "1111" },
+      ],
+      accounts: [
+        {
+          id: "acc-1",
+          name: "零花钱",
+          currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
+        },
+      ],
+    });
+    const originalRpc = supabaseMock.supabase.rpc;
+    type Receipt = Awaited<ReturnType<typeof originalRpc>>;
+    const receipts = new Map<string, Receipt>();
+    let loseResponse = true;
+    const rpc = vi
+      .spyOn(supabaseMock.supabase, "rpc")
+      .mockImplementation(async (fn, args) => {
+        if (fn !== "apply_transaction") return originalRpc(fn, args);
+        const requestId = String(args.p_request_id);
+        const receipt =
+          receipts.get(requestId) ?? (await originalRpc(fn, args));
+        receipts.set(requestId, receipt);
+        if (loseResponse) {
+          loseResponse = false;
+          throw new Error("response lost after commit");
+        }
+        return receipt;
+      });
+    const first = render(App);
+    const user = userEvent.setup();
+    await loginAs(user, "爸爸", "1234");
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    await user.type(screen.getByLabelText("存入金额"), "20");
+    await user.type(screen.getByLabelText(/^用途或备注/), "奖励");
+    await user.click(screen.getByRole("button", { name: "确认存入" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "交易结果尚未确认",
+    );
+    expect(screen.queryByLabelText("存入金额")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "关闭" }));
+    first.unmount();
+    render(App);
+    await screen.findByRole("heading", { name: "爸爸" });
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    await user.click(
+      await screen.findByRole("button", { name: "确认原交易结果" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("原交易已确认保存。")).toBeInTheDocument();
+    const writes = rpc.mock.calls.filter(([fn]) => fn === "apply_transaction");
+    expect(writes).toHaveLength(2);
+    expect(writes[1]).toEqual(writes[0]);
+    expect(screen.getAllByText("20.00 CNY").length).toBeGreaterThan(0);
+    expect(localStorage.getItem("homebank.pending-write.parent")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    expect(screen.getByLabelText("存入金额")).toHaveValue(null);
   });
 });

@@ -111,6 +111,8 @@ export const useLedgerApp = () => {
     selectAccount: selection.selectAccount,
     selectedAccountBalance,
     balances: data.balances,
+    pendingWrite: commands.pendingWrite,
+    retryPending: commands.retryPending,
     addTransaction: commands.addTransaction,
     transfer: commands.transfer,
     ...featureFeedback,

@@ -4,7 +4,7 @@
 
 - `app_users`: parent/child role, PIN, avatar, active/archive audit fields.
 - `accounts`: child owner, creator, currency, active/close audit fields.
-- `transactions`: positive amount, currency, type, transfer links, interest month and void audit fields.
+- `transactions`: positive amount, currency, type, transfer links, interest month, request receipt and void audit fields.
 - `settings`: annual interest rate and timezone.
 - `interest_log`: per-account monthly interest audit.
 
@@ -23,6 +23,8 @@
 - Voided transactions are excluded from balances and interest.
 - Withdrawal, transfer and void RPCs reject insufficient or negative resulting balances inside the database transaction.
 - Voiding locks affected accounts in UUID order and refuses inactive accounts.
+- Deposit/withdrawal and transfer RPCs accept an optional request UUID scoped to the active parent. The same ID and original inputs return the original transaction(s), including after voiding or closing; different inputs are rejected.
+- A transfer stores its receipt on the outgoing row. Failed writes leave no receipt; legacy callers may omit the ID.
 
 ## Transfers
 

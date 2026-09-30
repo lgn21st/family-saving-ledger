@@ -10,6 +10,7 @@ export const useLedgerEntry = (
     | "balances"
     | "addTransaction"
     | "transfer"
+    | "retryPending"
     | "setSuccessStatus"
     | "setErrorStatus"
   >,
@@ -92,7 +93,12 @@ export const useLedgerEntry = (
       },
     );
   };
+  const handleRetryPending = () => submit(params.retryPending, () => {
+    amountInput.value = noteInput.value = transferAmount.value = transferTargetId.value = transferNote.value = "";
+    params.setSuccessStatus("原交易已确认保存。");
+  });
   return {
+    handleRetryPending,
     amountInput,
     noteInput,
     transferAmount,

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
 import LedgerEntry from "../features/LedgerEntry.vue";
+import type { LedgerCommands } from "../composables/useLedgerCommands";
 import type { Account, LedgerActionResult } from "../types";
 
 const account: Account = { id: "acc-1", name: "零花钱", currency: "CNY", owner_child_id: "child-1", created_by: "parent", is_active: true };
@@ -14,6 +15,7 @@ const setup = () => {
     selectedAccountBalance: ref("100.00 CNY"), balances: ref({ [account.id]: 100 }),
     transferTargets: ref([{ ...account, id: "acc-2", name: "教育金", owner_child_id: "child-2", ownerName: "小乐" }]),
     selectChild: vi.fn(), selectAccount: vi.fn(),
+    pendingWrite: ref<LedgerCommands["pendingWrite"]["value"]>(null), retryPending: vi.fn(async (): Promise<LedgerActionResult> => ({ ok: true })),
     addTransaction: vi.fn(async (): Promise<LedgerActionResult> => ({ ok: true })),
     transfer: vi.fn(async (): Promise<LedgerActionResult> => ({ ok: true })),
     setErrorStatus: vi.fn(), setSuccessStatus: vi.fn(),
@@ -104,4 +106,22 @@ describe("LedgerEntry", () => {
     expect(screen.getByRole("button", { name: "再记一笔" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "完成" })).toBeEnabled();
   });
+  it("offers confirmation of the original operation instead of a new form", async () => {
+    const { services, user, onClose } = setup();
+    services.pendingWrite.value = {
+      actorId: "parent", requestId: crypto.randomUUID(), fn: "apply_transaction",
+      args: { p_account_id: account.id, p_type: "withdrawal", p_amount: 20, p_note: "奖励" },
+    };
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("请先确认原操作"));
+    expect(screen.queryByLabelText("存入金额")).toBeNull();
+    services.retryPending.mockResolvedValueOnce({ ok: false, uncertain: true, message: "仍未确认" });
+    await user.click(screen.getByRole("button", { name: "确认原交易结果" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("仍未确认");
+    expect(onClose).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "确认原交易结果" }));
+    expect(services.retryPending).toHaveBeenCalledTimes(2);
+    expect(services.addTransaction).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
 });

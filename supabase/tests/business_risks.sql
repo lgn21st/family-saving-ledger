@@ -1,4 +1,5 @@
 do $test$
+<<request_tests>>
 declare
   parent_id uuid := gen_random_uuid();
   interest_child_a_id uuid := gen_random_uuid();
@@ -39,6 +40,18 @@ declare
   void_deposit_id uuid;
   closed_withdrawal_id uuid;
   voided_balance numeric;
+  request_source_id uuid := gen_random_uuid();
+  request_target_id uuid := gen_random_uuid();
+  request_id uuid := gen_random_uuid();
+  withdrawal_request_id uuid := gen_random_uuid();
+  transfer_request_id uuid := gen_random_uuid();
+  other_parent_id uuid := gen_random_uuid();
+  original_row public.transactions;
+  repeated_row public.transactions;
+  replay_ids uuid[];
+  original_ids uuid[];
+  mismatch_rejected boolean;
+
 begin
   perform set_config('client_min_messages', 'warning', true);
 
@@ -523,6 +536,90 @@ begin
     or to_regclass('public.transactions_related_account_id_idx') is null
   then
     raise exception 'Expected ledger indexes are missing';
+  end if;
+
+  -- A lost response can be replayed without another credit/debit or transfer pair.
+  insert into public.accounts (id, name, currency, owner_child_id, created_by)
+  values (request_source_id, '请求测试转出', 'CNY', void_child_id, parent_id),
+         (request_target_id, '请求测试转入', 'CNY', void_child_id, parent_id);
+  original_row := public.apply_transaction(request_source_id, 'deposit', 100, '请求测试', parent_id, request_id);
+  repeated_row := public.apply_transaction(request_source_id, 'deposit', 100, '请求测试', parent_id, request_id);
+  if original_row.id <> repeated_row.id or public.get_account_balance(request_source_id) <> 100 then
+    raise exception 'Repeated deposit created another credit';
+  end if;
+  original_row := public.apply_transaction(request_source_id, 'withdrawal', 50, '请求测试', parent_id, withdrawal_request_id);
+  repeated_row := public.apply_transaction(request_source_id, 'withdrawal', 50, '请求测试', parent_id, withdrawal_request_id);
+  if original_row.id <> repeated_row.id or public.get_account_balance(request_source_id) <> 50 then
+    raise exception 'Repeated withdrawal created another debit';
+  end if;
+  select array_agg(id order by id) into original_ids
+  from public.transfer_between_accounts(request_source_id, request_target_id, 50, '请求测试', parent_id, transfer_request_id);
+  update public.accounts set name = '请求测试改名' where id = request_target_id;
+  select array_agg(id order by id) into replay_ids
+  from public.transfer_between_accounts(request_source_id, request_target_id, 50, '请求测试', parent_id, transfer_request_id);
+  if original_ids <> replay_ids or array_length(replay_ids, 1) <> 2
+    or public.get_account_balance(request_source_id) <> 0
+    or public.get_account_balance(request_target_id) <> 50 then
+    raise exception 'Repeated transfer created another pair or depended on current names/balance';
+  end if;
+
+  mismatch_rejected := false;
+  begin
+    perform public.apply_transaction(request_source_id, 'deposit', 101, '请求测试', parent_id, request_id);
+  exception when others then
+    mismatch_rejected := position('Request ID already used' in sqlerrm) > 0;
+  end;
+  if not mismatch_rejected then raise exception 'Changed request input was accepted'; end if;
+  mismatch_rejected := false;
+  begin
+    perform public.transfer_between_accounts(request_source_id, request_target_id, 50, '不同备注', parent_id, transfer_request_id);
+  exception when others then
+    mismatch_rejected := position('Request ID already used' in sqlerrm) > 0;
+  end;
+  if not mismatch_rejected then raise exception 'Changed transfer input was accepted'; end if;
+  mismatch_rejected := false;
+  begin
+    perform public.apply_transaction(request_source_id, 'deposit', 50, '请求测试', parent_id, transfer_request_id);
+  exception when others then
+    mismatch_rejected := position('Request ID already used' in sqlerrm) > 0;
+  end;
+  if not mismatch_rejected then raise exception 'Request ID crossed operation boundaries'; end if;
+
+  -- Receipts remain valid after void/closure; replay must not resurrect ledger rows.
+  perform public.void_transaction(original_ids[1], parent_id);
+  select array_agg(id order by id) into replay_ids
+  from public.transfer_between_accounts(request_source_id, request_target_id, 50, '请求测试', parent_id, transfer_request_id);
+  if replay_ids <> original_ids or public.get_account_balance(request_target_id) <> 0 then
+    raise exception 'Replay resurrected a voided transfer';
+  end if;
+  request_id := gen_random_uuid();
+  original_row := public.apply_transaction(request_target_id, 'deposit', 25, '随后作废', parent_id, request_id);
+  perform public.void_transaction(original_row.id, parent_id);
+  perform public.close_account(request_target_id, parent_id);
+  repeated_row := public.apply_transaction(request_target_id, 'deposit', 25, '随后作废', parent_id, request_id);
+  if repeated_row.id <> original_row.id or not repeated_row.is_void then
+    raise exception 'Replay resurrected a voided credit on a closed account';
+  end if;
+  role_failure_observed := false;
+  begin
+    perform public.apply_transaction(request_target_id, 'deposit', 25, '随后作废', void_child_id, request_id);
+  exception when others then
+    role_failure_observed := position('Only an active parent' in sqlerrm) > 0;
+  end;
+  if not role_failure_observed then raise exception 'Replay bypassed the active-parent check'; end if;
+
+  -- A definitive rejection leaves no receipt; namespaces are scoped to the actor.
+  request_id := gen_random_uuid();
+  begin
+    perform public.apply_transaction(request_source_id, 'withdrawal', 1000, '拒绝', parent_id, request_id);
+  exception when others then
+    if position('Insufficient balance' in sqlerrm) = 0 then raise; end if;
+  end;
+  perform public.apply_transaction(request_source_id, 'deposit', 1, '拒绝后修正', parent_id, request_id);
+  insert into public.app_users (id, name, role, pin) values (other_parent_id, '请求测试另一家长', 'parent', '9010');
+  perform public.apply_transaction(request_source_id, 'deposit', 1, '另一操作人', other_parent_id, request_id);
+  if (select count(*) from public.transactions where transactions.request_id = request_tests.request_id and created_by in (parent_id, other_parent_id)) <> 2 then
+    raise exception 'Actor request namespaces were merged';
   end if;
 
   raise exception 'BUSINESS_RISK_TESTS_PASSED';
