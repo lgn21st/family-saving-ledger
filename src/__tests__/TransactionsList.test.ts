@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/vue";
+import { fireEvent, render, screen, within } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
@@ -31,8 +31,8 @@ describe("TransactionsList", () => {
         loading: false,
         canVoid: true,
         transactionLabels: {
-          deposit: "增加",
-          withdrawal: "减少",
+          deposit: "存入",
+          withdrawal: "取出",
           transfer_in: "转入",
           transfer_out: "转出",
           interest: "利息",
@@ -77,8 +77,8 @@ describe("TransactionsList", () => {
         hasMore: false,
         loading: false,
         transactionLabels: {
-          deposit: "增加",
-          withdrawal: "减少",
+          deposit: "存入",
+          withdrawal: "取出",
           transfer_in: "转入",
           transfer_out: "转出",
           interest: "利息",
@@ -113,8 +113,8 @@ describe("TransactionsList", () => {
         loading: false,
         canVoid: true,
         transactionLabels: {
-          deposit: "增加",
-          withdrawal: "减少",
+          deposit: "存入",
+          withdrawal: "取出",
           transfer_in: "转入",
           transfer_out: "转出",
           interest: "利息",
@@ -137,12 +137,36 @@ describe("TransactionsList", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
+
+  it("shows the selected transaction for review and cancels without voiding it", async () => {
+    const user = userEvent.setup();
+    const onVoidTransaction = vi.fn();
+    render(TransactionsList, {
+      props: {
+        transactions: [baseTransaction], hasMore: false, loading: false, canVoid: true,
+        transactionLabels: { deposit: "存入", withdrawal: "取出", transfer_in: "转入", transfer_out: "转出", interest: "利息" },
+        formatSignedAmount: () => "+10.00 CNY", transactionTone: () => "text-emerald-600",
+        getTransactionNote: () => "家务奖励", getTransactionContext: () => "小乐 · 零花钱 · CNY",
+        formatTimestamp: () => "2026/9/30 12:00", onLoadMore: vi.fn(), onVoidTransaction,
+      },
+    });
+    await user.click(screen.getByRole("button", { name: /^撤销交易：/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/小乐.*10.00 CNY.*家务奖励.*2026\/9\/30/);
+    for (const text of ["小乐 · 零花钱 · CNY", "+10.00 CNY", "家务奖励", "2026/9/30 12:00"]) {
+      expect(dialog.getByText(text)).toBeInTheDocument();
+    }
+    expect(dialog.queryByText(/同时撤销转出和转入/)).toBeNull();
+    await user.click(dialog.getByRole("button", { name: "取消" }));
+    expect(onVoidTransaction).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });
 
 describe("TransactionsList loading and search feedback", () => {
   const props = {
     transactions: [baseTransaction], hasMore: true, loading: false,
-    transactionLabels: { deposit: "增加", withdrawal: "减少", transfer_in: "转入", transfer_out: "转出", interest: "利息" },
+    transactionLabels: { deposit: "存入", withdrawal: "取出", transfer_in: "转入", transfer_out: "转出", interest: "利息" },
     formatSignedAmount: () => "+10.00 CNY", transactionTone: () => "text-emerald-600",
     getTransactionNote: (transaction: Transaction) => transaction.note ?? "",
     formatTimestamp: () => "now", onLoadMore: vi.fn(),

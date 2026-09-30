@@ -31,7 +31,7 @@ describe("useTransactionDisplay", () => {
     expect(formatSignedAmount(deposit)).toBe("+12.50 CNY");
     expect(transactionTone(deposit)).toBe("text-emerald-600");
     expect(formatSignedAmount(withdrawal)).toBe("-3.00 CNY");
-    expect(transactionTone(withdrawal)).toBe("text-rose-500");
+    expect(transactionTone(withdrawal)).toBe("text-rose-600");
   });
 
   it("uses explicit note when provided", () => {
@@ -99,5 +99,28 @@ describe("useTransactionDisplay", () => {
     }));
 
     expect(note).toBe("—");
+  });
+
+  it("identifies both transfer endpoints in the same direction even with an explicit note", () => {
+    const { getTransactionContext } = useTransactionDisplay({
+      accounts: ref([
+        accountFixture({ id: "from", name: "零花钱", owner_child_id: "child-1" }),
+        accountFixture({ id: "to", name: "零花钱", owner_child_id: "child-2" }),
+      ]),
+      childUsers: ref([
+        { id: "child-1", name: "小乐", role: "child" },
+        { id: "child-2", name: "小雨", role: "child" },
+      ]),
+    });
+    const outgoing = transactionFixture({
+      account_id: "from", type: "transfer_out", related_account_id: "to", note: "生日礼物",
+    });
+    const incoming = { ...outgoing, account_id: "to", type: "transfer_in" as const, related_account_id: "from" };
+    const context = "小乐 · 零花钱 · CNY → 小雨 · 零花钱 · CNY";
+    expect(getTransactionContext(outgoing)).toBe(context);
+    expect(getTransactionContext(incoming)).toBe(context);
+    expect(getTransactionContext({ ...outgoing, related_account_id: "missing" })).toBe(
+      "小乐 · 零花钱 · CNY → 账户信息不可用",
+    );
   });
 });

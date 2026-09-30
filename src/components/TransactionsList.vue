@@ -113,7 +113,7 @@
                   {{ getTransactionNote(transaction) }}
                 </p>
                 <time
-                  class="mt-1.5 block text-xs text-slate-400"
+                  class="mt-1.5 block text-xs text-slate-500"
                   :datetime="transaction.created_at"
                   :aria-label="formatTimestamp(transaction.created_at)"
                 >
@@ -134,7 +134,7 @@
                 <button
                   v-if="canVoid && !transaction.is_void"
                   type="button"
-                  class="mt-2 min-h-11 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 opacity-100 transition-[background-color,color,opacity] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-3 focus-visible:ring-rose-100 focus-visible:outline-none sm:min-h-0 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                  class="mt-2 min-h-11 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 opacity-100 transition-[background-color,color,opacity] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-3 focus-visible:ring-rose-100 focus-visible:outline-none sm:min-h-0 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                   :aria-label="voidButtonLabel(transaction)"
                   @pointerdown.stop
                   @click="requestVoid(transaction)"
@@ -166,12 +166,31 @@
       kicker="不可直接删除"
       title="撤销这笔交易？"
       description="交易会标记为已作废，并影响当前余额。"
-      detail="如果是转账，对应的另一笔记录也会同时撤销。"
+      :detail="confirmingTransaction.related_account_id ? '本次会同时撤销转出和转入两笔记录。' : ''"
       confirm-label="确认撤销"
       :loading="loading"
       :on-cancel="cancelConfirm"
       :on-confirm="confirmVoid"
-    />
+    >
+      <dl class="mt-4 space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
+        <div>
+          <dt class="text-xs text-slate-500">{{ confirmingTransaction.related_account_id ? '转出 → 转入' : '账户' }}</dt>
+          <dd class="mt-1 break-words font-medium text-slate-900">{{ getTransactionContext?.(confirmingTransaction) ?? '账户信息不可用' }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">{{ transactionLabels[confirmingTransaction.type] }}</dt>
+          <dd class="numeric mt-1 font-semibold text-slate-950">{{ formatSignedAmount(confirmingTransaction) }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">备注</dt>
+          <dd class="mt-1 break-words text-slate-700">{{ getTransactionNote(confirmingTransaction) }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs text-slate-500">交易时间</dt>
+          <dd class="mt-1 text-slate-700"><time :datetime="confirmingTransaction.created_at">{{ formatTimestamp(confirmingTransaction.created_at) }}</time></dd>
+        </div>
+      </dl>
+    </ConfirmActionDialog>
   </section>
 </template>
 
@@ -190,6 +209,7 @@ const props = defineProps<{
   formatSignedAmount: (transaction: Transaction) => string;
   transactionTone: (transaction: Transaction) => string;
   getTransactionNote: (transaction: Transaction) => string;
+  getTransactionContext?: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
   onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;

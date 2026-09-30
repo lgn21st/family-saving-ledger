@@ -278,8 +278,8 @@ const modeDescription = computed(() => successDetails.value
     ? "交易已保存，余额暂未刷新。"
     : "交易已保存，并已更新账户余额。"
   : ({
-      deposit: "为当前账户增加一笔收入。",
-      withdrawal: "记录一笔支出，并检查余额是否充足。",
+      deposit: "向当前账户存入一笔金额。",
+      withdrawal: "从当前账户取出，并检查余额是否充足。",
       transfer: "从当前账户转到另一个同币种账户。",
     })[mode.value]);
 const amountLabel = computed(() => ({ deposit: "存入金额", withdrawal: "取出金额", transfer: "转账金额" })[mode.value]);

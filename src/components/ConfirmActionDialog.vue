@@ -8,7 +8,7 @@
     :aria-busy="isBusy"
     aria-modal="true"
     :aria-labelledby="titleId"
-    :aria-describedby="descriptionId"
+    :aria-describedby="$slots.default ? `${descriptionId} ${descriptionId}-details` : descriptionId"
     @click.self="requestCancel"
     @keydown="handleKeydown"
   >
@@ -21,6 +21,7 @@
         {{ description }}
       </p>
       <p v-if="detail" class="mt-2 text-sm leading-6 text-slate-500">{{ detail }}</p>
+      <div v-if="$slots.default" :id="`${descriptionId}-details`"><slot /></div>
       <div class="mt-6 grid grid-cols-2 gap-3">
         <button ref="cancelButton" type="button" class="button-secondary min-h-11" :disabled="isBusy" @click="requestCancel">
           取消

@@ -8,8 +8,8 @@ export const useTransactionDisplay = (params: {
   const { accounts, childUsers } = params;
 
   const transactionLabels: Record<TransactionType, string> = {
-    deposit: "增加",
-    withdrawal: "减少",
+    deposit: "存入",
+    withdrawal: "取出",
     transfer_in: "转入",
     transfer_out: "转出",
     interest: "利息",
@@ -26,7 +26,7 @@ export const useTransactionDisplay = (params: {
   const transactionTone = (transaction: Transaction) => {
     return signedAmount(transaction) >= 0
       ? "text-emerald-600"
-      : "text-rose-500";
+      : "text-rose-600";
   };
 
   const formatSignedAmount = (transaction: Transaction) => {
@@ -37,6 +37,22 @@ export const useTransactionDisplay = (params: {
 
   const formatTimestamp = (value: string) => {
     return new Date(value).toLocaleString();
+  };
+
+  const accountLabel = (id: string) => {
+    const account = accounts.value.find((entry) => entry.id === id);
+    if (!account) return "账户信息不可用";
+    const owner = childUsers.value.find((child) => child.id === account.owner_child_id);
+    return [owner?.name, account.name, account.currency].filter(Boolean).join(" · ");
+  };
+
+  const getTransactionContext = (transaction: Transaction) => {
+    const current = accountLabel(transaction.account_id);
+    if (!transaction.related_account_id) return current;
+    const related = accountLabel(transaction.related_account_id);
+    return transaction.type === "transfer_in"
+      ? `${related} → ${current}`
+      : `${current} → ${related}`;
   };
 
   const getTransactionNote = (transaction: Transaction) => {
@@ -75,5 +91,6 @@ export const useTransactionDisplay = (params: {
     formatSignedAmount,
     formatTimestamp,
     getTransactionNote,
+    getTransactionContext,
   };
 };

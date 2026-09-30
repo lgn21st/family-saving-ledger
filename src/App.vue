@@ -59,6 +59,7 @@
       :format-signed-amount="formatSignedAmount"
       :transaction-tone="transactionTone"
       :get-transaction-note="getTransactionNote"
+      :get-transaction-context="getTransactionContext"
       :format-timestamp="formatTimestamp"
       :on-load-more="handleLoadMoreForSelected"
       :on-void-transaction="handleVoidTransaction"
@@ -139,6 +140,7 @@ const {
   formatSignedAmount,
   transactionTone,
   getTransactionNote,
+  getTransactionContext,
   formatTimestamp,
   handleLoadMoreForSelected,
   handleVoidTransaction,

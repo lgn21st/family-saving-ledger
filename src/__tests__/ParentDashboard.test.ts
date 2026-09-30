@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import ParentDashboard from "../components/ParentDashboard.vue";
 
 const transactionLabels = {
-  deposit: "增加",
-  withdrawal: "减少",
+  deposit: "存入",
+  withdrawal: "取出",
   transfer_in: "转入",
   transfer_out: "转出",
   interest: "利息",
@@ -42,6 +42,7 @@ describe("ParentDashboard", () => {
         formatSignedAmount: () => "+0.00",
         transactionTone: () => "text-emerald-600",
         getTransactionNote: () => "—",
+        getTransactionContext: () => "账户信息不可用",
         formatTimestamp: () => "",
         onLoadMore: vi.fn(),
         onVoidTransaction: vi.fn(),

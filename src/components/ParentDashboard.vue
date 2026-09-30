@@ -35,6 +35,7 @@
         :format-signed-amount="formatSignedAmount"
         :transaction-tone="transactionTone"
         :get-transaction-note="getTransactionNote"
+        :get-transaction-context="getTransactionContext"
         :format-timestamp="formatTimestamp"
         :on-load-more="onLoadMore"
         :on-void-transaction="onVoidTransaction"
@@ -101,6 +102,7 @@ defineProps<{
   formatSignedAmount: (transaction: Transaction) => string;
   transactionTone: (transaction: Transaction) => string;
   getTransactionNote: (transaction: Transaction) => string;
+  getTransactionContext: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
   onVoidTransaction: (transaction: Transaction) => void | Promise<void>;
