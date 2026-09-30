@@ -9,8 +9,9 @@ describe("AppHeader", () => {
     const user = userEvent.setup();
     const onToggleSettings = vi.fn();
     const onLogout = vi.fn();
+    const onRefresh = vi.fn();
 
-    render(AppHeader, {
+    const { rerender } = render(AppHeader, {
       props: {
         user: {
           id: "parent-1",
@@ -33,6 +34,8 @@ describe("AppHeader", () => {
         status: "提示",
         statusTone: "error",
         onDismissStatus: vi.fn(),
+        refreshState: "idle",
+        onRefresh,
       },
     });
 
@@ -43,5 +46,12 @@ describe("AppHeader", () => {
 
     await user.click(screen.getByRole("button", { name: "退出" }));
     expect(onLogout).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "刷新账本" }));
+    expect(onRefresh).toHaveBeenCalledOnce();
+    await rerender({ refreshState: "loading" });
+    expect(screen.getByRole("button", { name: "正在刷新账本" })).toBeDisabled();
+    await rerender({ refreshState: "error" });
+    await user.click(screen.getByRole("button", { name: "重试刷新账本" }));
+    expect(onRefresh).toHaveBeenCalledTimes(2);
   });
 });

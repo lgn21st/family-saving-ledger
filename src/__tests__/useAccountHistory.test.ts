@@ -55,6 +55,35 @@ const setup = () => {
   };
 };
 describe("useAccountHistory", () => {
+  it("uses the read's calendar date even when the request finishes after midnight", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-30T15:59:59Z"));
+    const rows = [
+      transactionFixture({ amount: 5, created_at: "2026-09-30T15:00:00Z" }),
+      transactionFixture({ id: "october", amount: 9, created_at: "2026-09-30T16:00:00Z" }),
+    ];
+    let finish!: (value: { data: number; error: null }) => void;
+    const rpc = vi.fn().mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
+      .mockResolvedValue({ data: 0, error: null });
+    const scope = effectScope();
+    try {
+      const history = scope.run(() => useAccountHistory({
+        supabase: { from: () => ({ select: () => queryMock(() => ({ data: rows, count: 2, error: null })) }), rpc },
+        user: ref<AppUser | null>({ id: "child-1", name: "小乐", role: "child" }),
+        accounts: ref([account]), childUsers: ref([]), selectedAccount: ref(account), timeZone: ref("Asia/Singapore"),
+        voidTransaction: vi.fn(), setErrorStatus: vi.fn(), setSuccessStatus: vi.fn(),
+      }))!;
+      const reading = history.refresh();
+      vi.setSystemTime(new Date("2026-09-30T16:00:01Z"));
+      finish({ data: 0, error: null });
+      expect(await reading).toBe(true);
+      expect(history.monthChanges.value?.deposit).toBe(5);
+      expect(history.chartPoints.value.at(-1)?.date.toISOString()).toBe("2026-09-29T16:00:00.000Z");
+      await history.refresh();
+      expect(history.monthChanges.value?.deposit).toBe(9);
+      expect(history.chartPoints.value.at(-1)?.date.toISOString()).toBe("2026-09-30T16:00:00.000Z");
+    } finally { scope.stop(); vi.useRealTimers(); }
+  });
   it("guards the selected account and child role before voiding a transaction", async () => {
     const { history, user, voidTransaction, scope } = setup();
     await history.handleVoidTransaction({

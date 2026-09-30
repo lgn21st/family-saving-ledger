@@ -16,6 +16,8 @@
       :status="status"
       :status-tone="statusTone"
       :on-dismiss-status="onDismissStatus"
+      :refresh-state="refreshState"
+      :on-refresh="onRefresh"
     />
     <slot />
   </div>
@@ -36,5 +38,7 @@ defineProps<{
   status: string | null;
   statusTone: StatusTone;
   onDismissStatus: () => void;
+  refreshState: "idle" | "loading" | "error";
+  onRefresh: () => void | Promise<void>;
 }>();
 </script>

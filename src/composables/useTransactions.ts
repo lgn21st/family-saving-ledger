@@ -29,6 +29,7 @@ export const useTransactions = (params: {
   const chartTransactions = ref<Transaction[]>([]);
   const chartBaseBalance = ref(0);
   const chartReady = ref(false);
+  const historyDate = ref(new Date());
   const chartLoading = ref(false);
   const transactionTotal = ref(0);
   const transactionPage = ref(0);
@@ -112,6 +113,7 @@ export const useTransactions = (params: {
     chartReady.value = false;
     try {
       const now = new Date();
+      historyDate.value = now;
       const chartStart = addZonedDays(
         startOfZonedDay(now, timeZone.value),
         -29,
@@ -216,6 +218,7 @@ export const useTransactions = (params: {
     chartTransactions,
     chartBaseBalance,
     chartReady,
+    historyDate,
     chartLoading,
     transactionTotal,
     transactionPage,

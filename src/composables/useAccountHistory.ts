@@ -34,11 +34,12 @@ export const useAccountHistory = (
     ...params,
     chartTransactions: pages.chartTransactions,
     chartBaseBalance: pages.chartBaseBalance,
+    asOf: pages.historyDate,
     signedAmount: display.signedAmount,
   });
   const monthChanges = computed(() => {
     if (!pages.chartReady.value || !params.selectedAccount.value) return null;
-    const start = startOfZonedMonth(new Date(), params.timeZone.value);
+    const start = startOfZonedMonth(pages.historyDate.value, params.timeZone.value);
     // Every calendar month has fewer than 32 days.
     const end = startOfZonedMonth(addZonedDays(start, 32, params.timeZone.value), params.timeZone.value);
     const totals = { deposit: 0, withdrawal: 0, transfer_in: 0, transfer_out: 0, interest: 0 };

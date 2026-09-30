@@ -21,6 +21,20 @@
       </div>
       <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <button
+          type="button"
+          class="button-quiet min-h-11 min-w-11 px-2.5 py-1.5"
+          :disabled="refreshState === 'loading'"
+          :aria-label="refreshState === 'loading' ? '正在刷新账本' : refreshState === 'error' ? '重试刷新账本' : '刷新账本'"
+          :aria-busy="refreshState === 'loading'"
+          :title="refreshState === 'error' ? '重试刷新账本' : '刷新账本'"
+          @click="onRefresh"
+        >
+          <span v-if="refreshState === 'error'" class="text-xs text-rose-700">重试</span>
+          <svg v-else class="h-4 w-4" :class="{ 'animate-spin motion-reduce:animate-none': refreshState === 'loading' }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 7v5h-5M4 17v-5h5M5 8a7.5 7.5 0 0 1 12.5-3L20 8M4 16l2.5 3A7.5 7.5 0 0 0 19 16" />
+          </svg>
+        </button>
+        <button
           v-if="canEdit"
           type="button"
           class="button-secondary min-h-11 px-3 py-1.5 text-xs sm:text-sm"
@@ -64,5 +78,7 @@ defineProps<{
   status: string | null;
   statusTone: StatusTone;
   onDismissStatus: () => void;
+  refreshState: "idle" | "loading" | "error";
+  onRefresh: () => void | Promise<void>;
 }>();
 </script>

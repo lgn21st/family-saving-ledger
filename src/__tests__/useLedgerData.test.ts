@@ -27,7 +27,7 @@ const setup = () => {
     data: [parent, ...children],
     error: null,
   }));
-  const balanceRead = vi.fn(async () => ({
+  const balanceRead = vi.fn(async (): Promise<{ data: { account_id: string; balance: number }[]; error: { message: string } | null }> => ({
     data: [{ account_id: "acc-1", balance: 12 }],
     error: null,
   }));
@@ -64,6 +64,24 @@ const setup = () => {
   };
 };
 describe("useLedgerData", () => {
+  it("reports incomplete reloads and discards a response after disposal", async () => {
+    const { data, user, scope, balanceRead, childRead, accountRead } = setup();
+    user.value = parent;
+    await vi.waitFor(() => expect(data.childUsers.value).toHaveLength(2));
+    balanceRead.mockResolvedValueOnce({ data: [], error: { message: "Offline" } });
+    childRead.mockClear();
+    expect(await data.reload()).toBe(false);
+    expect(childRead).not.toHaveBeenCalled();
+    let finish!: (value: { data: typeof accounts; error: null }) => void;
+    accountRead.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const reading = data.reload();
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    scope.stop();
+    finish({ data: accounts, error: null });
+    expect(await reading).toBe(false);
+    expect(data.accounts.value).toEqual([]);
+    expect(data.balances.value).toEqual({});
+  });
   it("loads session-scoped accounts, balances, children and configured timezone", async () => {
     const { data, user, scope } = setup();
     user.value = parent;

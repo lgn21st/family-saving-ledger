@@ -18,6 +18,7 @@ export const useChartData = (params: {
   chartBaseBalance: Ref<number>;
   signedAmount: (transaction: Transaction) => number;
   timeZone?: Ref<string>;
+  asOf?: Ref<Date>;
 }) => {
   const {
     selectedAccount,
@@ -33,7 +34,7 @@ export const useChartData = (params: {
     if (!selectedAccount.value) return [];
 
     const startDate = addZonedDays(
-      startOfZonedDay(new Date(), timeZone.value),
+      startOfZonedDay(params.asOf?.value ?? new Date(), timeZone.value),
       -29,
       timeZone.value,
     );

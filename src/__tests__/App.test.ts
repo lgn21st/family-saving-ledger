@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import App from "../App.vue";
 import { vi } from "vitest";
 import type { Account, AppUser, Transaction } from "../types";
+import { accountFixture, transactionFixture } from "../test/setup";
+import { flushPromises } from "@vue/test-utils";
 
 type Settings = {
   id: string;
@@ -760,6 +762,149 @@ describe("Home Bank UI", () => {
     loadMockData({});
     sessionStorage.clear();
     localStorage.clear();
+  });
+
+  describe("ledger freshness", () => {
+    const openLedger = async () => {
+      vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+      const reward = transactionFixture({ amount: 5, note: "原奖励", is_void: false });
+      const secondReward = transactionFixture({ id: "second", account_id: "acc-2", amount: 3, note: "旅行奖励", is_void: false });
+      loadMockData({
+        app_users: [{ id: "child-1", name: "小乐", role: "child", pin: "1111" }],
+        accounts: [accountFixture(), accountFixture({ id: "acc-2", name: "旅行" })],
+        transactions: [reward, secondReward],
+      });
+      sessionStorage.setItem("homebank.session", JSON.stringify({ userId: "child-1", expiresAt: Date.now() + 86400000 }));
+      const view = render(App);
+      await vi.waitFor(() => expect(screen.getByText("本月比月初多 5.00 CNY")).toBeVisible());
+      return { ...view, reward, secondReward };
+    };
+
+    it("refreshes on resume and reconnect without losing selection or search, and stops after logout or unmount", async () => {
+      const { unmount, reward, secondReward } = await openLedger();
+      const user = userEvent.setup();
+      await user.selectOptions(screen.getByRole("combobox", { name: "选择账户" }), "acc-2");
+      await user.type(screen.getByRole("searchbox", { name: "搜索交易" }), "新的");
+      const from = vi.spyOn(supabaseMock.supabase, "from");
+      let hidden = true;
+      vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("online"));
+      expect(from).not.toHaveBeenCalled();
+      supabaseMock.setMockData({ transactions: [reward, secondReward, transactionFixture({ id: "new", account_id: "acc-2", amount: 7, note: "新的奖励", is_void: false })] });
+      hidden = false;
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("online"));
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+      expect(await screen.findByText("本月比月初多 10.00 CNY")).toBeVisible();
+      expect(await screen.findByText("新的奖励")).toBeVisible();
+      expect(from.mock.calls.filter(([table]) => table === "accounts")).toHaveLength(1);
+      expect(screen.getByRole("combobox", { name: "选择账户" })).toHaveValue("acc-2");
+      expect(screen.getByRole("searchbox", { name: "搜索交易" })).toHaveValue("新的");
+      await user.click(screen.getByRole("button", { name: "退出" }));
+      from.mockClear();
+      window.dispatchEvent(new Event("online"));
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(from).not.toHaveBeenCalled();
+      unmount();
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+      expect(from).not.toHaveBeenCalled();
+    });
+
+    it("keeps a retry action after a failed refresh and clears the warning when it recovers", async () => {
+      const { unmount } = await openLedger();
+      try {
+        const user = userEvent.setup();
+        vi.spyOn(supabaseMock.supabase, "from").mockImplementationOnce(() => { throw new Error("Offline"); });
+        await user.click(screen.getByRole("button", { name: "刷新账本" }));
+        expect(await screen.findByRole("button", { name: "重试刷新账本" })).toBeEnabled();
+        expect(screen.getByText("账本刷新失败，显示的可能是旧数据，请重试。")).toBeVisible();
+        expect(screen.getByText("本月比月初多 5.00 CNY")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "重试刷新账本" }));
+        await waitFor(() => expect(screen.getByRole("button", { name: "刷新账本" })).toBeEnabled());
+        expect(screen.queryByText("账本刷新失败，显示的可能是旧数据，请重试。")).toBeNull();
+      } finally { unmount(); }
+    });
+
+    it("preserves an unsaved account draft when refreshing in settings", async () => {
+      vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+      loadMockData({
+        app_users: [{ id: "parent", name: "爸爸", role: "parent", pin: "1234" }, { id: "child-1", name: "小乐", role: "child", pin: "1111" }],
+        accounts: [accountFixture()],
+      });
+      const { unmount } = render(App);
+      try {
+        const user = userEvent.setup();
+        await loginAs(user, "爸爸", "1234");
+        await user.click(screen.getByRole("button", { name: "打开设置" }));
+        await user.click(screen.getByRole("button", { name: "账户" }));
+        await user.click(screen.getByRole("button", { name: "创建账户" }));
+        await user.type(screen.getByRole("textbox", { name: "账户名称" }), "生日基金");
+        window.dispatchEvent(new Event("online"));
+        await waitFor(() => expect(screen.getByRole("button", { name: "刷新账本" })).toBeEnabled());
+        expect(screen.getByRole("textbox", { name: "账户名称" })).toHaveValue("生日基金");
+        expect(screen.getByRole("combobox", { name: "归属" })).toHaveValue("child-1");
+      } finally { unmount(); }
+    });
+
+    it("discards a refresh failure that arrives after logout", async () => {
+      const { unmount } = await openLedger();
+      try {
+        let finish!: (value: Awaited<ReturnType<typeof supabaseMock.supabase.rpc>>) => void;
+        vi.spyOn(supabaseMock.supabase, "rpc").mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const user = userEvent.setup();
+        await user.click(screen.getByRole("button", { name: "刷新账本" }));
+        await vi.waitFor(() => expect(finish).toBeDefined());
+        await user.click(screen.getByRole("button", { name: "退出" }));
+        finish({ data: null, error: { message: "Old failure" } });
+        await flushPromises();
+        expect(screen.getByRole("heading", { name: "选择你的身份" })).toBeVisible();
+        expect(screen.queryByText(/刷新失败|Old failure/)).toBeNull();
+      } finally { unmount(); }
+    });
+
+    it("rolls over the month at midnight in ledger time and removes its timer on unmount", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-09-30T15:59:59Z"));
+      let unmount: (() => void) | undefined;
+      try {
+        const view = await openLedger();
+        unmount = view.unmount;
+        const from = vi.spyOn(supabaseMock.supabase, "from");
+        supabaseMock.setMockData({ transactions: [view.reward, view.secondReward, transactionFixture({ id: "october", amount: 9, note: "十月奖励", created_at: "2026-09-30T16:00:00Z", is_void: false })] });
+        await vi.advanceTimersByTimeAsync(1000);
+        await vi.waitFor(() => expect(screen.getByText("本月比月初多 9.00 CNY")).toBeVisible());
+        expect(from.mock.calls.filter(([table]) => table === "accounts")).toHaveLength(1);
+        expect(screen.queryByText("本月比月初多 14.00 CNY")).toBeNull();
+        unmount();
+        unmount = undefined;
+        from.mockClear();
+        await vi.advanceTimersByTimeAsync(86400000);
+        expect(from).not.toHaveBeenCalled();
+      } finally { unmount?.(); vi.useRealTimers(); }
+    });
+
+    it("repeats a refresh that was still in flight at midnight", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-09-30T15:59:59Z"));
+      let unmount: (() => void) | undefined;
+      try {
+        const view = await openLedger();
+        unmount = view.unmount;
+        let finish!: (value: Awaited<ReturnType<typeof supabaseMock.supabase.rpc>>) => void;
+        vi.spyOn(supabaseMock.supabase, "rpc").mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const from = vi.spyOn(supabaseMock.supabase, "from");
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTimeAsync });
+        await user.click(screen.getByRole("button", { name: "刷新账本" }));
+        await vi.waitFor(() => expect(finish).toBeDefined());
+        await vi.advanceTimersByTimeAsync(1000);
+        supabaseMock.setMockData({ transactions: [view.reward, transactionFixture({ id: "october", amount: 9, created_at: "2026-09-30T16:00:00Z", is_void: false })] });
+        finish({ data: 0, error: null });
+        await vi.waitFor(() => expect(screen.getByText("本月比月初多 9.00 CNY")).toBeVisible());
+        expect(from.mock.calls.filter(([table]) => table === "accounts")).toHaveLength(2);
+        expect(screen.getByRole("button", { name: "刷新账本" })).toBeEnabled();
+      } finally { unmount?.(); vi.useRealTimers(); }
+    });
   });
 
   it("opens account creation for the child selected on the empty ledger", async () => {

@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
 import { avatarOptions } from "../config";
 import { useAuth } from "../composables/useAuth";
 import { useLedgerData } from "../composables/useLedgerData";
@@ -8,7 +8,8 @@ import { useAccountHistory } from "../composables/useAccountHistory";
 import { useCurrency } from "../composables/useCurrency";
 import { useStatus } from "../composables/useStatus";
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
-import type { SupabaseClient, LedgerChange } from "../types";
+import type { AppUser, SupabaseClient, LedgerChange } from "../types";
+import { endOfZonedDay, startOfZonedDay } from "../utils/timezone";
 import type {
   MemberServices,
   AccountServices,
@@ -63,6 +64,66 @@ export const useLedgerApp = () => {
     timeZone: data.ledgerTimeZone,
     voidTransaction: commands.voidTransaction,
     ...featureFeedback,
+  });
+  const refreshState = ref<"idle" | "loading" | "error">("idle");
+  let active = true;
+  let refreshingActor: AppUser | null = null;
+  let dayTimer: ReturnType<typeof setTimeout> | undefined;
+  const refreshFailure = "账本刷新失败，显示的可能是旧数据，请重试。";
+  const refreshLedger = async () => {
+    const actor = user.value;
+    if (!active || !actor || refreshingActor === actor) return;
+    refreshingActor = actor;
+    refreshState.value = "loading";
+    const startedDay = startOfZonedDay(new Date(), data.ledgerTimeZone.value).getTime();
+    try {
+      const loaded = await data.reload();
+      if (!active || user.value !== actor) return;
+      if (!loaded) throw new Error("Ledger data could not be refreshed");
+      await nextTick();
+      const accountId = selection.selectedAccount.value?.id;
+      const historyLoaded = await history.refresh();
+      if (!active || user.value !== actor) return;
+      if (!historyLoaded && selection.selectedAccount.value?.id === accountId)
+        throw new Error("History could not be refreshed");
+      if (feedback.status.value === refreshFailure) feedback.clearStatus();
+      refreshState.value = "idle";
+    } catch {
+      if (active && user.value === actor) {
+        refreshState.value = "error";
+        feedback.setErrorStatus(refreshFailure);
+      }
+    } finally {
+      if (refreshingActor === actor) refreshingActor = null;
+      if (active && user.value === actor && refreshState.value === "idle" && !document.hidden &&
+        startOfZonedDay(new Date(), data.ledgerTimeZone.value).getTime() !== startedDay)
+        void refreshLedger();
+    }
+  };
+  const scheduleNextDay = () => {
+    clearTimeout(dayTimer);
+    dayTimer = undefined;
+    if (!active || !user.value || document.hidden) return;
+    const delay = endOfZonedDay(new Date(), data.ledgerTimeZone.value).getTime() + 1 - Date.now();
+    dayTimer = setTimeout(() => {
+      void refreshLedger();
+      scheduleNextDay();
+    }, Math.max(1, delay));
+  };
+  const resumeLedger = () => {
+    scheduleNextDay();
+    if (!document.hidden) void refreshLedger();
+  };
+  const restorePage = (event: PageTransitionEvent) => {
+    if (event.persisted) resumeLedger();
+  };
+  watch([user, data.ledgerTimeZone], scheduleNextDay);
+  onScopeDispose(() => {
+    active = false;
+    clearTimeout(dayTimer);
+    document.removeEventListener("visibilitychange", resumeLedger);
+    window.removeEventListener("online", resumeLedger);
+    window.removeEventListener("pageshow", restorePage);
   });
   const selectedAccountBalance = computed(() => {
     const account = selection.selectedAccount.value;
@@ -125,7 +186,9 @@ export const useLedgerApp = () => {
   };
   watch(user, () => {
     settingsSection.value = null;
-  });
+    refreshState.value = "idle";
+    refreshingActor = null;
+  }, { flush: "sync" });
   const reloadLoginUsers = async () => {
     if (data.loginUsersState.value === "error") feedback.clearStatus();
     if (!(await data.loadLoginUsers())) return;
@@ -135,10 +198,13 @@ export const useLedgerApp = () => {
     }
   };
   onMounted(async () => {
+    document.addEventListener("visibilitychange", resumeLedger);
+    window.addEventListener("online", resumeLedger);
+    window.addEventListener("pageshow", restorePage);
     if (!isSupabaseConfigured) return;
     await data.loadLedgerTimeZone();
     await reloadLoginUsers();
-    await auth.checkSession();
+    if (active) await auth.checkSession();
   });
   return {
     ...auth,
@@ -153,6 +219,8 @@ export const useLedgerApp = () => {
     loginUsers: data.loginUsers,
     loginUsersState: data.loginUsersState,
     reloadLoginUsers,
+    refreshState,
+    refreshLedger,
     balances: data.balances,
     selectedLoginUser,
     settingsSection,

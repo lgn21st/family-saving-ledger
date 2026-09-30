@@ -27,6 +27,8 @@
     :status="status"
     :status-tone="statusTone"
     :on-dismiss-status="clearStatus"
+    :refresh-state="refreshState"
+    :on-refresh="refreshLedger"
   >
     <SettingsPage v-if="user.role === 'parent' && showSettings" :initial-section="settingsSection ?? 'members'">
       <template #members>
@@ -113,6 +115,8 @@ const {
   loginUsers,
   loginUsersState,
   reloadLoginUsers,
+  refreshState,
+  refreshLedger,
   selectedLoginUserId,
   selectedLoginUser,
   sessionStatus,

@@ -28,6 +28,8 @@ describe("AppShell", () => {
         status: "提示",
         statusTone: "error",
         onDismissStatus: vi.fn(),
+        refreshState: "idle",
+        onRefresh: vi.fn(),
       },
       slots: {
         default: "<div>内容</div>",

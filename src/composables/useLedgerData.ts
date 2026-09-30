@@ -1,4 +1,4 @@
-import { ref, watch, type Ref } from "vue";
+import { onScopeDispose, ref, watch, type Ref } from "vue";
 import type { AppUser, LedgerChange, SupabaseFromClient } from "../types";
 import { DEFAULT_LEDGER_TIMEZONE } from "../utils/timezone";
 import { useAccounts } from "./useAccounts";
@@ -26,18 +26,26 @@ export const useLedgerData = (params: {
       params.setErrorStatus("账本时区加载失败，暂时使用默认时区。");
     }
   };
+  const reload = async () => {
+    const user = params.user.value;
+    if (!user) return false;
+    if (!(await accountData.loadAccounts(user)) || params.user.value !== user) return false;
+    return user.role !== "parent" || await users.loadChildUsers();
+  };
   watch(params.user, async (user) => {
     accountData.reset();
     users.resetChildren();
     if (!user) return;
     try {
-      await accountData.loadAccounts(user);
-      if (params.user.value !== user) return;
-      if (user.role === "parent") await users.loadChildUsers();
+      await reload();
     } catch {
       if (params.user.value === user)
         params.setErrorStatus("账本加载失败，请重试。");
     }
+  });
+  onScopeDispose(() => {
+    accountData.reset();
+    users.resetChildren();
   });
   const requireLoaded = async (read: Promise<boolean>) => {
     if (!(await read)) throw new Error("Read data could not be refreshed");
@@ -61,6 +69,7 @@ export const useLedgerData = (params: {
     ...users,
     ledgerTimeZone,
     loadLedgerTimeZone,
+    reload,
     refresh,
   };
 };
