@@ -747,10 +747,9 @@ const selectAccount = async (
     .closest("section");
   expect(navigator).not.toBeNull();
 
-  await user.click(
-    within(navigator as HTMLElement).getByRole("button", {
-      name: new RegExp(name),
-    }),
+  await user.selectOptions(
+    within(navigator as HTMLElement).getByRole("combobox"),
+    within(navigator as HTMLElement).getByRole("option", { name: new RegExp(name) }),
   );
 
   return navigator as HTMLElement;
@@ -785,7 +784,7 @@ describe("Home Bank UI", () => {
     settings.scrollTop = 200;
     await user.click(screen.getByRole("button", { name: "返回账本" }));
     expect(screen.getByRole("main").scrollTop).toBe(0);
-    expect(screen.getByRole("button", { name: /零花钱/ })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("combobox", { name: "小乐的账户" })).toHaveValue("acc-1");
   });
 
   it("shows validation when PIN length is invalid", async () => {
