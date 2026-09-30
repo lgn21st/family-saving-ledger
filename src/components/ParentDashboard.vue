@@ -1,7 +1,8 @@
 <template>
   <main
     id="main-content"
-    class="page-container ledger-workspace flex-1 pt-5 sm:pt-7"
+    tabindex="-1"
+    class="page-container min-h-0 flex-1 overflow-y-auto py-5 sm:py-7"
   >
     <div
       class="space-y-5"
@@ -40,17 +41,6 @@
         :on-load-more="onLoadMore"
         :on-void-transaction="onVoidTransaction"
       />
-
-      <button
-        ref="quickTransactionTrigger"
-        type="button"
-        class="button-primary quick-entry-trigger fixed right-4 z-40 min-h-12 rounded-2xl px-5 shadow-xl shadow-brand-900/20 sm:right-6 xl:right-8"
-        aria-haspopup="dialog"
-        :aria-expanded="showQuickTransaction"
-        @click="showQuickTransaction = true"
-      >
-        记一笔
-      </button>
     </div>
 
     <slot
@@ -59,6 +49,24 @@
       :on-close="closeQuickTransaction"
     />
   </main>
+  <footer
+    class="entry-actionbar shrink-0 border-t border-slate-200 bg-white pt-3"
+    :inert="showQuickTransaction || undefined"
+    :aria-hidden="showQuickTransaction ? 'true' : undefined"
+  >
+    <div class="page-container flex justify-end">
+      <button
+        ref="quickTransactionTrigger"
+        type="button"
+        class="button-primary min-h-12 px-5"
+        aria-haspopup="dialog"
+        :aria-expanded="showQuickTransaction"
+        @click="showQuickTransaction = true"
+      >
+        记一笔
+      </button>
+    </div>
+  </footer>
 </template>
 
 <script setup lang="ts">

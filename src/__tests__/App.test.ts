@@ -765,6 +765,29 @@ describe("Home Bank UI", () => {
     localStorage.clear();
   });
 
+  it("opens each page at the top while preserving the selected account", async () => {
+    loadMockData({
+      app_users: [
+        { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小乐", role: "child", pin: "1111" },
+      ],
+      accounts: [{ id: "acc-1", name: "零花钱", currency: "CNY", owner_child_id: "child-1", created_by: "parent", is_active: true }],
+    });
+    render(App);
+    const user = userEvent.setup();
+    await loginAs(user, "爸爸", "1234");
+    const ledger = screen.getByRole("main");
+    ledger.scrollTop = 400;
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    const settings = screen.getByRole("main");
+    expect(settings).not.toBe(ledger);
+    expect(settings.scrollTop).toBe(0);
+    settings.scrollTop = 200;
+    await user.click(screen.getByRole("button", { name: "返回账本" }));
+    expect(screen.getByRole("main").scrollTop).toBe(0);
+    expect(screen.getByRole("button", { name: /零花钱/ })).toHaveAttribute("aria-current", "true");
+  });
+
   it("shows validation when PIN length is invalid", async () => {
     loadMockData({
       app_users: [{ id: "parent", name: "爸爸", role: "parent", pin: "1234" }],

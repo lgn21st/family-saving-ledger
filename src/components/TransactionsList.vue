@@ -69,7 +69,7 @@
         <template v-for="(transaction, index) in filteredTransactions" :key="transaction.id">
           <li
             v-if="shouldShowMonth(transaction, index)"
-            class="sticky top-[73px] z-10 border-y border-slate-100 bg-white/95 py-2 text-xs font-semibold text-slate-500 backdrop-blur"
+            class="sticky top-0 z-10 border-y border-slate-100 bg-white/95 py-2 text-xs font-semibold text-slate-500 backdrop-blur"
           >
             {{ formatMonth(transaction.created_at) }}
           </li>

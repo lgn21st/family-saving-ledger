@@ -1,5 +1,5 @@
 <template>
-  <main id="main-content" class="page-container flex-1 space-y-5 py-5 sm:py-7">
+  <main id="main-content" tabindex="-1" class="page-container min-h-0 flex-1 space-y-5 overflow-y-auto py-5 sm:py-7">
     <ChildAccountNavigatorPanel
       :grouped-accounts="groupedAccounts"
       :selected-account-id="selectedAccountId"

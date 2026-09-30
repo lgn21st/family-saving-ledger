@@ -1,5 +1,5 @@
 <template>
-  <main id="main-content" class="page-container flex-1 py-5 sm:py-7">
+  <main id="main-content" tabindex="-1" class="page-container min-h-0 flex-1 overflow-y-auto py-5 sm:py-7">
     <header class="surface-card p-5 sm:p-7">
       <div>
         <p class="section-kicker">家庭管理</p>

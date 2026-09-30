@@ -123,12 +123,8 @@
     @apply min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-950 shadow-xs transition-[border-color,box-shadow] placeholder:text-slate-400 focus-visible:border-brand-500 focus-visible:ring-3 focus-visible:ring-brand-100 focus-visible:outline-none;
   }
 
-  .ledger-workspace {
-    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-  }
-
-  .quick-entry-trigger {
-    bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  .entry-actionbar {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
   .transaction-sheet {
