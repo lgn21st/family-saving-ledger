@@ -24,6 +24,7 @@ See `docs/architecture.md`. Components must not query Supabase. Authoritative ba
 
 ## Code conventions
 
+- Keep code, docs and structure compact. Add files, layers or abstractions only for a concrete need; merge single-use forwarding wrappers.
 - Vue 3 `script setup` with TypeScript.
 - `PascalCase.vue` components and `useFeature.ts` composables.
 - Typed props and explicit callback props; named `v-model` for editable fields.

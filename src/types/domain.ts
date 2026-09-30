@@ -27,11 +27,7 @@ export type Account = {
 export type TransferTarget = Account & { ownerName: string };
 
 export type TransactionType =
-  | "deposit"
-  | "withdrawal"
-  | "transfer_in"
-  | "transfer_out"
-  | "interest";
+  "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "interest";
 
 export type Transaction = {
   id: string;
@@ -53,5 +49,28 @@ export type Transaction = {
 export type StatusTone = "success" | "error";
 
 export type LedgerActionResult =
-  | { ok: true }
-  | { ok: false; message: string };
+  { ok: true; warning?: string } | { ok: false; message: string };
+
+// Value inputs capture the operation before asynchronous work.
+export type CreateChildInput = { name: string; pin: string; avatarId: string };
+export type CreateAccountInput = {
+  name: string;
+  currency: string;
+  ownerChildId: string;
+};
+export type TransactionInput = {
+  accountId: string;
+  type: "deposit" | "withdrawal";
+  amount: number;
+  note: string;
+};
+export type TransferInput = {
+  sourceAccountId: string;
+  targetAccountId: string;
+  amount: number;
+  note: string;
+};
+export type LedgerChange =
+  | { kind: "members"; accountsChanged?: boolean }
+  | { kind: "accounts" }
+  | { kind: "transactions" };

@@ -26,7 +26,8 @@ describe("AppShell", () => {
         onToggleSettings: vi.fn(),
         onLogout: vi.fn(),
         status: "提示",
-        statusTone: "text-rose-600",
+        statusTone: "error",
+        onDismissStatus: vi.fn(),
       },
       slots: {
         default: "<div>内容</div>",

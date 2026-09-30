@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import ChildListPanel from "../components/ChildListPanel.vue";
 
 const avatarOptions = [
-  { id: "child-1", label: "小可爱", role: "child", imagePath: "/a.png" },
+  { id: "child-1", label: "小可爱", role: "child" as const, imagePath: "/a.png" },
 ];
 
 describe("ChildListPanel", () => {

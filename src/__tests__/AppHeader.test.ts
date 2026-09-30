@@ -31,7 +31,8 @@ describe("AppHeader", () => {
         onToggleSettings,
         onLogout,
         status: "提示",
-        statusTone: "text-rose-600",
+        statusTone: "error",
+        onDismissStatus: vi.fn(),
       },
     });
 

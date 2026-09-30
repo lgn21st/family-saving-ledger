@@ -24,8 +24,6 @@ type DataStore = {
   account_balances: AccountBalance[];
 };
 
-type DataRow<T extends keyof DataStore> = DataStore[T][number];
-
 function createDefaultData() {
   return {
     app_users: [],
@@ -94,8 +92,10 @@ function createSupabaseMock() {
   };
 
   const getBalance = (accountId: string) => {
-    return computeAccountBalances().find((row) => row.account_id === accountId)
-      ?.balance ?? 0;
+    return (
+      computeAccountBalances().find((row) => row.account_id === accountId)
+        ?.balance ?? 0
+    );
   };
 
   const createSelectBuilder = (table: keyof DataStore) => {
@@ -110,8 +110,8 @@ function createSupabaseMock() {
       const filtered = applyFilters(getRows(table), filters);
       const ordered = orderValue
         ? [...filtered].sort((a, b) =>
-            String(a[orderValue.field as keyof typeof a]).localeCompare(
-              String(b[orderValue.field as keyof typeof b]),
+            String(a[orderValue!.field as keyof typeof a]).localeCompare(
+              String(b[orderValue!.field as keyof typeof b]),
             ),
           )
         : [...filtered];
@@ -121,7 +121,7 @@ function createSupabaseMock() {
         ? sorted.slice(rangeValue.from, rangeValue.to + 1)
         : sorted;
       const limited = limitValue ? ranged.slice(0, limitValue) : ranged;
-      const data = single ? limited[0] ?? null : limited;
+      const data = single ? (limited[0] ?? null) : limited;
       const count = countMode ? filtered.length : null;
       return Promise.resolve({ data, error: null, count });
     };
@@ -132,11 +132,13 @@ function createSupabaseMock() {
         return builder;
       },
       eq: (field: keyof DataStore[typeof table][number], value: unknown) => {
-        filters.push((row) => row[field] === value);
+        filters.push((row) => row[field as keyof typeof row] === value);
         return builder;
       },
       gte: (field: keyof DataStore[typeof table][number], value: unknown) => {
-        filters.push((row) => String(row[field]) >= String(value));
+        filters.push(
+          (row) => String(row[field as keyof typeof row]) >= String(value),
+        );
         return builder;
       },
       order: (
@@ -150,7 +152,7 @@ function createSupabaseMock() {
         return builder;
       },
       in: (field: keyof DataStore[typeof table][number], values: unknown[]) => {
-        filters.push((row) => values.includes(row[field]));
+        filters.push((row) => values.includes(row[field as keyof typeof row]));
         return builder;
       },
       limit: (count: number) => {
@@ -179,109 +181,40 @@ function createSupabaseMock() {
     return builder;
   };
 
-  const deleteRows = <T extends keyof DataStore>(
-    table: T,
-    filters: Array<(row: DataRow<T>) => boolean>,
-  ) => {
-    const rows = dataStore[table] as DataRow<T>[];
-    const remaining = rows.filter(
-      (row) => !filters.every((filter) => filter(row)),
-    );
-    const removed = rows.filter((row) =>
-      filters.every((filter) => filter(row)),
-    );
-    dataStore = {
-      ...dataStore,
-      [table]: remaining,
-    };
-    return removed;
-  };
-
   const updateRows = <T extends keyof DataStore>(
     table: T,
-    updates: Record<string, unknown>,
-    filters: Array<(row: DataRow<T>) => boolean>,
+    updates: Partial<DataStore[T][number]>,
+    filters: Array<(row: DataStore[T][number]) => boolean>,
   ) => {
-    const rows = dataStore[table] as DataRow<T>[];
-    const updated = rows.map((row) => {
-      if (filters.every((filter) => filter(row))) {
-        return {
-          ...row,
-          ...updates,
-        };
-      }
-      return row;
-    });
-    dataStore = {
-      ...dataStore,
-      [table]: updated,
-    };
-    return updated.filter((row) => filters.every((filter) => filter(row)));
+    const rows = dataStore[table] as Array<DataStore[T][number]>;
+    const matches = (row: DataStore[T][number]) =>
+      filters.every((filter) => filter(row));
+    const updated = rows.map((row) =>
+      matches(row) ? { ...row, ...updates } : row,
+    );
+    dataStore = { ...dataStore, [table]: updated };
+    return updated.filter(matches);
   };
 
   const supabase = {
     from: (table: keyof DataStore) => {
       return {
-        select: (
-          _columns?: string,
-          options?: { count?: "exact" },
-        ) => {
+        select: (_columns?: string, options?: { count?: "exact" }) => {
           const builder = createSelectBuilder(table);
           if (options?.count === "exact") {
             builder.setCountMode("exact");
           }
           return builder;
         },
-        insert: (payload: Partial<Transaction>[]) => {
-          const inserted = payload.map((item) => ({
-            id: nextId(),
-            created_at: now(),
-            ...item,
-          })) as Transaction[];
-
-          if (table === "transactions") {
-            dataStore = {
-              ...dataStore,
-              transactions: [...dataStore.transactions, ...inserted],
-            };
-          }
-
-          return {
-            select: () => Promise.resolve({ data: inserted, error: null }),
-          };
-        },
-        update: (payload: Record<string, unknown>) => {
-          return {
-            eq: (field: string, value: unknown) => {
-              const updated = updateRows(table, payload, [
-                (row) => row[field] === value,
-              ]);
-              return Promise.resolve({ data: updated, error: null });
-            },
-          };
-        },
-        delete: () => {
-          return {
-            eq: (field: string, value: unknown) => {
-              const removed = deleteRows(table, [
-                (row) => row[field] === value,
-              ]);
-              return Promise.resolve({ data: removed, error: null });
-            },
-            in: (field: string, values: unknown[]) => {
-              const removed = deleteRows(table, [
-                (row) => values.includes(row[field]),
-              ]);
-              return Promise.resolve({ data: removed, error: null });
-            },
-          };
-        },
       };
     },
     rpc: (
       fnName: string,
       payload: Record<string, unknown>,
-    ): Promise<{ data: unknown; error: { message: string } | null }> => {
+    ): Promise<{
+      data: unknown;
+      error: { message: string; code?: string } | null;
+    }> => {
       if (fnName === "apply_transaction") {
         const accountId = String(payload.p_account_id);
         const type = String(payload.p_type) as Transaction["type"];
@@ -295,28 +228,31 @@ function createSupabaseMock() {
         if (!account) {
           return Promise.resolve({
             data: null,
-            error: { message: "Account not found or inactive" },
+            error: { message: "Account not found or inactive", code: "P0001" },
           });
         }
 
         if (amount <= 0) {
           return Promise.resolve({
             data: null,
-            error: { message: "Amount must be positive" },
+            error: { message: "Amount must be positive", code: "P0001" },
           });
         }
 
         if (type === "withdrawal" && amount > getBalance(accountId)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Insufficient balance" },
+            error: { message: "Insufficient balance", code: "P0001" },
           });
         }
 
         if (!isActiveParent(createdBy)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Only an active parent can create transactions" },
+            error: {
+              message: "Only an active parent can create transactions",
+              code: "P0001",
+            },
           });
         }
 
@@ -357,35 +293,38 @@ function createSupabaseMock() {
         if (!source || !target) {
           return Promise.resolve({
             data: null,
-            error: { message: "Account not found or inactive" },
+            error: { message: "Account not found or inactive", code: "P0001" },
           });
         }
 
         if (source.currency !== target.currency) {
           return Promise.resolve({
             data: null,
-            error: { message: "Transfer currency mismatch" },
+            error: { message: "Transfer currency mismatch", code: "P0001" },
           });
         }
 
         if (amount <= 0) {
           return Promise.resolve({
             data: null,
-            error: { message: "Amount must be positive" },
+            error: { message: "Amount must be positive", code: "P0001" },
           });
         }
 
         if (amount > getBalance(sourceId)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Insufficient balance" },
+            error: { message: "Insufficient balance", code: "P0001" },
           });
         }
 
         if (!isActiveParent(createdBy)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Only an active parent can transfer funds" },
+            error: {
+              message: "Only an active parent can transfer funds",
+              code: "P0001",
+            },
           });
         }
 
@@ -455,7 +394,7 @@ function createSupabaseMock() {
         if (!child || !parent) {
           return Promise.resolve({
             data: null,
-            error: { message: "Child not found or inactive" },
+            error: { message: "Child not found or inactive", code: "P0001" },
           });
         }
 
@@ -466,7 +405,8 @@ function createSupabaseMock() {
           return Promise.resolve({
             data: null,
             error: {
-              message: "All child account balances must be zero before archiving",
+              message:
+                "All child account balances must be zero before archiving",
             },
           });
         }
@@ -509,14 +449,17 @@ function createSupabaseMock() {
         if (!account) {
           return Promise.resolve({
             data: null,
-            error: { message: "Account not found or inactive" },
+            error: { message: "Account not found or inactive", code: "P0001" },
           });
         }
 
         if (getBalance(accountId) !== 0) {
           return Promise.resolve({
             data: null,
-            error: { message: "Account balance must be zero before closing" },
+            error: {
+              message: "Account balance must be zero before closing",
+              code: "P0001",
+            },
           });
         }
 
@@ -539,7 +482,10 @@ function createSupabaseMock() {
         if (!isActiveParent(voidedBy)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Only an active parent can void transactions" },
+            error: {
+              message: "Only an active parent can void transactions",
+              code: "P0001",
+            },
           });
         }
 
@@ -549,7 +495,7 @@ function createSupabaseMock() {
         if (!target) {
           return Promise.resolve({
             data: null,
-            error: { message: "Transaction not found" },
+            error: { message: "Transaction not found", code: "P0001" },
           });
         }
         if (target.is_void) {
@@ -561,15 +507,21 @@ function createSupabaseMock() {
               (entry) => entry.transfer_group_id === target.transfer_group_id,
             )
           : [target];
-        const accountIds = [...new Set(groupRows.map((entry) => entry.account_id))];
+        const accountIds = [
+          ...new Set(groupRows.map((entry) => entry.account_id)),
+        ];
         const inactive = accountIds.some((accountId) => {
-          const account = dataStore.accounts.find((entry) => entry.id === accountId);
+          const account = dataStore.accounts.find(
+            (entry) => entry.id === accountId,
+          );
           return !account || !account.is_active;
         });
         if (inactive) {
           return Promise.resolve({
             data: null,
-            error: { message: "Cannot void a transaction on an inactive account" },
+            error: {
+              message: "Cannot void a transaction on an inactive account",
+            },
           });
         }
 
@@ -581,7 +533,10 @@ function createSupabaseMock() {
           if (current - delta < 0) {
             return Promise.resolve({
               data: null,
-              error: { message: "Void would result in a negative balance" },
+              error: {
+                message: "Void would result in a negative balance",
+                code: "P0001",
+              },
             });
           }
         }
@@ -608,7 +563,10 @@ function createSupabaseMock() {
         if (!isActiveParent(createdBy)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Only an active parent can create children" },
+            error: {
+              message: "Only an active parent can create children",
+              code: "P0001",
+            },
           });
         }
         const created = {
@@ -633,7 +591,10 @@ function createSupabaseMock() {
         if (!isActiveParent(updatedBy)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Only an active parent can update children" },
+            error: {
+              message: "Only an active parent can update children",
+              code: "P0001",
+            },
           });
         }
         const [updated] = updateRows(
@@ -649,7 +610,7 @@ function createSupabaseMock() {
         if (!updated) {
           return Promise.resolve({
             data: null,
-            error: { message: "Child not found or inactive" },
+            error: { message: "Child not found or inactive", code: "P0001" },
           });
         }
         return Promise.resolve({ data: null, error: null });
@@ -660,7 +621,10 @@ function createSupabaseMock() {
         if (!isActiveParent(createdBy)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Only an active parent can create accounts" },
+            error: {
+              message: "Only an active parent can create accounts",
+              code: "P0001",
+            },
           });
         }
         const created = {
@@ -684,7 +648,10 @@ function createSupabaseMock() {
         if (!isActiveParent(updatedBy)) {
           return Promise.resolve({
             data: null,
-            error: { message: "Only an active parent can update accounts" },
+            error: {
+              message: "Only an active parent can update accounts",
+              code: "P0001",
+            },
           });
         }
         const [updated] = updateRows(
@@ -698,7 +665,7 @@ function createSupabaseMock() {
         if (!updated) {
           return Promise.resolve({
             data: null,
-            error: { message: "Account not found or inactive" },
+            error: { message: "Account not found or inactive", code: "P0001" },
           });
         }
         return Promise.resolve({ data: null, error: null });
@@ -721,7 +688,7 @@ function createSupabaseMock() {
 
       return Promise.resolve({
         data: null,
-        error: { message: "Unsupported rpc" },
+        error: { message: "Unsupported rpc", code: "P0001" },
       });
     },
   };
@@ -795,6 +762,7 @@ describe("Home Bank UI", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     loadMockData({});
     sessionStorage.clear();
+    localStorage.clear();
   });
 
   it("shows validation when PIN length is invalid", async () => {
@@ -890,7 +858,9 @@ describe("Home Bank UI", () => {
     expect(
       await screen.findByRole("heading", { name: "选择孩子" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "家庭资产" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "家庭资产" }),
+    ).toBeInTheDocument();
     const childList = screen
       .getByRole("heading", { name: "选择孩子" })
       .closest("section");
@@ -1038,7 +1008,9 @@ describe("Home Bank UI", () => {
     await user.click(screen.getByRole("button", { name: "转账" }));
     const select = screen.getByRole("combobox", { name: "转入账户" });
 
-    expect(within(select).getByText("小儿子 · 旅行基金 · SGD")).toBeInTheDocument();
+    expect(
+      within(select).getByText("小儿子 · 旅行基金 · SGD"),
+    ).toBeInTheDocument();
     expect(
       within(select).queryByText("小儿子 · 零花钱 · CNY"),
     ).not.toBeInTheDocument();
@@ -1157,7 +1129,7 @@ describe("Home Bank UI", () => {
     await loginAs(user, "爸爸", "1234");
     await selectChild(user, "小女儿");
     await user.click(screen.getByRole("button", { name: "打开设置" }));
-    await user.click(screen.getByRole("button", { name: "账户", exact: true }));
+    await user.click(screen.getByRole("button", { name: "账户" }));
 
     const accountSection = screen
       .getByRole("heading", { name: "账户列表" })
@@ -1172,9 +1144,7 @@ describe("Home Bank UI", () => {
     await user.click(screen.getByRole("button", { name: "关闭账户" }));
     await user.click(screen.getByRole("button", { name: "确认关闭" }));
 
-    expect(
-      await screen.findByText("该孩子暂无账户。"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("该孩子暂无账户。")).toBeInTheDocument();
   });
 
   it("updates child name from list", async () => {
@@ -1234,7 +1204,7 @@ describe("Home Bank UI", () => {
     await loginAs(user, "妈妈", "2222");
     await selectChild(user, "小朋友");
     await user.click(screen.getByRole("button", { name: "打开设置" }));
-    await user.click(screen.getByRole("button", { name: "账户", exact: true }));
+    await user.click(screen.getByRole("button", { name: "账户" }));
 
     const accountSection = screen
       .getByRole("heading", { name: "账户列表" })
@@ -1352,14 +1322,12 @@ describe("Home Bank UI", () => {
     await user.type(screen.getByPlaceholderText("PIN"), "1111");
     await user.click(screen.getByRole("button", { name: "登录 小朋友" }));
 
-    await user.click(
-      await screen.findByRole("button", { name: /利息账户/ }),
-    );
+    await user.click(await screen.findByRole("button", { name: /利息账户/ }));
 
-    expect(await screen.findByText("利息", { selector: "span" })).toBeInTheDocument();
     expect(
-      screen.getByText("2024年01月结息，利率 10%"),
+      await screen.findByText("利息", { selector: "span" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("2024年01月结息，利率 10%")).toBeInTheDocument();
   });
 
   it("paginates transactions when loading more", async () => {
@@ -1447,5 +1415,58 @@ describe("Home Bank UI", () => {
 
     expect(await screen.findByText("余额不足。")).toBeInTheDocument();
     expect(screen.queryByText("测试扣减")).not.toBeInTheDocument();
+  });
+  it("keeps feature drafts isolated, preserves section drafts and clears them across sessions", async () => {
+    loadMockData({
+      app_users: [
+        { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小女儿", role: "child", pin: "1111" },
+      ],
+      accounts: [
+        {
+          id: "acc-1",
+          name: "零花钱",
+          currency: "CNY",
+          owner_child_id: "child-1",
+          created_by: "parent",
+          is_active: true,
+        },
+      ],
+    });
+    render(App);
+    const user = userEvent.setup();
+    await loginAs(user, "爸爸", "1234");
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    await user.type(screen.getByLabelText("存入金额"), "12");
+    await user.type(screen.getByLabelText(/^用途或备注/), "未提交草稿");
+    await user.click(screen.getByRole("button", { name: "关闭" }));
+    await user.click(screen.getByRole("button", { name: "记一笔" }));
+    expect(screen.getByLabelText("存入金额")).toHaveValue(null);
+    expect(screen.getByLabelText(/^用途或备注/)).toHaveValue("");
+    await user.click(screen.getByRole("button", { name: "关闭" }));
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    await user.click(screen.getByRole("button", { name: "添加孩子" }));
+    await user.type(
+      screen.getByLabelText("孩子姓名", { exact: true }),
+      "成员草稿",
+    );
+    await user.click(screen.getByRole("button", { name: "账户" }));
+    await user.click(screen.getByRole("button", { name: "创建账户" }));
+    await user.type(
+      screen.getByLabelText("账户名称", { exact: true }),
+      "账户草稿",
+    );
+    await user.click(screen.getByRole("button", { name: "成员" }));
+    expect(screen.getByLabelText("孩子姓名", { exact: true })).toHaveValue(
+      "成员草稿",
+    );
+    await user.click(screen.getByRole("button", { name: "退出" }));
+    await loginAs(user, "爸爸", "1234");
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    await user.click(screen.getByRole("button", { name: "添加孩子" }));
+    expect(screen.getByLabelText("孩子姓名", { exact: true })).toHaveValue("");
+    await user.click(screen.getByRole("button", { name: "账户" }));
+    await user.click(screen.getByRole("button", { name: "创建账户" }));
+    expect(screen.getByLabelText("账户名称", { exact: true })).toHaveValue("");
   });
 });

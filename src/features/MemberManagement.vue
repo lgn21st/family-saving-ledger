@@ -1,5 +1,5 @@
 <template>
-  <section class="surface-card mx-auto max-w-5xl p-5 sm:p-7" data-testid="child-card">
+  <section class="surface-card mt-5 mx-auto max-w-5xl p-5 sm:p-7" data-testid="child-card">
     <div
       :inert="Boolean(confirmingChild) || undefined"
       :aria-hidden="confirmingChild ? 'true' : undefined"
@@ -35,7 +35,7 @@
           <label for="new-child-name" class="field-label">孩子姓名</label>
           <input
             id="new-child-name"
-            v-model="childNameModel"
+            v-model="newChildName"
             name="new-child-name"
             type="text"
             autocomplete="off"
@@ -76,7 +76,7 @@
                 ? 'border-brand-400 bg-brand-50 ring-1 ring-brand-200'
                 : 'border-slate-200 bg-white hover:border-brand-300',
             ]"
-            @click="newChildAvatarIdModel = avatar.id"
+            @click="newChildAvatarId = avatar.id"
           >
             <Avatar
               :avatar-id="avatar.id"
@@ -88,7 +88,7 @@
           </button>
         </div>
       </fieldset>
-      <button class="button-primary mt-5" :disabled="loading" @click="onCreateChild">
+      <button class="button-primary mt-5" :disabled="loading" @click="handleCreateChild">
         创建孩子
       </button>
     </div>
@@ -116,7 +116,7 @@
                 <label :for="`child-name-${child.id}`" class="sr-only">孩子姓名</label>
                 <input
                   :id="`child-name-${child.id}`"
-                  v-model="editingChildNameModel"
+                  v-model="editingChildName"
                   name="child-name"
                   type="text"
                   autocomplete="off"
@@ -135,7 +135,7 @@
                 type="button"
                 class="button-primary min-h-11 px-3 py-1.5 text-xs"
                 :disabled="loading"
-                @click="onUpdateChild"
+                @click="handleUpdateChild"
               >
                 保存
               </button>
@@ -143,7 +143,7 @@
                 type="button"
                 class="button-quiet min-h-11 px-3 py-1.5 text-xs"
                 :disabled="loading"
-                @click="onCancelEditChild"
+                @click="cancelEditChild"
               >
                 取消
               </button>
@@ -153,7 +153,7 @@
               type="button"
               class="button-secondary min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
-              @click="onStartEditChild(child)"
+              @click="startEditChild(child)"
             >
               编辑
             </button>
@@ -190,35 +190,23 @@
 
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
-import Avatar from "./Avatar.vue";
-import ConfirmActionDialog from "./ConfirmActionDialog.vue";
+import Avatar from "../components/Avatar.vue";
+import ConfirmActionDialog from "../components/ConfirmActionDialog.vue";
+import { useMemberManagement } from "./useMemberManagement";
+import { avatarOptions } from "../config";
 import type { AppUser } from "../types";
-import type { AvatarOption } from "../config";
+import type { MemberServices } from "./contracts";
 
-const childNameModel = defineModel<string>("newChildName", { required: true });
-const newChildPinModel = defineModel<string>("newChildPin", { required: true });
-const newChildAvatarIdModel = defineModel<string>("newChildAvatarId", {
-  required: true,
-});
-const editingChildNameModel = defineModel<string>("editingChildName", {
-  required: true,
-});
+const { services } = defineProps<{ services: MemberServices }>();
+const { childUsers } = services;
+const childAvatars = avatarOptions.filter((avatar) => avatar.role === "child");
+const {
+  newChildName, newChildPin, newChildAvatarId, editingChildName, editingChildId,
+  loading, handleCreateChild, startEditChild, handleUpdateChild, cancelEditChild,
+  handleArchiveChild,
+} = useMemberManagement({ ...services, defaultAvatarId: childAvatars[0]?.id ?? "" });
 
-const props = defineProps<{
-  childUsers: AppUser[];
-  childAvatars: AvatarOption[];
-  avatarOptions: AvatarOption[];
-  editingChildId: string | null;
-  loading: boolean;
-  sanitizePin: (value: string) => string;
-  onCreateChild: () => void;
-  onStartEditChild: (child: AppUser) => void;
-  onUpdateChild: () => void;
-  onCancelEditChild: () => void;
-  onArchiveChild: (id: string) => void | Promise<void>;
-}>();
-
-const showChildCreator = ref(props.childUsers.length === 0);
+const showChildCreator = ref(childUsers.value.length === 0);
 const confirmingChild = ref<AppUser | null>(null);
 const archiveTrigger = ref<HTMLElement | null>(null);
 
@@ -234,13 +222,15 @@ const cancelArchive = async () => {
 };
 const confirmArchive = async () => {
   if (!confirmingChild.value) return;
-  await props.onArchiveChild(confirmingChild.value.id);
+  await handleArchiveChild(confirmingChild.value.id);
   confirmingChild.value = null;
   archiveTrigger.value = null;
 };
 
 const onPinInput = (event: Event) => {
   const target = event.target as HTMLInputElement | null;
-  newChildPinModel.value = props.sanitizePin(target?.value ?? "");
+  if (!target) return;
+  target.value = target.value.replace(/\D/g, "");
+  newChildPin.value = target.value;
 };
 </script>

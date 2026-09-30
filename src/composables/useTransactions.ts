@@ -56,79 +56,93 @@ export const useTransactions = (params: {
     page: number,
     generation = loadGeneration,
   ) => {
-    if (generation !== loadGeneration) return;
+    if (generation !== loadGeneration) return false;
     transactionLoading.value = true;
-    const start = (page - 1) * PAGE_SIZE;
-    const end = page * PAGE_SIZE - 1;
-    const baseQuery = supabase
-      .from("transactions")
-      .select("*", { count: "exact" })
-      .eq("account_id", accountId);
-    const { data, error, count } = await applyVoidFilter(baseQuery)
-      .order("created_at", { ascending: false })
-      .range(start, end);
+    try {
+      const start = (page - 1) * PAGE_SIZE;
+      const end = page * PAGE_SIZE - 1;
+      const baseQuery = supabase
+        .from("transactions")
+        .select("*", { count: "exact" })
+        .eq("account_id", accountId);
+      const { data, error, count } = await applyVoidFilter(baseQuery)
+        .order("created_at", { ascending: false })
+        .range(start, end);
 
-    if (generation !== loadGeneration) return;
+      if (generation !== loadGeneration) return false;
 
-    if (error) {
-      setErrorStatus(error.message);
-      transactionLoading.value = false;
-      return;
+      if (error) {
+        setErrorStatus(error.message);
+        return false;
+      }
+
+      const resolvedData = (data ?? []) as Transaction[];
+      transactionTotal.value = count ?? resolvedData.length;
+      transactionPage.value = page;
+      loadedAccountId.value = accountId;
+      transactions.value =
+        page === 1 ? resolvedData : [...transactions.value, ...resolvedData];
+      return true;
+    } catch {
+      if (generation === loadGeneration)
+        setErrorStatus("账户流水加载失败，请重试。");
+      return false;
+    } finally {
+      if (generation === loadGeneration) transactionLoading.value = false;
     }
-
-    const resolvedData = (data ?? []) as Transaction[];
-    transactionTotal.value = count ?? resolvedData.length ?? 0;
-    transactionPage.value = page;
-    loadedAccountId.value = accountId;
-    transactions.value =
-      page === 1 ? resolvedData : [...transactions.value, ...resolvedData];
-    transactionLoading.value = false;
   };
 
   const loadChartTransactions = async (
     accountId: string,
     generation = loadGeneration,
   ) => {
-    const startDate = addZonedDays(
-      startOfZonedDay(new Date(), timeZone.value),
-      -29,
-      timeZone.value,
-    );
+    try {
+      const startDate = addZonedDays(
+        startOfZonedDay(new Date(), timeZone.value),
+        -29,
+        timeZone.value,
+      );
 
-    const { data: baseData, error: baseError } = await supabase.rpc(
-      "get_balance_before_date",
-      {
-        p_account_id: accountId,
-        p_before: startDate.toISOString(),
-      },
-    );
+      const { data: baseData, error: baseError } = await supabase.rpc(
+        "get_balance_before_date",
+        {
+          p_account_id: accountId,
+          p_before: startDate.toISOString(),
+        },
+      );
 
-    if (generation !== loadGeneration) return;
+      if (generation !== loadGeneration) return false;
 
-    if (baseError) {
-      setErrorStatus(baseError.message);
-      return;
+      if (baseError) {
+        setErrorStatus(baseError.message);
+        return false;
+      }
+
+      const chartQuery = supabase
+        .from("transactions")
+        .select("*")
+        .eq("account_id", accountId)
+        .eq("is_void", false)
+        .gte("created_at", startDate.toISOString());
+      const { data, error } = await chartQuery.order("created_at", {
+        ascending: true,
+      });
+
+      if (generation !== loadGeneration) return false;
+
+      if (error) {
+        setErrorStatus(error.message);
+        return false;
+      }
+
+      chartBaseBalance.value = Number(baseData ?? 0);
+      chartTransactions.value = (data ?? []) as Transaction[];
+      return true;
+    } catch {
+      if (generation === loadGeneration)
+        setErrorStatus("账户趋势加载失败，请重试。");
+      return false;
     }
-
-    const chartQuery = supabase
-      .from("transactions")
-      .select("*")
-      .eq("account_id", accountId)
-      .eq("is_void", false)
-      .gte("created_at", startDate.toISOString());
-    const { data, error } = await chartQuery.order("created_at", {
-      ascending: true,
-    });
-
-    if (generation !== loadGeneration) return;
-
-    if (error) {
-      setErrorStatus(error.message);
-      return;
-    }
-
-    chartBaseBalance.value = Number(baseData ?? 0);
-    chartTransactions.value = (data ?? []) as Transaction[];
   };
 
   const resetSelectedAccountData = async (accountId: string) => {
@@ -140,10 +154,11 @@ export const useTransactions = (params: {
     transactionTotal.value = 0;
     transactionPage.value = 0;
     loadedAccountId.value = accountId;
-    await Promise.all([
+    const results = await Promise.all([
       loadTransactionsPage(accountId, 1, generation),
       loadChartTransactions(accountId, generation),
     ]);
+    return results.every(Boolean);
   };
 
   const handleLoadMoreTransactions = async (accountId: string) => {

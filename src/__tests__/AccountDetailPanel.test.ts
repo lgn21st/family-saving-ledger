@@ -1,3 +1,4 @@
+import { accountFixture, transactionFixture } from "../test/setup";
 import { render, screen } from "@testing-library/vue";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -44,15 +45,15 @@ describe("AccountDetailPanel", () => {
     const user = userEvent.setup();
     const { rerender } = render(AccountDetailPanel, {
       props: {
-        selectedAccount: { id: "acc-1", name: "零钱", currency: "CNY" },
+        selectedAccount: accountFixture({ id: "acc-1", name: "零钱", currency: "CNY" }),
         chartPoints: [
           { date: new Date("2024-01-01"), balance: 8 },
           { date: new Date("2024-01-30"), balance: 10 },
         ],
-        pagedTransactions: [{
+        pagedTransactions: [transactionFixture({
           id: "tx-1", account_id: "acc-1", type: "deposit", amount: 1,
           currency: "CNY", note: "备注", created_at: "2024-01-01T10:00:00Z", created_by: "parent",
-        }],
+        })],
         hasMoreTransactions: false,
         transactionLoading: false,
         canVoid: true,
@@ -71,7 +72,7 @@ describe("AccountDetailPanel", () => {
     expect(screen.queryByText("新增/扣减")).toBeNull();
     await user.type(screen.getByRole("searchbox", { name: "搜索交易" }), "不会匹配");
     expect(screen.getByText("没有匹配的交易")).toBeTruthy();
-    await rerender({ selectedAccount: { id: "acc-2", name: "教育金", currency: "CNY" } });
+    await rerender({ selectedAccount: accountFixture({ id: "acc-2", name: "教育金", currency: "CNY" }) });
     expect(screen.getByRole("searchbox")).toHaveValue("");
     expect(screen.getByText("备注")).toBeTruthy();
   });
@@ -82,20 +83,20 @@ describe("AccountDetailPanel", () => {
 
     render(AccountDetailPanel, {
       props: {
-        selectedAccount: {
+        selectedAccount: accountFixture({
           id: "acc-1",
           name: "零钱",
           currency: "CNY",
           owner_child_id: "child-1",
           created_by: "parent",
           is_active: true,
-        },
+        }),
         chartPoints: [
           { date: new Date("2024-01-01"), balance: 8 },
           { date: new Date("2024-01-30"), balance: 10 },
         ],
         pagedTransactions: [
-          {
+          transactionFixture({
             id: "t-1",
             account_id: "acc-1",
             type: "deposit",
@@ -105,7 +106,7 @@ describe("AccountDetailPanel", () => {
             related_account_id: null,
             created_by: "parent",
             created_at: "2024-01-01T00:00:00Z",
-          },
+          }),
         ],
         hasMoreTransactions: true,
         transactionLoading: false,

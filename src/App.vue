@@ -10,7 +10,6 @@
     :session-status="sessionStatus"
     :status="status"
     :avatar-options="avatarOptions"
-    :sanitize-pin="sanitizePin"
     :on-select-login-user="selectLoginUser"
     :on-login="handleLogin"
   />
@@ -27,52 +26,17 @@
     :status-tone="statusTone"
     :on-dismiss-status="clearStatus"
   >
-    <SettingsPage
-      v-if="user.role === 'parent' && showSettings"
-      v-model:new-child-name="newChildName"
-      v-model:new-child-pin="newChildPin"
-      v-model:new-child-avatar-id="newChildAvatarId"
-      v-model:editing-child-name="editingChildName"
-      v-model:new-account-name="newAccountName"
-      v-model:new-account-currency="newAccountCurrency"
-      v-model:new-account-owner-id="newAccountOwnerId"
-      v-model:show-account-creator="showAccountCreator"
-      v-model:editing-account-name="editingAccountName"
-      :child-users="childUsers"
-      :child-avatars="childAvatars"
-      :avatar-options="avatarOptions"
-      :editing-child-id="editingChildId"
-      :loading="loading"
-      :sanitize-pin="sanitizePin"
-      :on-create-child="handleCreateChild"
-      :on-start-edit-child="startEditChild"
-      :on-update-child="handleUpdateChild"
-      :on-cancel-edit-child="cancelEditChild"
-      :on-archive-child="handleArchiveChild"
-      :format-amount="formatAmount"
-      :selected-child-id="selectedChildId"
-      :selected-child-name="selectedChild?.name ?? null"
-      :on-select-child="selectChild"
-      :selected-child-accounts="selectedChildAccounts"
-      :selected-account-id="selectedAccountId"
-      :balances="balances"
-      :supported-currencies="supportedCurrencies"
-      :editing-account-id="editingAccountId"
-      :on-create-account="handleCreateAccount"
-      :on-select-account="selectAccount"
-      :on-start-edit-account="startEditAccount"
-      :on-update-account="handleUpdateAccount"
-      :on-cancel-edit-account="cancelEditAccount"
-      :on-close-account="handleCloseAccount"
-    />
+    <SettingsPage v-if="user.role === 'parent' && showSettings">
+      <template #members>
+        <MemberManagement :services="members" />
+      </template>
+      <template #accounts>
+        <AccountManagement :services="accountManagement" />
+      </template>
+    </SettingsPage>
 
     <ParentDashboard
       v-else-if="user.role === 'parent'"
-      v-model:amount-input="amountInput"
-      v-model:note-input="noteInput"
-      v-model:transfer-amount="transferAmount"
-      v-model:transfer-target-id="transferTargetId"
-      v-model:transfer-note="transferNote"
       :child-users="childUsers"
       :avatar-options="avatarOptions"
       :currency-totals="currencyTotals"
@@ -88,9 +52,6 @@
       :selected-account="selectedAccount"
       :can-edit="canEdit"
       :chart-points="chartPoints"
-      :transfer-targets="transferTargets"
-      :selected-account-balance="selectedAccountBalance"
-      :loading="loading"
       :paged-transactions="pagedTransactions"
       :has-more-transactions="hasMoreTransactions"
       :transaction-loading="transactionLoading"
@@ -99,11 +60,13 @@
       :transaction-tone="transactionTone"
       :get-transaction-note="getTransactionNote"
       :format-timestamp="formatTimestamp"
-      :on-add-transaction="handleAddTransaction"
-      :on-transfer="handleTransfer"
       :on-load-more="handleLoadMoreForSelected"
       :on-void-transaction="handleVoidTransaction"
-    />
+    >
+      <template #entry="{ onClose }">
+        <LedgerEntry :services="entry" :on-close="onClose" />
+      </template>
+    </ParentDashboard>
 
     <ChildDashboard
       v-else
@@ -134,81 +97,54 @@ import ChildDashboard from "./components/ChildDashboard.vue";
 import LoginPage from "./components/LoginPage.vue";
 import ParentDashboard from "./components/ParentDashboard.vue";
 import SettingsPage from "./components/SettingsPage.vue";
+import MemberManagement from "./features/MemberManagement.vue";
+import AccountManagement from "./features/AccountManagement.vue";
+import LedgerEntry from "./features/LedgerEntry.vue";
 
 const {
-  amountInput,
-  avatarOptions,
-  balances,
-  canEdit,
-  cancelEditAccount,
-  cancelEditChild,
-  clearStatus,
-  chartPoints,
-  childAvatars,
-  childUsers,
-  currencyTotals,
-  editingAccountId,
-  editingAccountName,
-  editingChildId,
-  editingChildName,
-  formatAmount,
-  formatSignedAmount,
-  formatTimestamp,
-  getTransactionNote,
-  groupedAccounts,
-  handleAddTransaction,
-  handleArchiveChild,
-  handleCloseAccount,
-  handleCreateAccount,
-  handleCreateChild,
-  handleLoadMoreForSelected,
-  handleLogin,
-  handleLogout,
-  handleTransfer,
-  handleUpdateAccount,
-  handleUpdateChild,
-  handleVoidTransaction,
-  hasMoreTransactions,
-  isSupabaseConfigured,
-  loading,
+  user,
   loginPin,
   loginUsers,
-  newAccountCurrency,
-  newAccountName,
-  newAccountOwnerId,
-  newChildAvatarId,
-  newChildName,
-  newChildPin,
-  noteInput,
-  pagedTransactions,
-  sanitizePin,
-  selectAccount,
-  selectChild,
-  selectLoginUser,
-  selectedAccount,
-  selectedAccountBalance,
-  selectedAccountId,
-  selectedChild,
-  selectedChildAccounts,
-  selectedChildId,
-  selectedLoginUser,
   selectedLoginUserId,
+  selectedLoginUser,
   sessionStatus,
-  showAccountCreator,
+  loading,
+  isSupabaseConfigured,
+  selectLoginUser,
+  handleLogin,
+  handleLogout,
+  avatarOptions,
+  canEdit,
   showSettings,
-  startEditAccount,
-  startEditChild,
+  toggleSettings,
   status,
   statusTone,
-  supportedCurrencies,
-  toggleSettings,
-  transactionLabels,
+  clearStatus,
+  childUsers,
+  currencyTotals,
+  formatAmount,
+  selectedChildId,
+  selectedChild,
+  selectChild,
+  selectedChildAccounts,
+  selectedAccountId,
+  balances,
+  selectAccount,
+  selectedAccount,
+  chartPoints,
+  pagedTransactions,
+  hasMoreTransactions,
   transactionLoading,
+  transactionLabels,
+  formatSignedAmount,
   transactionTone,
-  transferAmount,
-  transferNote,
-  transferTargetId,
-  transferTargets,
-  user,
+  getTransactionNote,
+  formatTimestamp,
+  handleLoadMoreForSelected,
+  handleVoidTransaction,
+  groupedAccounts,
+  members,
+  accountManagement,
+  entry,
 } = useLedgerApp();
 </script>

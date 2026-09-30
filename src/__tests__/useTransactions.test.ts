@@ -1,20 +1,10 @@
+import { queryMock, transactionFixture } from "../test/setup";
 import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
 import { useTransactions } from "../composables/useTransactions";
 
-type Transaction = {
-  id: string;
-  account_id: string;
-  type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "interest";
-  amount: number;
-  currency: string;
-  note: string | null;
-  related_account_id: string | null;
-  is_void?: boolean;
-  created_by: string;
-  created_at: string;
-};
+import type { Transaction } from "../types";
 
 const createSupabaseMock = (params: {
   transactions: Transaction[];
@@ -42,40 +32,37 @@ const createSupabaseMock = (params: {
         let gteColumn: string | null = null;
         let gteValue: string | null = null;
 
-        const query = {
-          eq: (column: string, value: unknown) => {
-            filters[column] = value;
-            return query;
-          },
-          gte: (column: string, value: string) => {
-            gteColumn = column;
-            gteValue = value;
-            return query;
-          },
-          order: () => ({
-            range: (from: number, to: number) => {
-              const filtered = applyFilters(transactions, filters);
-              return Promise.resolve({
-                data: filtered.slice(from, to + 1),
-                error: null,
-                count: options?.count ? filtered.length : null,
-              });
-            },
-            then: (
-              onfulfilled?: (value: { data: Transaction[]; error: null }) => void,
-            ) => {
-              const filtered = applyFilters(chartTransactions, filters).filter(
-                (row) => {
-                  if (!gteColumn || !gteValue) return true;
-                  return row[gteColumn as "created_at"] >= gteValue;
-                },
-              );
-              return Promise.resolve({ data: filtered, error: null }).then(
-                onfulfilled,
-              );
-            },
-          }),
-        };
+        let pageRange: { from: number; to: number } | null = null;
+        const query = queryMock(() => {
+          if (pageRange) {
+            const filtered = applyFilters(transactions, filters);
+            return {
+              data: filtered.slice(pageRange.from, pageRange.to + 1),
+              error: null,
+              count: options?.count ? filtered.length : null,
+            };
+          }
+          const filtered = applyFilters(chartTransactions, filters).filter(
+            (row) =>
+              !gteColumn ||
+              !gteValue ||
+              row[gteColumn as "created_at"] >= gteValue,
+          );
+          return { data: filtered, error: null };
+        });
+        query.eq.mockImplementation((column, value) => {
+          filters[column] = value;
+          return query;
+        });
+        query.gte.mockImplementation((column, value) => {
+          gteColumn = column;
+          gteValue = value;
+          return query;
+        });
+        query.range.mockImplementation((from, to) => {
+          pageRange = { from, to };
+          return query;
+        });
 
         return query;
       },
@@ -152,12 +139,15 @@ describe("useTransactions", () => {
       baseBalance: 12,
     });
     const setErrorStatus = vi.fn();
-    const { chartBaseBalance, chartTransactions: loaded, loadChartTransactions } =
-      useTransactions({
-        supabase,
-        includeVoided: ref(false),
-        setErrorStatus,
-      });
+    const {
+      chartBaseBalance,
+      chartTransactions: loaded,
+      loadChartTransactions,
+    } = useTransactions({
+      supabase,
+      includeVoided: ref(false),
+      setErrorStatus,
+    });
 
     await loadChartTransactions("acc-1");
     expect(chartBaseBalance.value).toBe(12);
@@ -251,52 +241,42 @@ describe("useTransactions", () => {
   });
 
   it("ignores a stale page response after the selected account changes", async () => {
-    let resolveFirst: ((value: {
-      data: Transaction[];
-      error: null;
-      count: number;
-    }) => void) | undefined;
+    let resolveFirst:
+      | ((value: { data: Transaction[]; error: null; count: number }) => void)
+      | undefined;
 
     const supabase = {
       from: () => ({
         select: () => {
-          const query = {
-            eq: () => query,
-            gte: () => query,
-            order: () => ({
-              range: () => {
-                if (!resolveFirst) {
-                  return new Promise((resolve) => {
-                    resolveFirst = resolve;
-                  });
-                }
-                return Promise.resolve({
-                  data: [
-                    {
-                      id: "b-1",
-                      account_id: "acc-2",
-                      type: "deposit" as const,
-                      amount: 2,
-                      currency: "CNY",
-                      note: "B",
-                      related_account_id: null,
-                      is_void: false,
-                      created_by: "parent",
-                      created_at: "2024-01-02T00:00:00Z",
-                    },
-                  ],
-                  error: null,
-                  count: 1,
-                });
-              },
-              then: (
-                onfulfilled?: (value: {
-                  data: Transaction[];
-                  error: null;
-                }) => void,
-              ) => Promise.resolve({ data: [], error: null }).then(onfulfilled),
-            }),
-          };
+          let paged = false;
+          const query = queryMock(() => {
+            if (!paged) return { data: [], error: null };
+            if (!resolveFirst)
+              return new Promise<{
+                data: Transaction[];
+                error: null;
+                count: number;
+              }>((resolve) => {
+                resolveFirst = resolve;
+              });
+            return {
+              data: [
+                transactionFixture({
+                  id: "b-1",
+                  account_id: "acc-2",
+                  amount: 2,
+                  note: "B",
+                  created_at: "2024-01-02T00:00:00Z",
+                }),
+              ],
+              error: null,
+              count: 1,
+            };
+          });
+          query.range.mockImplementation(() => {
+            paged = true;
+            return query;
+          });
           return query;
         },
       }),
@@ -333,5 +313,116 @@ describe("useTransactions", () => {
     await firstLoad;
 
     expect(loaded.value.map((row) => row.id)).toEqual(["b-1"]);
+  });
+  it("releases pagination after a transport failure and retries the same page", async () => {
+    const rows = Array.from({ length: 11 }, (_, i) =>
+      transactionFixture({ id: `t-${i}`, is_void: false }),
+    );
+    const read = vi.fn(async () => ({
+      data: rows.slice(0, 10),
+      error: null,
+      count: 11,
+    }));
+    const setErrorStatus = vi.fn();
+    const pages = useTransactions({
+      supabase: {
+        from: () => ({ select: () => queryMock(read) }),
+        rpc: vi.fn(),
+      },
+      includeVoided: ref(false),
+      setErrorStatus,
+    });
+    await pages.loadTransactionsPage("acc-1", 1);
+    read.mockRejectedValueOnce(new Error("offline"));
+    await pages.handleLoadMoreTransactions("acc-1");
+    expect(pages.transactionLoading.value).toBe(false);
+    expect(pages.transactionPage.value).toBe(1);
+    expect(pages.transactions.value).toHaveLength(10);
+    expect(setErrorStatus).toHaveBeenCalledWith("账户流水加载失败，请重试。");
+    read.mockResolvedValueOnce({
+      data: rows.slice(10),
+      error: null,
+      count: 11,
+    });
+    await pages.handleLoadMoreTransactions("acc-1");
+    expect(pages.transactionPage.value).toBe(2);
+    expect(pages.transactions.value).toHaveLength(11);
+  });
+  it("ignores a stale transport failure without clearing the new account's busy state", async () => {
+    let rejectOld!: (reason: Error) => void;
+    let finishNew!: (result: {
+      data: Transaction[];
+      error: null;
+      count: number;
+    }) => void;
+    const read = vi
+      .fn<() => Promise<{ data: Transaction[]; error: null; count: number }>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectOld = reject;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishNew = resolve;
+          }),
+      );
+    const setErrorStatus = vi.fn();
+    const pages = useTransactions({
+      supabase: {
+        from: () => ({ select: () => queryMock(read) }),
+        rpc: vi.fn(),
+      },
+      includeVoided: ref(false),
+      setErrorStatus,
+    });
+    const oldLoad = pages.loadTransactionsPage("acc-1", 1);
+    await Promise.resolve();
+    pages.clearTransactions();
+    const newLoad = pages.loadTransactionsPage("acc-2", 1);
+    await Promise.resolve();
+    rejectOld(new Error("old failure"));
+    expect(await oldLoad).toBe(false);
+    expect(setErrorStatus).not.toHaveBeenCalled();
+    expect(pages.transactionLoading.value).toBe(true);
+    finishNew({
+      data: [transactionFixture({ account_id: "acc-2" })],
+      error: null,
+      count: 1,
+    });
+    expect(await newLoad).toBe(true);
+    expect(pages.transactionLoading.value).toBe(false);
+  });
+  it("reports a chart transport failure but ignores one from a previous session", async () => {
+    const rpc = vi.fn(async () => ({ data: 0, error: null }));
+    const setErrorStatus = vi.fn();
+    const pages = useTransactions({
+      supabase: {
+        from: () => ({
+          select: () => queryMock(() => ({ data: [], error: null })),
+        }),
+        rpc,
+      },
+      includeVoided: ref(false),
+      setErrorStatus,
+    });
+    rpc.mockRejectedValueOnce(new Error("offline"));
+    expect(await pages.resetSelectedAccountData("acc-1")).toBe(false);
+    expect(setErrorStatus).toHaveBeenCalledWith("账户趋势加载失败，请重试。");
+    setErrorStatus.mockClear();
+    let rejectOld!: (reason: Error) => void;
+    rpc.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectOld = reject;
+        }),
+    );
+    const oldChart = pages.loadChartTransactions("acc-1");
+    pages.clearTransactions();
+    rejectOld(new Error("old failure"));
+    expect(await oldChart).toBe(false);
+    expect(setErrorStatus).not.toHaveBeenCalled();
   });
 });

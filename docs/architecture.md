@@ -1,70 +1,38 @@
-# 架构与依赖边界
+# 架构
 
-环境见 [开发与验证](development.md)，数据库命令见 [数据库与运维](database.md)，
-账本规则见 `.agents/skills/family-ledger-domain/references/ledger-model.md`。
+功能拥有自己的草稿、校验、编辑和提交状态；顶层只装配共享能力。
 
-## 依赖方向
+| 位置 | 职责 |
+| --- | --- |
+| `src/app/useLedgerApp.ts` | 依赖装配、导航、命令成功后的刷新协调 |
+| `src/features/` | 成员、账户、记账界面及各自可独立测试的状态逻辑 |
+| `src/features/contracts.ts` | 功能需要的只读共享数据与显式命令 |
+| `useAuth` / `useLedgerData` | 会话、成员、账户、权威余额及账本时区 |
+| `useAccountSelection` / `useAccountHistory` | 有效选择、流水分页、图表和作废 |
+| `src/components/` | 页面布局和可复用展示；不查询 Supabase |
+| `src/types/` | `domain.ts`：领域与命令类型；`supabase.ts`：客户端契约 |
 
-```text
-components → app 装配 → composables → Supabase client
-                       ↘ domain / config 类型
-```
+## 写入与刷新
 
-组件不得访问 Supabase。余额、角色、并发一致性由数据库 RPC 保证。
+功能提交具体值，例如 `addTransaction({ accountId, type, amount, note })`。
+`useLedgerCommands` 固定操作人和输入，调用 RPC，再通过 `LedgerChange` 刷新：
 
-## 运行时结构
+- 成员变更：成员及登录列表；归档还刷新账户。
+- 账户变更：账户及余额，重新协调有效选择。
+- 交易变更：余额及所选账户流水、图表。
 
-```text
-src/main.ts                 Vue 与 service worker
-src/App.vue                 登录页 / 应用壳，只做 props 接线
-src/app/useLedgerApp.ts     页面状态、生命周期、跨功能协调
-src/supabaseClient.ts       环境检查与客户端
-src/utils/timezone.ts       账本时区下的日切窗口
-src/types/domain.ts         领域模型
-src/types/supabase.ts       测试可替换的最小客户端接口
-src/__tests__/              前端测试；mock Supabase 边界
-```
+数据库 RPC 负责最终角色、余额和并发校验。写入已提交而刷新失败时返回成功及
+`warning`，清理已提交草稿并提示刷新失败，避免引导重复写入。
+旧会话的异步结果不能覆盖新会话数据或发布反馈。
 
-## 页面
+## 生命周期与扩展
 
-- `LoginPage`：选人、PIN
-- `AppShell`：登录后的页头、状态、布局
-- `ParentDashboard`：选择、余额、记账与转账
-- `ChildDashboard`：只读
-- `SettingsPage`：家长管理成员和账户生命周期
-- `LedgerNavigatorPanel` / `ChildAccountNavigatorPanel`：资产与账户导航
-- `QuickTransactionSheet`：存、取、同币种转账
+设置分类通过 `v-show` 保留各自草稿；离开设置页、退出登录或关闭记账弹层后销毁草稿。
+切换孩子后，旧账户创建结果不能清空新孩子的草稿。
 
-## 能力（composables）
+局部字段和交互只改对应功能，不修改顶层；新增共享事实或跨功能影响才扩展契约。
+单处使用且仅转发 props、事件的组件应合并；目录和 composable 要有实际职责。
 
-- 数据：`useUsers`、`useAccounts`、`useTransactions`
-- 动作：`useAuth`、`useChildren`、`useAccountEditor`、`useTransactionActions`、`useTransfers`
-- 选择/会话：`useAccountSelection`、`useSelectionSync`、`useSession`、`useBootstrap`
-- 展示：`useCurrency`、`useTransactionDisplay`、`useChartData`、`useStatus`
-
-只在确有独立职责或可测行为时新增 composable，不要包一层转发。
-
-## 目录职责
-
-`src/app/` 组合 composable、跨功能选择、确认框和生命周期，不实现数据库规则。
-
-`src/components/` 类型化 props、具名 `v-model`、显式 callback；可独立测试。
-
-`src/types/domain.ts` 与数据库共享的概念；`src/types/supabase.ts` 给测试替换用。
-
-`supabase/migrations/` 是 schema 唯一事实源。`seed.sql` 可丢弃。`supabase/tests/` 验证数据库不变量。
-
-## 数据流
-
-1. `useLedgerApp` 恢复会话或登录。
-2. 用户变化 → 拉账户和孩子。
-3. 选中账户 → 分页流水、图表、余额。
-4. 修改走 RPC；成功后再读权威余额和流水。
-5. 工作台只做查看、选择、记账、转账；生命周期在设置页。
-
-## 重构边界
-
-- 改 RPC 名称或参数时，同步 migration、数据库测试和前端调用。
-- 不用前端余额做最终校验。
-- 不物理删除孩子、账户、转账对或审计记录。
-- 不要把 `useLedgerApp` 拆成没有独立行为的薄包装。
+验证命令见 [AGENTS.md](../AGENTS.md)，环境见 [开发](development.md)，
+数据库操作见 [运维](database.md)，账本规则见
+[ledger-model.md](../.agents/skills/family-ledger-domain/references/ledger-model.md)。

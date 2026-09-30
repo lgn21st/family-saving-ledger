@@ -1,5 +1,8 @@
 <template>
-  <main id="main-content" class="page-container ledger-workspace flex-1 pt-5 sm:pt-7">
+  <main
+    id="main-content"
+    class="page-container ledger-workspace flex-1 pt-5 sm:pt-7"
+  >
     <div
       class="space-y-5"
       :inert="showQuickTransaction || undefined"
@@ -47,28 +50,12 @@
       >
         记一笔
       </button>
-
     </div>
 
-    <QuickTransactionSheet
+    <slot
       v-if="showQuickTransaction"
-        v-model:amount-input="amountInputModel"
-        v-model:note-input="noteInputModel"
-        v-model:transfer-amount="transferAmountModel"
-        v-model:transfer-target-id="transferTargetIdModel"
-        v-model:transfer-note="transferNoteModel"
-        :child-users="childUsers"
-        :selected-child-id="selectedChildId"
-        :selected-child-accounts="selectedChildAccounts"
-        :selected-account-id="selectedAccountId"
-        :formatted-balance="selectedAccountBalance"
-        :transfer-targets="transferTargets"
-        :loading="loading"
-        :on-select-child="onSelectChild"
-        :on-select-account="onSelectAccount"
-        :on-add-transaction="onAddTransaction"
-        :on-transfer="onTransfer"
-        :on-close="closeQuickTransaction"
+      name="entry"
+      :on-close="closeQuickTransaction"
     />
   </main>
 </template>
@@ -78,22 +65,10 @@ import { nextTick, ref } from "vue";
 
 import AccountDetailPanel from "./AccountDetailPanel.vue";
 import LedgerNavigatorPanel from "./LedgerNavigatorPanel.vue";
-import QuickTransactionSheet from "./QuickTransactionSheet.vue";
-import type {
-  Account,
-  AppUser,
-  LedgerActionResult,
-  Transaction,
-  TransferTarget,
-} from "../types";
+import type { Account, AppUser, Transaction } from "../types";
 import type { AvatarOption } from "../config";
 import type { ChartPoint } from "../composables/useChartData";
 
-const amountInputModel = defineModel<string>("amountInput", { required: true });
-const noteInputModel = defineModel<string>("noteInput", { required: true });
-const transferAmountModel = defineModel<string>("transferAmount", { required: true });
-const transferTargetIdModel = defineModel<string>("transferTargetId", { required: true });
-const transferNoteModel = defineModel<string>("transferNote", { required: true });
 const showQuickTransaction = ref(false);
 const quickTransactionTrigger = ref<HTMLButtonElement | null>(null);
 
@@ -119,9 +94,6 @@ defineProps<{
   selectedAccount: Account | null;
   canEdit: boolean;
   chartPoints: ChartPoint[];
-  transferTargets: TransferTarget[];
-  selectedAccountBalance: string;
-  loading: boolean;
   pagedTransactions: Transaction[];
   hasMoreTransactions: boolean;
   transactionLoading: boolean;
@@ -130,8 +102,6 @@ defineProps<{
   transactionTone: (transaction: Transaction) => string;
   getTransactionNote: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
-  onAddTransaction: (type: "deposit" | "withdrawal") => Promise<LedgerActionResult>;
-  onTransfer: () => Promise<LedgerActionResult>;
   onLoadMore: () => void;
   onVoidTransaction: (transaction: Transaction) => void | Promise<void>;
 }>();

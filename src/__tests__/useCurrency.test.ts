@@ -1,3 +1,4 @@
+import { accountFixture } from "../test/setup";
 import { ref } from "vue";
 import { describe, expect, it } from "vitest";
 
@@ -6,9 +7,9 @@ import { useCurrency } from "../composables/useCurrency";
 describe("useCurrency", () => {
   it("groups accounts and sums totals by currency", () => {
     const accounts = ref([
-      { id: "acc-1", currency: "CNY" },
-      { id: "acc-2", currency: "CNY" },
-      { id: "acc-3", currency: "SGD" },
+      accountFixture({ id: "acc-1", currency: "CNY" }),
+      accountFixture({ id: "acc-2", currency: "CNY" }),
+      accountFixture({ id: "acc-3", currency: "SGD" }),
     ]);
     const balances = ref({
       "acc-1": 10,

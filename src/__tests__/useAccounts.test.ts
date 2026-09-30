@@ -1,3 +1,4 @@
+import { queryMock } from "../test/setup";
 import { describe, expect, it, vi } from "vitest";
 
 import { useAccounts } from "../composables/useAccounts";
@@ -18,46 +19,16 @@ const createSupabaseMock = (params: {
 }) => {
   const { accounts, balances } = params;
   return {
-    from: (table: string) => {
-      if (table === "account_balances") {
-        return {
-          select: () => ({
-            in: (_field: string, values: string[]) =>
-              Promise.resolve({
-                data: values.map((accountId) => ({
-                  account_id: accountId,
-                  balance: balances[accountId] ?? 0,
-                })),
-                error: null,
-              }),
-          }),
-        };
-      }
-
-      return {
-        select: () => ({
-          eq: (_field: string, value: unknown) => ({
-            order: () =>
-              Promise.resolve({
-                data:
-                  value === true
-                    ? accounts.filter((account) => account.is_active)
-                    : accounts,
-                error: null,
-              }),
-            eq: (_childField: string, childId: unknown) => ({
-              order: () =>
-                Promise.resolve({
-                  data: accounts.filter(
-                    (account) => account.owner_child_id === childId,
-                  ),
-                  error: null,
-                }),
-            }),
-          }),
-        }),
-      };
-    },
+    from: (table: string) => ({ select: () => {
+      let owner: string | undefined;
+      let ids: unknown[] = [];
+      const query = queryMock(() => ({ data: table === "account_balances"
+        ? ids.map((id) => ({ account_id: id, balance: balances[String(id)] ?? 0 }))
+        : accounts.filter((account) => !owner || account.owner_child_id === owner), error: null }));
+      query.eq.mockImplementation((field, value) => { if (field === "owner_child_id") owner = String(value); return query; });
+      query.in.mockImplementation((_field, values) => { ids = values; return query; });
+      return query;
+    } }),
   };
 };
 
@@ -82,7 +53,7 @@ describe("useAccounts", () => {
       setErrorStatus,
     });
 
-    await loadAccounts({ id: "parent", role: "parent" });
+    await loadAccounts({ id: "parent", name: "爸爸", role: "parent" });
 
     expect(accounts.value).toHaveLength(1);
     expect(balances.value["acc-1"]).toBe(12.5);
@@ -117,7 +88,7 @@ describe("useAccounts", () => {
       setErrorStatus,
     });
 
-    await loadAccounts({ id: "child-1", role: "child" });
+    await loadAccounts({ id: "child-1", name: "小乐", role: "child" });
 
     expect(accounts.value).toHaveLength(1);
     expect(accounts.value[0]?.id).toBe("acc-1");

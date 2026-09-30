@@ -13,21 +13,29 @@ export const useUsers = (params: {
   const childUsers = ref<AppUser[]>([]);
   const loginUsers = ref<AppUser[]>([]);
 
+  let childGeneration = 0;
+  const resetChildren = () => {
+    childGeneration += 1;
+    childUsers.value = [];
+  };
   const loadChildUsers = async () => {
+    const request = ++childGeneration;
     const { data, error } = await supabase
       .from("app_users")
       .select(APP_USER_PUBLIC_COLUMNS)
       .eq("role", "child")
       .order("created_at");
 
+    if (request !== childGeneration) return false;
     if (error) {
       setErrorStatus(error.message);
-      return;
+      return false;
     }
 
     childUsers.value = ((data ?? []) as AppUser[]).filter(
       (user) => user.is_active !== false,
     );
+    return true;
   };
 
   const loadLoginUsers = async () => {
@@ -38,7 +46,7 @@ export const useUsers = (params: {
 
     if (error) {
       setErrorStatus(error.message);
-      return;
+      return false;
     }
 
     const rows = ((data ?? []) as AppUser[]).filter(
@@ -54,11 +62,13 @@ export const useUsers = (params: {
       );
 
     loginUsers.value = [...parents, ...children];
+    return true;
   };
 
   return {
     childUsers,
     loginUsers,
+    resetChildren,
     loadChildUsers,
     loadLoginUsers,
   };

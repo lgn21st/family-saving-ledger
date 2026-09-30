@@ -1,34 +1,16 @@
+import { queryMock } from "../test/setup";
+import type { AppUser } from "../types";
 import { describe, expect, it, vi } from "vitest";
 
 import { useUsers } from "../composables/useUsers";
 
-type AppUser = {
-  id: string;
-  name: string;
-  role: "parent" | "child";
-  pin: string;
-  is_active?: boolean;
-  created_at?: string;
-};
-
 const createSupabaseMock = (users: AppUser[]) => {
-  return {
-    from: () => ({
-      select: () => ({
-        eq: (...args: [string, unknown]) => {
-          const value = args[1];
-          return {
-            order: () =>
-              Promise.resolve({
-                data: users.filter((user) => user.role === value),
-                error: null,
-              }),
-          };
-        },
-        order: () => Promise.resolve({ data: users, error: null }),
-      }),
-    }),
-  };
+  return { from: () => ({ select: () => {
+    let role: unknown;
+    const query = queryMock(() => ({ data: users.filter((user) => !role || user.role === role), error: null }));
+    query.eq.mockImplementation((_field, value) => { role = value; return query; });
+    return query;
+  } }) };
 };
 
 describe("useUsers", () => {

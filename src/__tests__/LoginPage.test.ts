@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import LoginPage from "../components/LoginPage.vue";
 
 describe("LoginPage", () => {
-  it("forwards login interactions", async () => {
+  it("selects a user, sanitizes PIN input and submits login", async () => {
     const user = userEvent.setup();
     const onSelectLoginUser = vi.fn();
     const onLogin = vi.fn();
@@ -25,7 +25,6 @@ describe("LoginPage", () => {
         sessionStatus: null,
         status: null,
         avatarOptions: [],
-        sanitizePin: (value: string) => value.replace(/\D/g, ""),
         onSelectLoginUser,
         onLogin,
         "onUpdate:loginPin": onUpdateLoginPin,
@@ -38,8 +37,10 @@ describe("LoginPage", () => {
     await user.type(screen.getByPlaceholderText("PIN"), "12a");
     expect(onUpdateLoginPin).toHaveBeenLastCalledWith("12");
 
+    await user.clear(screen.getByPlaceholderText("PIN"));
     await user.type(screen.getByPlaceholderText("PIN"), "1234");
+    expect(onUpdateLoginPin).toHaveBeenLastCalledWith("1234");
     await user.click(screen.getByRole("button", { name: "登录 小乐" }));
-    expect(onUpdateLoginPin).toHaveBeenCalled();
+    expect(onLogin).toHaveBeenCalledOnce();
   });
 });

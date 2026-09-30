@@ -85,7 +85,7 @@ describe("TransactionsList", () => {
         },
         formatSignedAmount: (transaction) => `${transaction.amount.toFixed(2)} CNY`,
         transactionTone: () => "text-slate-600",
-        getTransactionNote: (transaction) => transaction.note,
+        getTransactionNote: (transaction) => transaction.note ?? "",
         formatTimestamp: (value) => value,
         onLoadMore: vi.fn(),
       },
@@ -144,7 +144,7 @@ describe("TransactionsList loading and search feedback", () => {
     transactions: [baseTransaction], hasMore: true, loading: false,
     transactionLabels: { deposit: "增加", withdrawal: "减少", transfer_in: "转入", transfer_out: "转出", interest: "利息" },
     formatSignedAmount: () => "+10.00 CNY", transactionTone: () => "text-emerald-600",
-    getTransactionNote: (transaction: Transaction) => transaction.note,
+    getTransactionNote: (transaction: Transaction) => transaction.note ?? "",
     formatTimestamp: () => "now", onLoadMore: vi.fn(),
   };
 

@@ -10,10 +10,19 @@ export const useAccounts = (params: {
   const accounts = ref<Account[]>([]);
   const balances = ref<Record<string, number>>({});
 
+  let accountsGeneration = 0;
+  let balancesGeneration = 0;
+  const reset = () => {
+    accountsGeneration += 1;
+    balancesGeneration += 1;
+    accounts.value = [];
+    balances.value = {};
+  };
   const loadBalances = async (loadedAccounts: Account[]) => {
+    const request = ++balancesGeneration;
     if (loadedAccounts.length === 0) {
       balances.value = {};
-      return;
+      return true;
     }
 
     const accountIds = loadedAccounts.map((account) => account.id);
@@ -22,9 +31,10 @@ export const useAccounts = (params: {
       .select("account_id, balance")
       .in("account_id", accountIds);
 
+    if (request !== balancesGeneration) return false;
     if (error) {
       setErrorStatus(error.message);
-      return;
+      return false;
     }
 
     const rows = (data ?? []) as Array<{
@@ -38,28 +48,32 @@ export const useAccounts = (params: {
       },
       {} as Record<string, number>,
     );
+    return true;
   };
 
   const loadAccounts = async (currentUser: AppUser) => {
+    const request = ++accountsGeneration;
     const query = supabase.from("accounts").select("*").eq("is_active", true);
     const { data, error } =
       currentUser.role === "parent"
         ? await query.order("created_at")
         : await query.eq("owner_child_id", currentUser.id).order("created_at");
 
+    if (request !== accountsGeneration) return false;
     if (error) {
       setErrorStatus(error.message);
-      return;
+      return false;
     }
 
     const loadedAccounts = (data ?? []) as Account[];
     accounts.value = loadedAccounts;
-    await loadBalances(loadedAccounts);
+    return await loadBalances(loadedAccounts);
   };
 
   return {
     accounts,
     balances,
+    reset,
     loadAccounts,
     loadBalances,
   };

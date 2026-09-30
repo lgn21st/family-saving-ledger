@@ -1,4 +1,11 @@
 <template>
+  <section class="mt-5 grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+    <ChildListPanel
+      :child-users="childUsers"
+      :selected-child-id="selectedChildId"
+      :avatar-options="avatarOptions"
+      :on-select-child="services.selectChild"
+    />
   <section class="surface-card p-4 sm:p-5" aria-labelledby="accounts-title">
     <div
       :inert="Boolean(confirmingAccount) || undefined"
@@ -11,8 +18,8 @@
           账户列表
         </h2>
       </div>
-      <span v-if="selectedChildName" class="truncate text-xs font-medium text-slate-500">
-        {{ selectedChildName }}
+      <span v-if="selectedChild?.name" class="truncate text-xs font-medium text-slate-500">
+        {{ selectedChild?.name }}
       </span>
     </div>
 
@@ -20,18 +27,18 @@
       <button
         type="button"
         class="button-secondary w-full border-dashed"
-        :aria-expanded="showAccountCreatorModel"
-        @click="showAccountCreatorModel = !showAccountCreatorModel"
+        :aria-expanded="showAccountCreator"
+        @click="showAccountCreator = !showAccountCreator"
       >
-        {{ showAccountCreatorModel ? "收起创建账户" : "创建账户" }}
+        {{ showAccountCreator ? "收起创建账户" : "创建账户" }}
       </button>
 
-      <div v-if="showAccountCreatorModel" class="surface-muted mt-3 space-y-3 p-3.5">
+      <div v-if="showAccountCreator" class="surface-muted mt-3 space-y-3 p-3.5">
         <div>
           <label for="new-account-name" class="field-label">账户名称</label>
           <input
             id="new-account-name"
-            v-model="newAccountNameModel"
+            v-model="newAccountName"
             name="new-account-name"
             type="text"
             autocomplete="off"
@@ -44,7 +51,7 @@
             <label for="new-account-currency" class="field-label">币种</label>
             <select
               id="new-account-currency"
-              v-model="newAccountCurrencyModel"
+              v-model="newAccountCurrency"
               name="new-account-currency"
               class="app-input"
             >
@@ -57,7 +64,7 @@
             <label for="new-account-owner" class="field-label">归属</label>
             <select
               id="new-account-owner"
-              v-model="newAccountOwnerIdModel"
+              v-model="newAccountOwnerId"
               name="new-account-owner"
               class="app-input"
             >
@@ -68,7 +75,7 @@
             </select>
           </div>
         </div>
-        <button class="button-primary w-full" :disabled="loading" @click="onCreateAccount">
+        <button class="button-primary w-full" :disabled="loading" @click="handleCreateAccount">
           创建
         </button>
       </div>
@@ -93,7 +100,7 @@
                 <label :for="`account-name-${account.id}`" class="sr-only">账户名称</label>
                 <input
                   :id="`account-name-${account.id}`"
-                  v-model="editingAccountNameModel"
+                  v-model="editingAccountName"
                   name="account-name"
                   type="text"
                   autocomplete="off"
@@ -105,7 +112,7 @@
                 type="button"
                 class="block w-full min-w-0 rounded-lg text-left focus-visible:ring-3 focus-visible:ring-brand-100 focus-visible:outline-none"
                 :aria-current="account.id === selectedAccountId ? 'true' : undefined"
-                @click="onSelectAccount(account.id)"
+                @click="services.selectAccount(account.id)"
               >
                 <span class="block truncate text-sm font-semibold text-slate-950">
                   {{ account.name }}
@@ -120,7 +127,7 @@
               type="button"
               class="button-quiet min-h-11 shrink-0 px-2.5 py-1.5 text-xs"
               :disabled="loading"
-              @click="onStartEditAccount(account)"
+              @click="startEditAccount(account)"
             >
               编辑
             </button>
@@ -130,7 +137,7 @@
               type="button"
               class="button-primary min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
-              @click="onUpdateAccount"
+              @click="handleUpdateAccount"
             >
               保存
             </button>
@@ -138,7 +145,7 @@
               type="button"
               class="button-quiet min-h-11 px-3 py-1.5 text-xs"
               :disabled="loading"
-              @click="onCancelEditAccount"
+              @click="cancelEditAccount"
             >
               取消
             </button>
@@ -172,45 +179,26 @@
       :on-confirm="confirmClose"
     />
   </section>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
-import ConfirmActionDialog from "./ConfirmActionDialog.vue";
-import type { Account, AppUser } from "../types";
+import ChildListPanel from "../components/ChildListPanel.vue";
+import ConfirmActionDialog from "../components/ConfirmActionDialog.vue";
+import { useAccountManagement } from "./useAccountManagement";
+import { avatarOptions, supportedCurrencies } from "../config";
+import type { Account } from "../types";
+import type { AccountServices } from "./contracts";
 
-const newAccountNameModel = defineModel<string>("newAccountName", { required: true });
-const newAccountCurrencyModel = defineModel<string>("newAccountCurrency", {
-  required: true,
-});
-const newAccountOwnerIdModel = defineModel<string>("newAccountOwnerId", {
-  required: true,
-});
-const showAccountCreatorModel = defineModel<boolean>("showAccountCreator", {
-  required: true,
-});
-const editingAccountNameModel = defineModel<string>("editingAccountName", {
-  required: true,
-});
-
-const props = defineProps<{
-  selectedChildId: string | null;
-  selectedChildName: string | null;
-  childUsers: AppUser[];
-  selectedChildAccounts: Account[];
-  selectedAccountId: string | null;
-  balances: Record<string, number>;
-  supportedCurrencies: string[];
-  loading: boolean;
-  editingAccountId: string | null;
-  formatAmount: (amount: number, currency: string) => string;
-  onCreateAccount: () => void;
-  onSelectAccount: (id: string) => void;
-  onStartEditAccount: (account: Account) => void;
-  onUpdateAccount: () => void;
-  onCancelEditAccount: () => void;
-  onCloseAccount: (account: Account) => void | Promise<void>;
-}>();
+const { services } = defineProps<{ services: AccountServices }>();
+const { childUsers, selectedChildId, selectedChild, selectedChildAccounts,
+  selectedAccountId, balances, formatAmount } = services;
+const {
+  newAccountName, newAccountCurrency, newAccountOwnerId, showAccountCreator,
+  editingAccountName, editingAccountId, loading, handleCreateAccount,
+  startEditAccount, handleUpdateAccount, cancelEditAccount, handleCloseAccount,
+} = useAccountManagement({ ...services, supportedCurrencies });
 
 const confirmingAccount = ref<Account | null>(null);
 const closeTrigger = ref<HTMLElement | null>(null);
@@ -227,13 +215,13 @@ const cancelClose = async () => {
 };
 const confirmClose = async () => {
   if (!confirmingAccount.value) return;
-  await props.onCloseAccount(confirmingAccount.value);
+  await handleCloseAccount(confirmingAccount.value);
   confirmingAccount.value = null;
   closeTrigger.value = null;
 };
 
 const isZeroBalance = (accountId: string) => {
-  const value = props.balances[accountId] ?? 0;
+  const value = balances.value[accountId] ?? 0;
   return Math.abs(value) < 0.000001;
 };
 </script>
