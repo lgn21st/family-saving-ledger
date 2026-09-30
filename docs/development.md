@@ -1,6 +1,6 @@
 # 开发与验证
 
-数据库命令、production 发布和数据同步见 [数据库与运维](database.md)。
+数据库命令、数据库 production 发布和数据同步见 [数据库与运维](database.md)。
 
 ## 工具链
 
@@ -50,6 +50,19 @@ npm run dev
 ```
 
 前端验证：`npm run check`（含测试文件的 TypeScript 检查）。数据库验证见 [数据库与运维](database.md)。
+
+## 前端发布与验收
+
+前端由 Vercel 托管，生产入口是 <https://family-saving-ledger.vercel.app>。
+`main` 的发布状态在 GitHub 对应提交的 Vercel 状态及 Production deployment 中查看；
+验收时核对部署 SHA 与预期提交，再检查生产入口，不只检查构建完成状态。
+
+发布前运行 `npm run check`，提交后推送 `main`。Vercel 使用云端生产环境变量构建，
+不要上传本机连接开发库的 `dist/`。前端构建不会执行数据库 migration；需要时按数据库文档另行发布。
+
+发布后检查登录、余额、历史分页和刷新；在手机上检查安装、键盘遮挡及返回前台。
+PWA 新版本等所有账本页面关闭后激活，再次打开完成升级；静态资源可离线加载，
+账本读取和写入仍需要 Supabase。失败时应显示错误或重试入口，不应把加载失败显示成空账本。
 
 ## 网络边界
 
