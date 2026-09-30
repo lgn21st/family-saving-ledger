@@ -15,6 +15,8 @@ Use the project skills when applicable:
 - `.agents/skills/vue-ledger-ui` for Vue components, application assembly and frontend tests.
 - `.agents/skills/family-ledger-domain` for ledger rules, RPCs, balances, transfers, closing, archival and interest.
 - `.agents/skills/supabase-ledger-ops` for local/remote migrations, reset, seed, dump/restore and database troubleshooting.
+- `.agents/skills/supabase` for Supabase client, API and platform questions; use the operations skill above for database changes.
+- `.agents/skills/supabase-postgres-best-practices` for query and schema performance review, guided by measured workload.
 
 Read only the references required by the selected skill, but read each selected `SKILL.md` completely.
 
