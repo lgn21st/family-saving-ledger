@@ -55,6 +55,8 @@ npm run dev
 
 开发主机上的 `fsl-supabase-firewall.service` 在 Docker 启动后维护 `DOCKER-USER` 规则：
 允许 tailnet 访问 TCP `54321/54322`，拒绝其他网卡，覆盖 IPv4/IPv6。
+按 `--ctorigdstport` 限制入站时，DROP 规则必须同时匹配 `--ctdir ORIGINAL`；
+否则从 Docker bridge 返回的回复包也会被丢弃，造成 Tailscale 直连超时。
 
 ```bash
 ssh <REMOTE_SSH_ALIAS> 'systemctl status fsl-supabase-firewall.service --no-pager'
