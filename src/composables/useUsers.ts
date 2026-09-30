@@ -12,6 +12,7 @@ export const useUsers = (params: {
 
   const childUsers = ref<AppUser[]>([]);
   const loginUsers = ref<AppUser[]>([]);
+  const loginUsersState = ref<"loading" | "ready" | "error">("loading");
 
   let childGeneration = 0;
   const resetChildren = () => {
@@ -38,36 +39,45 @@ export const useUsers = (params: {
     return true;
   };
 
+  let loginGeneration = 0;
   const loadLoginUsers = async () => {
-    const { data, error } = await supabase
-      .from("app_users")
-      .select(APP_USER_PUBLIC_COLUMNS)
-      .order("created_at");
+    const request = ++loginGeneration;
+    loginUsersState.value = "loading";
+    try {
+      const { data, error } = await supabase
+        .from("app_users")
+        .select(APP_USER_PUBLIC_COLUMNS)
+        .order("created_at");
+      if (request !== loginGeneration) return false;
+      if (error) throw new Error(error.message);
 
-    if (error) {
-      setErrorStatus(error.message);
+      const rows = ((data ?? []) as AppUser[]).filter(
+        (user) => user.is_active !== false,
+      );
+      const parents = rows
+        .filter((user) => user.role === "parent")
+        .sort((left, right) => left.name.localeCompare(right.name));
+      const children = rows
+        .filter((user) => user.role === "child")
+        .sort((left, right) =>
+          (left.created_at ?? "").localeCompare(right.created_at ?? ""),
+        );
+
+      loginUsers.value = [...parents, ...children];
+      loginUsersState.value = "ready";
+      return true;
+    } catch {
+      if (request !== loginGeneration) return false;
+      loginUsersState.value = "error";
+      setErrorStatus("家庭成员加载失败，请检查网络后重试。");
       return false;
     }
-
-    const rows = ((data ?? []) as AppUser[]).filter(
-      (user) => user.is_active !== false,
-    );
-    const parents = rows
-      .filter((user) => user.role === "parent")
-      .sort((left, right) => left.name.localeCompare(right.name));
-    const children = rows
-      .filter((user) => user.role === "child")
-      .sort((left, right) =>
-        (left.created_at ?? "").localeCompare(right.created_at ?? ""),
-      );
-
-    loginUsers.value = [...parents, ...children];
-    return true;
   };
 
   return {
     childUsers,
     loginUsers,
+    loginUsersState,
     resetChildren,
     loadChildUsers,
     loadLoginUsers,

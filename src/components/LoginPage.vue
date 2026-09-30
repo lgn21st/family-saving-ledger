@@ -64,10 +64,26 @@
           请先配置 Supabase 连接后再登录。
         </p>
         <p
+          v-else-if="loginUsersState === 'loading'"
+          class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+          role="status"
+        >
+          正在加载家庭成员…
+        </p>
+        <div
+          v-else-if="loginUsersState === 'error'"
+          class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+        >
+          <p role="alert">家庭成员加载失败，请检查网络后重试。</p>
+          <button type="button" class="button-secondary mt-3 w-full" @click="retry">
+            重新加载成员
+          </button>
+        </div>
+        <p
           v-else-if="loginUsers.length === 0"
           class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
         >
-          暂无可登录成员，请先创建家庭成员。
+          暂无可登录成员，请联系家长检查账本。
         </p>
 
         <template v-else>
@@ -113,6 +129,7 @@
             <label for="login-pin" class="field-label">4 位 PIN</label>
             <input
               id="login-pin"
+              ref="pinInput"
               :value="loginPin"
               name="pin"
               type="password"
@@ -143,7 +160,7 @@
         </template>
 
         <p
-          v-if="sessionStatus || status"
+          v-if="(sessionStatus || status) && loginUsersState !== 'error'"
           class="mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700"
           aria-live="polite"
         >
@@ -155,13 +172,15 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref } from "vue";
 import Avatar from "./Avatar.vue";
 import type { AppUser } from "../types";
 import type { AvatarOption } from "../config";
 
-defineProps<{
+const props = defineProps<{
   isSupabaseConfigured: boolean;
   loginUsers: AppUser[];
+  loginUsersState: "loading" | "ready" | "error";
   selectedLoginUserId: string | null;
   loginPin: string;
   loading: boolean;
@@ -171,7 +190,15 @@ defineProps<{
   avatarOptions: AvatarOption[];
   onSelectLoginUser: (id: string) => void;
   onLogin: () => void;
+  onRetry: () => Promise<void>;
 }>();
+
+const pinInput = ref<HTMLInputElement | null>(null);
+const retry = async () => {
+  await props.onRetry();
+  await nextTick();
+  pinInput.value?.focus();
+};
 
 const emit = defineEmits<{
   (event: "update:loginPin", value: string): void;

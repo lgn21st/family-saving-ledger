@@ -62,8 +62,8 @@
           <p class="text-sm font-medium text-slate-600">
             {{ selectedChildName ? "这个孩子还没有账户" : "请先选择孩子" }}
           </p>
-          <button type="button" class="button-quiet mt-1 px-0" @click="onOpenSettings">
-            前往设置创建账户
+          <button type="button" class="button-quiet mt-1 px-0" @click="onOpenSettings(selectedChildId ? 'accounts' : 'members')">
+            {{ selectedChildId ? "前往设置创建账户" : "前往设置添加孩子" }}
           </button>
         </div>
       </section>
@@ -110,7 +110,7 @@ const props = defineProps<{
   formatAmount: (amount: number, currency: string) => string;
   onSelectChild: (id: string) => void;
   onSelectAccount: (id: string) => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (section: "members" | "accounts") => void;
 }>();
 
 const selectedAccount = computed(() => props.accounts.find((account) => account.id === props.selectedAccountId));

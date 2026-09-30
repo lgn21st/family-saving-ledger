@@ -29,7 +29,8 @@ export const useLedgerApp = () => {
     setErrorStatus: feedback.setErrorStatus,
     setSuccessStatus: feedback.setSuccessStatus,
   };
-  const showSettings = ref(false);
+  const settingsSection = ref<"members" | "accounts" | null>(null);
+  const showSettings = computed(() => settingsSection.value !== null);
   const data = useLedgerData({
     supabase: client,
     user,
@@ -119,18 +120,24 @@ export const useLedgerApp = () => {
   };
   const handleLogout = () => {
     auth.handleLogout();
-    showSettings.value = false;
+    settingsSection.value = null;
     feedback.clearStatus();
   };
   watch(user, () => {
-    showSettings.value = false;
+    settingsSection.value = null;
   });
+  const reloadLoginUsers = async () => {
+    if (data.loginUsersState.value === "error") feedback.clearStatus();
+    if (!(await data.loadLoginUsers())) return;
+    if (!selectedLoginUser.value) {
+      const first = data.loginUsers.value[0];
+      if (first) auth.selectLoginUser(first.id);
+    }
+  };
   onMounted(async () => {
     if (!isSupabaseConfigured) return;
     await data.loadLedgerTimeZone();
-    await data.loadLoginUsers();
-    const first = data.loginUsers.value[0];
-    if (first) auth.selectLoginUser(first.id);
+    await reloadLoginUsers();
     await auth.checkSession();
   });
   return {
@@ -144,11 +151,17 @@ export const useLedgerApp = () => {
     avatarOptions,
     childUsers: data.childUsers,
     loginUsers: data.loginUsers,
+    loginUsersState: data.loginUsersState,
+    reloadLoginUsers,
     balances: data.balances,
     selectedLoginUser,
+    settingsSection,
     showSettings,
     toggleSettings: () => {
-      showSettings.value = !showSettings.value;
+      settingsSection.value = showSettings.value ? null : "members";
+    },
+    openSettings: (section: "members" | "accounts") => {
+      settingsSection.value = section;
     },
     members,
     accountManagement,

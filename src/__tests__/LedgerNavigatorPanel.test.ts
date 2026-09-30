@@ -67,7 +67,7 @@ describe("LedgerNavigatorPanel", () => {
   it("routes empty account management to settings", async () => {
     const user = userEvent.setup();
     const onOpenSettings = vi.fn();
-    render(LedgerNavigatorPanel, {
+    const { rerender } = render(LedgerNavigatorPanel, {
       props: {
         currencyTotals: {},
         childUsers: [],
@@ -84,7 +84,10 @@ describe("LedgerNavigatorPanel", () => {
       },
     });
 
+    await user.click(screen.getByRole("button", { name: "前往设置添加孩子" }));
+    expect(onOpenSettings).toHaveBeenLastCalledWith("members");
+    await rerender({ selectedChildId: "child-1", selectedChildName: "小乐" });
     await user.click(screen.getByRole("button", { name: "前往设置创建账户" }));
-    expect(onOpenSettings).toHaveBeenCalled();
+    expect(onOpenSettings).toHaveBeenLastCalledWith("accounts");
   });
 });

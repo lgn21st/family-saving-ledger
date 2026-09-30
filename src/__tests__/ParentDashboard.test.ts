@@ -51,7 +51,7 @@ describe("ParentDashboard", () => {
 
     expect(screen.queryByText("创建账户")).toBeNull();
     expect(screen.queryByText("孩子管理")).toBeNull();
-    await user.click(screen.getByRole("button", { name: "前往设置创建账户" }));
-    expect(onOpenSettings).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "前往设置添加孩子" }));
+    expect(onOpenSettings).toHaveBeenCalledWith("members");
   });
 });

@@ -39,7 +39,7 @@
         :get-transaction-context="getTransactionContext"
         :format-timestamp="formatTimestamp"
         :on-load-more="onLoadMore"
-      :on-load-all="onLoadAll"
+        :on-load-all="onLoadAll"
         :on-void-transaction="onVoidTransaction"
       />
     </div>
@@ -100,7 +100,7 @@ defineProps<{
   selectedAccountId: string | null;
   balances: Record<string, number>;
   onSelectAccount: (id: string) => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (section: "members" | "accounts") => void;
   selectedAccount: Account | null;
   canEdit: boolean;
   chartPoints: ChartPoint[];

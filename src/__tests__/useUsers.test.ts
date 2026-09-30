@@ -14,6 +14,40 @@ const createSupabaseMock = (users: AppUser[]) => {
 };
 
 describe("useUsers", () => {
+  it.each(["response", "rejection"])("recovers a failed login member read (%s)", async (failure) => {
+    const read = vi.fn()
+      .mockImplementationOnce(() => {
+        if (failure === "rejection") throw new Error("Offline");
+        return { data: null, error: { message: "Offline" } };
+      })
+      .mockResolvedValueOnce({ data: [{ id: "parent", name: "爸爸", role: "parent" }], error: null });
+    const select = vi.fn(() => queryMock(read));
+    const users = useUsers({ supabase: { from: () => ({ select }) }, setErrorStatus: vi.fn() });
+    expect(users.loginUsersState.value).toBe("loading");
+    expect(await users.loadLoginUsers()).toBe(false);
+    expect(users.loginUsersState.value).toBe("error");
+    expect(await users.loadLoginUsers()).toBe(true);
+    expect(users.loginUsersState.value).toBe("ready");
+    expect(users.loginUsers.value[0]?.id).toBe("parent");
+    expect(select).toHaveBeenCalledWith("id, name, role, avatar_id, is_active, created_at, archived_at, archived_by");
+  });
+
+  it("ignores an older failed response after a newer successful read", async () => {
+    let finish!: (value: { data: null; error: { message: string } }) => void;
+    const read = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }))
+      .mockResolvedValueOnce({ data: [{ id: "parent", name: "爸爸", role: "parent" }], error: null });
+    const setErrorStatus = vi.fn();
+    const users = useUsers({ supabase: { from: () => ({ select: () => queryMock(read) }) }, setErrorStatus });
+    const first = users.loadLoginUsers();
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    await users.loadLoginUsers();
+    finish({ data: null, error: { message: "Old failure" } });
+    expect(await first).toBe(false);
+    expect(users.loginUsersState.value).toBe("ready");
+    expect(users.loginUsers.value[0]?.id).toBe("parent");
+    expect(setErrorStatus).not.toHaveBeenCalled();
+  });
   it("loads child users", async () => {
     const supabase = createSupabaseMock([
       { id: "p1", name: "爸爸", role: "parent", pin: "1234" },

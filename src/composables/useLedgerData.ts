@@ -14,13 +14,17 @@ export const useLedgerData = (params: {
   const users = useUsers(params);
   const ledgerTimeZone = ref(DEFAULT_LEDGER_TIMEZONE);
   const loadLedgerTimeZone = async () => {
-    const { data, error } = await params.supabase
-      .from("settings")
-      .select("timezone")
-      .limit(1);
-    if (error) return params.setErrorStatus(error.message);
-    const row = (data?.[0] ?? null) as { timezone?: string | null } | null;
-    if (row?.timezone) ledgerTimeZone.value = row.timezone;
+    try {
+      const { data, error } = await params.supabase
+        .from("settings")
+        .select("timezone")
+        .limit(1);
+      if (error) return params.setErrorStatus(error.message);
+      const row = (data?.[0] ?? null) as { timezone?: string | null } | null;
+      if (row?.timezone) ledgerTimeZone.value = row.timezone;
+    } catch {
+      params.setErrorStatus("账本时区加载失败，暂时使用默认时区。");
+    }
   };
   watch(params.user, async (user) => {
     accountData.reset();

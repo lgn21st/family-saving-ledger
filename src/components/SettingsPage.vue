@@ -1,5 +1,5 @@
 <template>
-  <main id="main-content" tabindex="-1" class="page-container min-h-0 flex-1 overflow-y-auto py-5 sm:py-7">
+  <main id="main-content" ref="content" tabindex="-1" class="page-container min-h-0 flex-1 overflow-y-auto py-5 sm:py-7">
     <header class="surface-card p-5 sm:p-7">
       <div>
         <p class="section-kicker">家庭管理</p>
@@ -45,9 +45,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 type SettingsSection = "members" | "accounts";
-const activeSection = ref<SettingsSection>("members");
+const props = withDefaults(defineProps<{ initialSection?: SettingsSection }>(), {
+  initialSection: "members",
+});
+const activeSection = ref<SettingsSection>(props.initialSection);
+const content = ref<HTMLElement | null>(null);
+onMounted(() => content.value?.focus());
 const navigationItems: Array<{ id: SettingsSection; label: string }> = [
   { id: "members", label: "成员" },
   { id: "accounts", label: "账户" },

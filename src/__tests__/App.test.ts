@@ -762,6 +762,73 @@ describe("Home Bank UI", () => {
     localStorage.clear();
   });
 
+  it("opens account creation for the child selected on the empty ledger", async () => {
+    loadMockData({
+      app_users: [
+        { id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小乐", role: "child", pin: "1111" },
+        { id: "child-2", name: "小雨", role: "child", pin: "2222" },
+      ],
+    });
+    render(App);
+    const user = userEvent.setup();
+    await loginAs(user, "爸爸", "1234");
+    await selectChild(user, "小雨");
+    await user.click(screen.getByRole("button", { name: "前往设置创建账户" }));
+    expect(screen.getByRole("button", { name: "账户" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("main")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "创建账户" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "创建孩子" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "创建账户" }));
+    expect(screen.getByRole("combobox", { name: "归属" })).toHaveValue("child-2");
+    await user.click(screen.getByRole("button", { name: "返回账本" }));
+    expect(screen.getByRole("button", { name: /小雨/ })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    expect(screen.getByRole("button", { name: "成员" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("opens member management when no child exists", async () => {
+    loadMockData({ app_users: [{ id: "parent", name: "爸爸", role: "parent", pin: "1234" }] });
+    render(App);
+    const user = userEvent.setup();
+    await loginAs(user, "爸爸", "1234");
+    await user.click(screen.getByRole("button", { name: "前往设置添加孩子" }));
+    expect(screen.getByRole("button", { name: "成员" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("recovers a failed member read and selects the first member on retry", async () => {
+    loadMockData({ app_users: [{ id: "parent", name: "爸爸", role: "parent", pin: "1234" }] });
+    const from = supabaseMock.supabase.from;
+    let failMemberRead = true;
+    vi.spyOn(supabaseMock.supabase, "from").mockImplementation((table) => {
+      if (table === "app_users" && failMemberRead) {
+        failMemberRead = false;
+        throw new Error("Network unavailable");
+      }
+      return from(table);
+    });
+    render(App);
+    const user = userEvent.setup();
+    expect(screen.getByRole("status")).toHaveTextContent("正在加载家庭成员");
+    await user.click(await screen.findByRole("button", { name: "重新加载成员" }));
+    expect(await screen.findByRole("button", { name: "爸爸" })).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(screen.getByPlaceholderText("PIN")).toHaveFocus());
+    expect(screen.queryByRole("alert")).toBeNull();
+    await user.type(screen.getByPlaceholderText("PIN"), "1234");
+    await user.click(screen.getByRole("button", { name: "登录 爸爸" }));
+    expect(await screen.findByRole("button", { name: "打开设置" })).toBeVisible();
+  });
+
+  it("continues loading members when the timezone request rejects", async () => {
+    loadMockData({ app_users: [{ id: "parent", name: "爸爸", role: "parent", pin: "1234" }] });
+    vi.spyOn(supabaseMock.supabase, "from").mockImplementationOnce(() => {
+      throw new Error("Network unavailable");
+    });
+    render(App);
+    expect(await screen.findByRole("button", { name: "爸爸" })).toBeVisible();
+    expect(screen.getByText("账本时区加载失败，暂时使用默认时区。")).toBeVisible();
+  });
+
   it("opens each page at the top while preserving the selected account", async () => {
     loadMockData({
       app_users: [

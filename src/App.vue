@@ -4,6 +4,7 @@
     v-model:login-pin="loginPin"
     :is-supabase-configured="isSupabaseConfigured"
     :login-users="loginUsers"
+    :login-users-state="loginUsersState"
     :selected-login-user-id="selectedLoginUserId"
     :loading="loading"
     :selected-login-user="selectedLoginUser"
@@ -12,6 +13,7 @@
     :avatar-options="avatarOptions"
     :on-select-login-user="selectLoginUser"
     :on-login="handleLogin"
+    :on-retry="reloadLoginUsers"
   />
 
   <AppShell
@@ -26,7 +28,7 @@
     :status-tone="statusTone"
     :on-dismiss-status="clearStatus"
   >
-    <SettingsPage v-if="user.role === 'parent' && showSettings">
+    <SettingsPage v-if="user.role === 'parent' && showSettings" :initial-section="settingsSection ?? 'members'">
       <template #members>
         <MemberManagement :services="members" />
       </template>
@@ -48,7 +50,7 @@
       :selected-account-id="selectedAccountId"
       :balances="balances"
       :on-select-account="selectAccount"
-      :on-open-settings="toggleSettings"
+      :on-open-settings="openSettings"
       :selected-account="selectedAccount"
       :can-edit="canEdit"
       :chart-points="chartPoints"
@@ -109,6 +111,8 @@ const {
   user,
   loginPin,
   loginUsers,
+  loginUsersState,
+  reloadLoginUsers,
   selectedLoginUserId,
   selectedLoginUser,
   sessionStatus,
@@ -120,7 +124,9 @@ const {
   avatarOptions,
   canEdit,
   showSettings,
+  settingsSection,
   toggleSettings,
+  openSettings,
   status,
   statusTone,
   clearStatus,
