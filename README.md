@@ -11,4 +11,4 @@ PIN 登录和当前 RLS 模型只适合可信家人，不要当成公开多租�
 | [开发与验证](docs/development.md) | 工具链、`.env.local`、Tailscale、日常 `npm run dev` |
 | [数据库与运维](docs/database.md) | migration、production、脚本、prod→开发库 |
 | [架构](docs/architecture.md) | 状态所有权、依赖与生命周期 |
-| [账本规则](.agents/skills/family-ledger-domain/references/ledger-model.md) | 角色、交易、余额与结息不变量 |
+| [账本规则](docs/ledger-model.md) | 角色、交易、余额与结息不变量 |

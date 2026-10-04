@@ -10,19 +10,15 @@ This is not a public multi-tenant authentication system. PIN login and the curre
 
 Always inspect the current files and Git status. Do not rely on line counts, test counts or architecture remembered from an earlier task.
 
-Use the project skills when applicable:
+Read the relevant project docs:
 
-- `.agents/skills/vue-ledger-ui` for Vue components, application assembly and frontend tests.
-- `.agents/skills/family-ledger-domain` for ledger rules, RPCs, balances, transfers, closing, archival and interest.
-- `.agents/skills/supabase-ledger-ops` for local/remote migrations, reset, seed, dump/restore and database troubleshooting.
-- `.agents/skills/supabase` for Supabase client, API and platform questions; use the operations skill above for database changes.
-- `.agents/skills/supabase-postgres-best-practices` for query and schema performance review, guided by measured workload.
-
-Read only the references required by the selected skill, but read each selected `SKILL.md` completely.
+- `docs/architecture.md` before changing frontend structure or data flow.
+- `docs/ledger-model.md` before changing ledger behavior or database objects; inspect the relevant migrations, latest RPC definitions and database tests.
+- `docs/database.md` for database operations; `docs/development.md` for environment setup and troubleshooting.
 
 ## Architecture
 
-See `docs/architecture.md`. Components must not query Supabase. Authoritative balance, role and concurrency checks belong in database RPCs.
+See `docs/architecture.md`. Keep `App.vue` as a thin view and cross-feature coordination in `src/app/`. Components must not query Supabase. Authoritative balance, role and concurrency checks belong in database RPCs.
 
 ## Code conventions
 
@@ -37,7 +33,7 @@ See `docs/architecture.md`. Components must not query Supabase. Authoritative ba
 
 ## Ledger invariants
 
-Canonical list: `.agents/skills/family-ledger-domain/references/ledger-model.md`.
+Canonical list: `docs/ledger-model.md`.
 Changing those rules requires a migration, frontend updates, database tests and an edit to that file.
 
 ## Database workflow

@@ -2,7 +2,7 @@
 
 本文是 schema、开发库、production 和相关脚本的唯一操作说明。
 环境见 [开发与验证](development.md)。账本不变量与 RPC 列表见
-`.agents/skills/family-ledger-domain/references/ledger-model.md`。
+[账本规则](ledger-model.md)。
 
 ## 环境
 
@@ -14,6 +14,10 @@
 `supabase --local` 永远打本机 `127.0.0.1`，不要用来迁开发库。
 `scripts/lib/dev-db.sh` 在运行时用 MagicDNS 主机名替换 loopback，密码来自
 `supabase status`，不写文件。`supabase start` 和清镜像仍用 Docker context `remote`。
+
+操作前核对当前目录、目标环境、已 link 项目、`.env.local` 的 MagicDNS URL 和服务状态；
+启动 Supabase 或清镜像前核对 Docker context `remote`。
+不要在日志或提交中暴露数据库密码、PIN、密钥或数据 dump；临时连接凭证不写文件。
 
 ## 命令与脚本
 
@@ -74,6 +78,8 @@ supabase db push --db-url '<SESSION_POOLER_URL>'
 覆盖前必须输入 `SYNC dev`。脚本会：导出并校验 production 五张业务表；启动精简栈；
 给开发库做 migration 和覆盖前备份；单事务导入；校验账本不变量。
 COPY 导入仍走开发库容器里的 `psql`（本机没有客户端）。
+
+恢复或迁移后核对预期行数并验证账本不变量。
 
 备份在 gitignore 目录，含 PIN 和账本，不能提交或公开：
 

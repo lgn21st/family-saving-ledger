@@ -47,4 +47,4 @@ PWA 只缓存应用静态资源，不缓存 Supabase 请求。新版本等待所
 
 验证命令见 [AGENTS.md](../AGENTS.md)，环境见 [开发](development.md)，
 数据库操作见 [运维](database.md)，账本规则见
-[ledger-model.md](../.agents/skills/family-ledger-domain/references/ledger-model.md)。
+[账本规则](ledger-model.md)。
