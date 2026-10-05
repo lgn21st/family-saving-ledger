@@ -1,5 +1,4 @@
 truncate table
-  public.transaction_note_edits,
   public.interest_log,
   public.transactions,
   public.accounts,

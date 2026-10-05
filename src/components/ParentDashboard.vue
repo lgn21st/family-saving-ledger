@@ -38,7 +38,6 @@
         :get-transaction-note="getTransactionNote"
         :get-transaction-context="getTransactionContext"
         :format-timestamp="formatTimestamp"
-        :on-load-note-history="onLoadNoteHistory"
         :on-update-note="onUpdateNote"
         :on-load-more="onLoadMore"
         :on-load-all="onLoadAll"
@@ -77,7 +76,7 @@ import { nextTick, ref } from "vue";
 
 import AccountDetailPanel from "./AccountDetailPanel.vue";
 import LedgerNavigatorPanel from "./LedgerNavigatorPanel.vue";
-import type { Account, AppUser, Transaction, UpdateTransactionNoteInput, TransactionNoteResult, NoteHistoryResult } from "../types";
+import type { Account, AppUser, Transaction, UpdateTransactionNoteInput, TransactionNoteResult } from "../types";
 import type { AvatarOption } from "../config";
 import type { ChartPoint } from "../composables/useChartData";
 
@@ -115,7 +114,6 @@ defineProps<{
   getTransactionNote: (transaction: Transaction) => string;
   getTransactionContext: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
-  onLoadNoteHistory?: (transactionId: string) => Promise<NoteHistoryResult>;
   onUpdateNote?: (input: UpdateTransactionNoteInput) => Promise<TransactionNoteResult>;
   onLoadMore: () => void;
   onLoadAll?: () => void | Promise<void>;

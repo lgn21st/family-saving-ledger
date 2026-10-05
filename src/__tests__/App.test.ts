@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import App from "../App.vue";
 import { vi } from "vitest";
-import type { Account, AppUser, Transaction, TransactionNoteEdit } from "../types";
+import type { Account, AppUser, Transaction } from "../types";
 import { accountFixture, transactionFixture } from "../test/setup";
 import { flushPromises } from "@vue/test-utils";
 
@@ -22,7 +22,6 @@ type DataStore = {
   app_users: AppUser[];
   accounts: Account[];
   transactions: Transaction[];
-  transaction_note_edits: TransactionNoteEdit[];
   settings: Settings[];
   account_balances: AccountBalance[];
 };
@@ -32,7 +31,6 @@ function createDefaultData() {
     app_users: [],
     accounts: [],
     transactions: [],
-    transaction_note_edits: [],
     settings: [{ id: "settings", annual_rate: 5, timezone: "Asia/Singapore" }],
     account_balances: [],
   };
@@ -224,8 +222,6 @@ function createSupabaseMock() {
         const note = String(payload.p_note).trim() || null;
         const updated = { ...row, note, user_note: note, note_revision: (row.note_revision ?? 0) + 1 };
         dataStore.transactions = dataStore.transactions.map(row => row.id === updated.id ? updated : row);
-        dataStore.transaction_note_edits.push({ id: nextId(), transaction_id: row.id, revision: updated.note_revision,
-          old_note: row.note, new_note: note, updated_by: String(payload.p_updated_by), updated_by_name: "爸爸", updated_at: now() });
         return Promise.resolve({ data: { conflict: false, transactions: [updated] }, error: null });
       }
       if (fnName === "apply_transaction") {
@@ -1157,7 +1153,7 @@ describe("Home Bank UI", () => {
     expect(await screen.findByText("零花钱发放")).toBeInTheDocument();
   });
 
-  it("edits a loaded historical note in place, retains pagination/search, and opens its audit", async () => {
+  it("edits a loaded historical note in place and reopens the current note without extra queries", async () => {
     const rows = Array.from({ length: 12 }, (_, i) => transactionFixture({ id: `note-${i}`, amount: 20,
       note: `奖励记录${i}`, user_note: `奖励记录${i}`, note_revision: 0,
       created_at: `2024-01-${String(i + 1).padStart(2, '0')}T10:00:00Z` }));
@@ -1185,12 +1181,12 @@ describe("Home Bank UI", () => {
     expect(screen.getByText("12 笔已加载")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(from).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: /^查看备注修改记录/ }));
-    const dialog = within(screen.getByRole("dialog"));
-    expect(await dialog.findByText("奖励记录0")).toBeInTheDocument();
-    expect(dialog.getByText("奖励记录0（已更正）")).toBeInTheDocument();
-    expect(dialog.getByText(/^爸爸 ·/)).toBeInTheDocument();
-    expect(from).toHaveBeenCalledWith("transaction_note_edits");
+    expect(screen.queryByText("已修改")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^更多操作：奖励记录0（已更正）/ }));
+    await user.click(screen.getByRole("button", { name: "修改备注" }));
+    expect(screen.getByRole("textbox", { name: "备注" })).toHaveValue("奖励记录0（已更正）");
+    expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
+    expect(from).not.toHaveBeenCalled();
   });
 
   it("voids a deposit through the database RPC", async () => {

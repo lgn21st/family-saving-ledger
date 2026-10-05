@@ -16,6 +16,9 @@ declare
   balance_before numeric;
   original_prefix text;
 begin
+  if to_regclass('public.transaction_note_edits') is not null then
+    raise exception 'Obsolete note audit table still exists';
+  end if;
   insert into public.app_users (id, name, role, pin, is_active) values
     (parent_id, '备注测试家长', 'parent', '9100', true),
     (child_id, '备注测试孩子 - 甲', 'child', '9101', true);
@@ -25,10 +28,9 @@ begin
   original := public.apply_transaction(source_id, 'deposit', 100, '原备注', parent_id, request_id);
   balance_before := public.get_account_balance(source_id);
 
-  -- The API role can read audit history and call the parent-checked command.
+  -- The API role can call the parent-checked command.
   execute 'set local role anon';
   response := public.update_transaction_note(original.id, '  正确备注  ', 0, parent_id);
-  perform 1 from public.transaction_note_edits where transaction_id = original.id;
   execute 'reset role';
   select * into edited from public.transactions where id = original.id;
   if (response->>'conflict')::boolean or edited.note <> '正确备注' or edited.note_revision <> 1
@@ -38,21 +40,17 @@ begin
     raise exception 'Note edit mutated ledger facts or original receipt';
   end if;
   if public.get_account_balance(source_id) <> balance_before then raise exception 'Note edit changed balance'; end if;
-  if not exists (select 1 from public.transaction_note_edits where transaction_id = original.id
-    and old_note = '原备注' and new_note = '正确备注' and updated_by = parent_id and updated_by_name = '备注测试家长')
-    then raise exception 'Missing note audit'; end if;
-
   replay := public.apply_transaction(source_id, 'deposit', 100, '原备注', parent_id, request_id);
   if replay.id <> original.id or replay.note <> '正确备注' then raise exception 'Note edit broke receipt replay'; end if;
   response := public.update_transaction_note(original.id, '覆盖他人修改', 0, parent_id);
   if not (response->>'conflict')::boolean or response->'transactions'->0->>'note' <> '正确备注'
     then raise exception 'Stale editor did not receive current note'; end if;
   perform public.update_transaction_note(original.id, '正确备注', 1, parent_id);
-  if (select count(*) from public.transaction_note_edits where transaction_id = original.id) <> 1
-    then raise exception 'No-op or conflict created an audit'; end if;
+  if (select note_revision from public.transactions where id = original.id) <> 1
+    then raise exception 'No-op or conflict incremented the version'; end if;
   perform public.update_transaction_note(original.id, '', 1, parent_id);
   select * into edited from public.transactions where id = original.id;
-  if edited.note is not null or edited.user_note is not null then raise exception 'Clearing note failed'; end if;
+  if edited.note is not null or edited.user_note is not null or edited.note_revision <> 2 then raise exception 'Clearing note failed'; end if;
   -- ABA edits must still conflict, even when the text returns to its initial value.
   perform public.update_transaction_note(original.id, '原备注', 2, parent_id);
   response := public.update_transaction_note(original.id, '旧草稿', 0, parent_id);
@@ -73,8 +71,6 @@ begin
   if (select note_prefix from public.transactions where id = outgoing.id) <> original_prefix
     or (select note from public.transactions where id = outgoing.id) <> original_prefix || ' - 新备注 - 后半段'
     then raise exception 'Transfer edit rewrote system prefix'; end if;
-  if (select count(*) from public.transaction_note_edits where transaction_id in (outgoing.id, incoming.id)) <> 2
-    then raise exception 'Transfer audit missing on one side'; end if;
   response := public.update_transaction_note(outgoing.id, '过时的另一侧', 0, parent_id);
   if not (response->>'conflict')::boolean then raise exception 'Other transfer side did not conflict'; end if;
   perform public.update_transaction_note(outgoing.id, ' ', 1, parent_id);

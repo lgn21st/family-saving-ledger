@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/vue';
+import { render, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
@@ -12,7 +12,6 @@ const propsFor = () => ({
   getTransactionContext: () => '小乐 · 零花钱 · CNY',
   formatTimestamp: (value: string) => value,
   onUpdateNote: vi.fn(async (): Promise<TransactionNoteResult> => ({ ok: true, transactions: [] })),
-  onLoadNoteHistory: vi.fn(async () => ({ ok: true as const, edits: [] })),
   onClose: vi.fn(),
 });
 
@@ -92,24 +91,5 @@ describe('TransactionNoteDialog', () => {
     expect(screen.getByRole('textbox')).toHaveValue('旧备注 - 尾部');
     expect(screen.getByText('来自 小乐 - 甲 储蓄')).toBeInTheDocument();
     expect(screen.getByText('转入和转出记录的备注会同步修改。')).toBeInTheDocument();
-  });
-
-  it('shows read-only audit history with retry, editor, time, and before/after text', async () => {
-    const user = userEvent.setup();
-    const props = propsFor();
-    const onLoadNoteHistory = vi.fn().mockResolvedValueOnce({ ok: false, message: '修改记录加载失败，请重试。' })
-      .mockResolvedValue({ ok: true, edits: [{ id: 'edit', updated_by_name: '妈妈', updated_at: '2026-10-05 12:00', old_note: '错字', new_note: null }] });
-    render(TransactionNoteDialog, { props: { ...props, readOnly: true, onLoadNoteHistory } });
-    expect(screen.queryByRole('textbox')).toBeNull();
-    expect(screen.queryByRole('button', { name: '保存' })).toBeNull();
-    expect(await screen.findByRole('alert')).toHaveTextContent('修改记录加载失败');
-    await user.click(screen.getByRole('button', { name: '重试加载' }));
-    const dialog = within(screen.getByRole('dialog'));
-    expect(await dialog.findByText('妈妈 · 2026-10-05 12:00')).toBeInTheDocument();
-    expect(dialog.getByText('错字')).toBeInTheDocument();
-    expect(dialog.getByText('（无备注）')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '关闭' }));
-    expect(props.onClose).toHaveBeenCalledTimes(1);
-    expect(props.onUpdateNote).not.toHaveBeenCalled();
   });
 });

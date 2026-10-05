@@ -22,12 +22,11 @@
       </p>
       <p v-if="detail" class="mt-2 text-sm leading-6 text-slate-500">{{ detail }}</p>
       <div v-if="$slots.default" :id="`${descriptionId}-details`"><slot /></div>
-      <div class="mt-6 grid gap-3" :class="hideConfirm ? 'grid-cols-1' : 'grid-cols-2'">
+      <div class="mt-6 grid grid-cols-2 gap-3">
         <button ref="cancelButton" type="button" class="button-secondary min-h-11" :disabled="isBusy" @click="requestCancel">
-          {{ cancelLabel }}
+          取消
         </button>
         <button
-          v-if="!hideConfirm"
           type="button"
           class="min-h-11 rounded-2xl px-4 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
           :class="tone === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand-700 hover:bg-brand-800'"
@@ -56,8 +55,6 @@ const props = withDefaults(defineProps<{
   tone?: "danger" | "primary";
   loading?: boolean;
   confirmDisabled?: boolean;
-  hideConfirm?: boolean;
-  cancelLabel?: string;
   busyLabel?: string;
   focusInput?: boolean;
   onCancel: () => void;
@@ -68,8 +65,6 @@ const props = withDefaults(defineProps<{
   tone: "danger",
   loading: false,
   confirmDisabled: false,
-  hideConfirm: false,
-  cancelLabel: "取消",
   busyLabel: "处理中…",
   focusInput: false,
 });
@@ -80,7 +75,7 @@ const requestCancel = () => {
   if (!isBusy.value) props.onCancel();
 };
 const confirm = async () => {
-  if (isBusy.value || props.confirmDisabled || props.hideConfirm) return;
+  if (isBusy.value || props.confirmDisabled) return;
   confirming.value = true;
   try {
     await props.onConfirm();

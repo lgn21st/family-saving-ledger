@@ -122,14 +122,6 @@
                 >
                   {{ getTransactionNote(transaction) }}
                 </p>
-                <button
-                  v-if="(transaction.note_revision ?? 0) > 0"
-                  type="button"
-                  class="button-quiet min-h-11 text-xs"
-                  :aria-label="`查看备注修改记录：${getTransactionNote(transaction)}`"
-                  @pointerdown.stop
-                  @click="openNote(transaction, true)"
-                >已修改</button>
                 <time
                   class="mt-1.5 block text-xs text-slate-500"
                   :datetime="transaction.created_at"
@@ -174,7 +166,7 @@
                       type="button"
                       class="button-quiet min-h-11 w-full justify-start rounded-lg text-left font-medium"
                       :disabled="!canEditNote(transaction)"
-                      @click="openNote(transaction, false)"
+                      @click="openNote(transaction)"
                     >修改备注</button>
                     <p v-if="transaction.related_account_id && !canEditNote(transaction)" class="px-3 py-2 text-xs text-slate-500">旧备注无法自动分离</p>
                     <button
@@ -203,14 +195,12 @@
     </div>
 
     <TransactionNoteDialog
-      v-if="noteTransaction"
+      v-if="noteTransaction && onUpdateNote"
       :transaction="noteTransaction"
-      :read-only="noteReadOnly"
       :format-signed-amount="formatSignedAmount"
       :get-transaction-context="getTransactionContext"
       :format-timestamp="formatTimestamp"
       :on-update-note="onUpdateNote"
-      :on-load-note-history="onLoadNoteHistory"
       :on-close="closeNote"
     />
     <ConfirmActionDialog
@@ -253,7 +243,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRefs } from "vue
 import ConfirmActionDialog from "./ConfirmActionDialog.vue";
 import TransactionNoteDialog from "./TransactionNoteDialog.vue";
 import TransactionIcon from "./TransactionIcon.vue";
-import type { Transaction, UpdateTransactionNoteInput, TransactionNoteResult, NoteHistoryResult } from "../types";
+import type { Transaction, UpdateTransactionNoteInput, TransactionNoteResult } from "../types";
 
 const props = defineProps<{
   transactions: Transaction[];
@@ -269,7 +259,6 @@ const props = defineProps<{
   onLoadMore: () => void;
   onLoadAll?: () => void | Promise<void>;
   onUpdateNote?: (input: UpdateTransactionNoteInput) => Promise<TransactionNoteResult>;
-  onLoadNoteHistory?: (transactionId: string) => Promise<NoteHistoryResult>;
   onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;
 }>();
 
@@ -286,7 +275,6 @@ const startX = ref(0);
 const startY = ref(0);
 const confirmingTransaction = ref<Transaction | null>(null);
 const noteTransaction = ref<Transaction | null>(null);
-const noteReadOnly = ref(false);
 const menuTransactionId = ref<string | null>(null);
 const canEditNote = (transaction: Transaction) => Boolean(props.onUpdateNote) &&
   !transaction.is_void && transaction.type !== 'interest' &&
@@ -318,11 +306,10 @@ const dismissActions = (event: PointerEvent) => {
 };
 onMounted(() => document.addEventListener('pointerdown', dismissActions));
 onBeforeUnmount(() => document.removeEventListener('pointerdown', dismissActions));
-const openNote = (transaction: Transaction, readOnly: boolean) => {
-  if (!readOnly && (!canVoid?.value || !canEditNote(transaction))) return;
+const openNote = (transaction: Transaction) => {
+  if (!canVoid?.value || !canEditNote(transaction)) return;
   if (menuTransactionId.value === null) returnFocusElement.value = document.activeElement as HTMLElement | null;
   menuTransactionId.value = null;
-  noteReadOnly.value = readOnly;
   noteTransaction.value = transaction;
 };
 const closeNote = () => {

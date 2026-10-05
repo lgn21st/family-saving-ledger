@@ -6,8 +6,7 @@ import {
   watch,
   type Ref,
 } from "vue";
-import type { Account, AppUser, SupabaseClient, Transaction, TransactionNoteEdit,
-  NoteHistoryResult, UpdateTransactionNoteInput, TransactionNoteResult } from "../types";
+import type { Account, AppUser, SupabaseClient, Transaction, UpdateTransactionNoteInput, TransactionNoteResult } from "../types";
 import type { LedgerCommands } from "./useLedgerCommands";
 import type { Feedback } from "../features/contracts";
 import { useTransactions } from "./useTransactions";
@@ -134,19 +133,7 @@ export const useAccountHistory = (
     if (result.ok) params.setSuccessStatus("备注已更新。");
     return result;
   };
-  const loadNoteHistory = async (transactionId: string): Promise<NoteHistoryResult> => {
-    const actor = params.user.value;
-    try {
-      const { data, error } = await params.supabase.from("transaction_note_edits")
-        .select("*").eq("transaction_id", transactionId).order("revision", { ascending: false });
-      if (!active || params.user.value !== actor)
-        return { ok: false, message: "会话已切换，请重新打开账本。" };
-      if (error) return { ok: false, message: "修改记录加载失败，请重试。" };
-      return { ok: true, edits: (data ?? []) as TransactionNoteEdit[] };
-    } catch {
-      return { ok: false, message: "修改记录加载失败，请重试。" };
-    }
-  };
+
   return {
     ...display,
     chartPoints,
@@ -165,6 +152,5 @@ export const useAccountHistory = (
     handleLoadAllForSelected,
     handleVoidTransaction,
     handleUpdateTransactionNote,
-    loadNoteHistory,
   };
 };

@@ -9,7 +9,6 @@ begin
       'public.app_users',
       'public.accounts',
       'public.transactions',
-      'public.transaction_note_edits',
       'public.interest_log',
       'public.settings',
       'public.account_balances'

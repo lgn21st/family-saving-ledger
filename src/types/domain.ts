@@ -51,16 +51,6 @@ export type Transaction = {
 
 export type StatusTone = "success" | "error";
 
-export type TransactionNoteEdit = {
-  id: string;
-  transaction_id: string;
-  revision: number;
-  old_note: string | null;
-  new_note: string | null;
-  updated_by: string;
-  updated_by_name: string;
-  updated_at: string;
-};
 export type UpdateTransactionNoteInput = {
   transactionId: string;
   note: string;
@@ -69,9 +59,6 @@ export type UpdateTransactionNoteInput = {
 export type TransactionNoteResult =
   | { ok: true; transactions: Transaction[] }
   | { ok: false; message: string; latest?: Transaction };
-export type NoteHistoryResult =
-  | { ok: true; edits: TransactionNoteEdit[] }
-  | { ok: false; message: string };
 
 export type LedgerActionResult =
   { ok: true; warning?: string } | { ok: false; message: string; uncertain?: boolean };

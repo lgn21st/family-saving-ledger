@@ -225,7 +225,6 @@ describe('TransactionsList note actions', () => {
     getTransactionNote: (row: Transaction) => row.note ?? '—', formatTimestamp: (value: string) => value,
     onLoadMore: vi.fn(), onVoidTransaction: vi.fn(),
     onUpdateNote: vi.fn(async () => ({ ok: true as const, transactions: [] })),
-    onLoadNoteHistory: vi.fn(async () => ({ ok: true as const, edits: [] })),
   });
   it('opens the editor from the menu and restores focus, filters and loaded rows after saving', async () => {
     const user = userEvent.setup();
@@ -246,16 +245,13 @@ describe('TransactionsList note actions', () => {
     expect(screen.getByRole('button', { name: '加载更多' })).toBeInTheDocument();
     expect(props.onVoidTransaction).not.toHaveBeenCalled();
   });
-  it('offers children read-only history and keeps interest transactions read-only', async () => {
-    const user = userEvent.setup();
+  it('shows no modification badge or history action to children and keeps interest read-only', async () => {
     const props = noteProps();
     const { rerender } = render(TransactionsList, { props: { ...props, canVoid: false,
       transactions: [{ ...baseTransaction, note_revision: 1 }] } });
     expect(screen.queryByRole('button', { name: /^更多操作：/ })).toBeNull();
-    await user.click(screen.getByRole('button', { name: /^查看备注修改记录/ }));
-    expect(screen.getByRole('heading', { name: '备注修改记录' })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).toBeNull();
-    await user.click(screen.getByRole('button', { name: '关闭' }));
+    expect(screen.queryByText('已修改')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^查看备注修改记录/ })).toBeNull();
     await rerender({ canVoid: true, transactions: [{ ...baseTransaction, type: 'interest' }] });
     expect(screen.queryByRole('button', { name: /^更多操作：/ })).toBeNull();
     expect(screen.queryByRole('button', { name: '修改备注' })).toBeNull();
