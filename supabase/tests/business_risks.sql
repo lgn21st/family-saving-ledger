@@ -51,6 +51,10 @@ declare
   replay_ids uuid[];
   original_ids uuid[];
   mismatch_rejected boolean;
+  interest_row public.transactions;
+  interest_log_before jsonb;
+  interest_balance_before numeric;
+  interest_void_rejected boolean := false;
 
 begin
   perform set_config('client_min_messages', 'warning', true);
@@ -247,6 +251,30 @@ begin
 
   if interest_count <> 2 then
     raise exception 'Monthly interest rerun was not idempotent per account';
+  end if;
+
+  -- Read-only interest is enforced at the RPC boundary, without changing its audit or balance.
+  select * into interest_row from public.transactions
+  where account_id = interest_account_a_id and type = 'interest'
+    and interest_month = test_month and not is_void;
+  select to_jsonb(l) into interest_log_before from public.interest_log l
+  where account_id = interest_account_a_id and month = test_month;
+  interest_balance_before := public.get_account_balance(interest_account_a_id);
+  execute 'set local role anon';
+  begin
+    perform public.void_transaction(interest_row.id, parent_id);
+  exception when others then
+    if sqlerrm = 'Interest transactions cannot be voided' then
+      interest_void_rejected := true;
+    else raise; end if;
+  end;
+  execute 'reset role';
+  if not interest_void_rejected then raise exception 'Interest void was not rejected'; end if;
+  if (select to_jsonb(t) from public.transactions t where id = interest_row.id) <> to_jsonb(interest_row)
+    or (select to_jsonb(l) from public.interest_log l
+      where account_id = interest_account_a_id and month = test_month) <> interest_log_before
+    or public.get_account_balance(interest_account_a_id) <> interest_balance_before then
+    raise exception 'Rejected interest void changed ledger data';
   end if;
 
   select amount

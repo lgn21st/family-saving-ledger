@@ -246,16 +246,31 @@ describe('TransactionsList note actions', () => {
     expect(screen.getByRole('button', { name: '加载更多' })).toBeInTheDocument();
     expect(props.onVoidTransaction).not.toHaveBeenCalled();
   });
-  it('offers children read-only note history', async () => {
+  it('offers children read-only history and keeps interest transactions read-only', async () => {
     const user = userEvent.setup();
     const props = noteProps();
-    render(TransactionsList, { props: { ...props, canVoid: false,
+    const { rerender } = render(TransactionsList, { props: { ...props, canVoid: false,
       transactions: [{ ...baseTransaction, note_revision: 1 }] } });
     expect(screen.queryByRole('button', { name: /^更多操作：/ })).toBeNull();
     await user.click(screen.getByRole('button', { name: /^查看备注修改记录/ }));
     expect(screen.getByRole('heading', { name: '备注修改记录' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).toBeNull();
     await user.click(screen.getByRole('button', { name: '关闭' }));
+    await rerender({ canVoid: true, transactions: [{ ...baseTransaction, type: 'interest' }] });
+    expect(screen.queryByRole('button', { name: /^更多操作：/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: '修改备注' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '撤销交易' })).toBeNull();
+    expect(screen.queryByText('只读')).toBeNull();
+    vi.useFakeTimers();
+    try {
+      await fireEvent.pointerDown(screen.getByText('利息', { selector: 'span' }).closest('li') as Element, { clientX: 10, clientY: 10 });
+      vi.advanceTimersByTime(600);
+      await nextTick();
+      expect(screen.queryByRole('group', { name: '交易操作' })).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(props.onVoidTransaction).not.toHaveBeenCalled();
+      expect(props.onUpdateNote).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
   });
   it('closes the actions with Escape and leaves no edit entry on voided rows', async () => {
     const user = userEvent.setup();

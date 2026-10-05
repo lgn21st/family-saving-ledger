@@ -95,6 +95,7 @@ export const useAccountHistory = (
       voiding.value ||
       pages.transactionLoading.value ||
       transaction.is_void ||
+      transaction.type === "interest" ||
       params.user.value?.role !== "parent" ||
       transaction.account_id !== params.selectedAccount.value?.id
     )

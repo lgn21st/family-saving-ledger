@@ -26,6 +26,9 @@ describe("useStatus", () => {
     setErrorStatus("Cannot void a transaction on an inactive account");
     expect(status.value).toBe("无法作废已关闭账户上的交易。");
 
+    setErrorStatus("Interest transactions cannot be voided");
+    expect(status.value).toBe("利息结算为只读记录，不能直接撤销。");
+
     setErrorStatus("Void would result in a negative balance");
     expect(status.value).toBe("作废后余额不能为负。");
   });

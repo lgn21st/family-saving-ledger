@@ -45,6 +45,9 @@
 
 ## Interest
 
+- System interest transactions are read-only: ordinary transaction commands cannot edit their notes or void them.
+- Interest correction is deferred until a concrete settlement error requires it; no correction operation is implemented yet.
+
 - Use `settings.annual_rate` and `settings.timezone`.
 - Compute monthly interest from daily balances.
 - Stamp catch-up interest at the next month start in `settings.timezone` so later months compound.

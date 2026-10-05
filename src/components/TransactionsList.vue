@@ -149,7 +149,7 @@
                 >
                   {{ formatSignedAmount(transaction) }}
                 </span>
-                <div v-if="canVoid && !transaction.is_void" class="relative mt-1" data-transaction-actions>
+                <div v-if="canVoid && !transaction.is_void && transaction.type !== 'interest'" class="relative mt-1" data-transaction-actions>
                   <button
                     type="button"
                     class="button-quiet min-h-11 min-w-11 text-lg"
@@ -171,7 +171,6 @@
                     @keydown.esc.stop.prevent="closeActions"
                   >
                     <button
-                      v-if="transaction.type !== 'interest'"
                       type="button"
                       class="button-quiet min-h-11 w-full justify-start rounded-lg text-left font-medium"
                       :disabled="!canEditNote(transaction)"
@@ -301,7 +300,7 @@ const restoreFocus = async () => {
   returnFocusElement.value = null;
 };
 const openActions = async (transaction: Transaction) => {
-  if (!canVoid?.value || props.loading || transaction.is_void) return;
+  if (!canVoid?.value || props.loading || transaction.is_void || transaction.type === 'interest') return;
   if (menuTransactionId.value === transaction.id) { closeActions(); return; }
   menuTransactionId.value = transaction.id;
   await nextTick();
@@ -392,14 +391,14 @@ const clearPressTimer = () => {
 };
 
 const requestVoid = (transaction: Transaction) => {
-  if (!canVoid?.value || transaction.is_void) return;
+  if (!canVoid?.value || transaction.is_void || transaction.type === 'interest') return;
   if (menuTransactionId.value === null) returnFocusElement.value = document.activeElement as HTMLElement | null;
   menuTransactionId.value = null;
   confirmingTransaction.value = transaction;
 };
 
 const startLongPress = (transaction: Transaction, event: PointerEvent) => {
-  if (!canVoid?.value || transaction.is_void) return;
+  if (!canVoid?.value || transaction.is_void || transaction.type === 'interest') return;
   pressTargetId.value = transaction.id;
   startX.value = event.clientX;
   startY.value = event.clientY;

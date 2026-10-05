@@ -91,6 +91,7 @@ describe("useAccountHistory", () => {
       account_id: "other",
     });
     await history.handleVoidTransaction({ ...transaction, is_void: true });
+    await history.handleVoidTransaction({ ...transaction, type: "interest" });
     user.value = { id: "child-1", name: "小宝", role: "child" };
     await history.handleVoidTransaction(transaction);
     expect(voidTransaction).not.toHaveBeenCalled();

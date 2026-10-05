@@ -2,6 +2,8 @@ import { getCurrentInstance, onBeforeUnmount, ref, watch } from "vue";
 import type { StatusTone } from "../types";
 
 export const mapErrorMessage = (message: string) => {
+  if (message.includes("Interest transactions cannot be voided"))
+    return "利息结算为只读记录，不能直接撤销。";
   if (message.includes("Cannot edit notes of voided or interest transactions"))
     return "已作废交易和系统利息说明不能修改。";
   if (message.includes("Legacy transfer note cannot be separated safely"))
