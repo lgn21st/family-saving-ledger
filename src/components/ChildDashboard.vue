@@ -22,6 +22,7 @@
       :transaction-tone="transactionTone"
       :get-transaction-note="getTransactionNote"
       :format-timestamp="formatTimestamp"
+      :on-load-note-history="onLoadNoteHistory"
       :on-load-more="onLoadMore"
       :on-load-all="onLoadAll"
     />
@@ -31,7 +32,7 @@
 <script setup lang="ts">
 import AccountDetailPanel from "./AccountDetailPanel.vue";
 import ChildAccountNavigatorPanel from "./ChildAccountNavigatorPanel.vue";
-import type { Account, Transaction } from "../types";
+import type { Account, Transaction, NoteHistoryResult } from "../types";
 import type { ChartPoint } from "../composables/useChartData";
 
 defineProps<{
@@ -51,6 +52,7 @@ defineProps<{
   transactionTone: (transaction: Transaction) => string;
   getTransactionNote: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
+  onLoadNoteHistory?: (transactionId: string) => Promise<NoteHistoryResult>;
   onLoadMore: () => void;
   onLoadAll?: () => void | Promise<void>;
 }>();

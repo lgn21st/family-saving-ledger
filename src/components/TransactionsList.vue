@@ -1,8 +1,8 @@
 <template>
   <section class="surface-card p-5 sm:p-6" aria-labelledby="transactions-title">
     <div
-      :inert="Boolean(confirmingTransaction) || undefined"
-      :aria-hidden="confirmingTransaction ? 'true' : undefined"
+      :inert="Boolean(confirmingTransaction || noteTransaction) || undefined"
+      :aria-hidden="confirmingTransaction || noteTransaction ? 'true' : undefined"
     >
     <div class="flex items-start justify-between gap-4">
       <div>
@@ -122,6 +122,14 @@
                 >
                   {{ getTransactionNote(transaction) }}
                 </p>
+                <button
+                  v-if="(transaction.note_revision ?? 0) > 0"
+                  type="button"
+                  class="button-quiet min-h-11 text-xs"
+                  :aria-label="`查看备注修改记录：${getTransactionNote(transaction)}`"
+                  @pointerdown.stop
+                  @click="openNote(transaction, true)"
+                >已修改</button>
                 <time
                   class="mt-1.5 block text-xs text-slate-500"
                   :datetime="transaction.created_at"
@@ -141,16 +149,42 @@
                 >
                   {{ formatSignedAmount(transaction) }}
                 </span>
-                <button
-                  v-if="canVoid && !transaction.is_void"
-                  type="button"
-                  class="mt-2 min-h-11 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 opacity-100 transition-[background-color,color,opacity] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-3 focus-visible:ring-rose-100 focus-visible:outline-none sm:min-h-0 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                  :aria-label="voidButtonLabel(transaction)"
-                  @pointerdown.stop
-                  @click="requestVoid(transaction)"
-                >
-                  撤销交易
-                </button>
+                <div v-if="canVoid && !transaction.is_void" class="relative mt-1" data-transaction-actions>
+                  <button
+                    type="button"
+                    class="button-quiet min-h-11 min-w-11 text-lg"
+                    :aria-label="actionsLabel(transaction)"
+                    :aria-expanded="menuTransactionId === transaction.id"
+                    :aria-controls="`transaction-actions-${transaction.id}`"
+                    :disabled="loading"
+                    @pointerdown.stop
+                    @click="openActions(transaction)"
+                    @keydown.esc.stop.prevent="closeActions"
+                  >⋯</button>
+                  <div
+                    v-if="menuTransactionId === transaction.id"
+                    :id="`transaction-actions-${transaction.id}`"
+                    role="group"
+                    aria-label="交易操作"
+                    class="absolute right-0 top-full z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg"
+                    @pointerdown.stop
+                    @keydown.esc.stop.prevent="closeActions"
+                  >
+                    <button
+                      v-if="transaction.type !== 'interest'"
+                      type="button"
+                      class="button-quiet min-h-11 w-full justify-start rounded-lg text-left font-medium"
+                      :disabled="!canEditNote(transaction)"
+                      @click="openNote(transaction, false)"
+                    >修改备注</button>
+                    <p v-if="transaction.related_account_id && !canEditNote(transaction)" class="px-3 py-2 text-xs text-slate-500">旧备注无法自动分离</p>
+                    <button
+                      type="button"
+                      class="button-quiet min-h-11 w-full justify-start rounded-lg text-left font-medium text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                      @click="requestVoid(transaction)"
+                    >撤销交易</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -169,6 +203,17 @@
     </template>
     </div>
 
+    <TransactionNoteDialog
+      v-if="noteTransaction"
+      :transaction="noteTransaction"
+      :read-only="noteReadOnly"
+      :format-signed-amount="formatSignedAmount"
+      :get-transaction-context="getTransactionContext"
+      :format-timestamp="formatTimestamp"
+      :on-update-note="onUpdateNote"
+      :on-load-note-history="onLoadNoteHistory"
+      :on-close="closeNote"
+    />
     <ConfirmActionDialog
       v-if="confirmingTransaction"
       title-id="void-dialog-title"
@@ -205,10 +250,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, toRefs } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRefs } from "vue";
 import ConfirmActionDialog from "./ConfirmActionDialog.vue";
+import TransactionNoteDialog from "./TransactionNoteDialog.vue";
 import TransactionIcon from "./TransactionIcon.vue";
-import type { Transaction } from "../types";
+import type { Transaction, UpdateTransactionNoteInput, TransactionNoteResult, NoteHistoryResult } from "../types";
 
 const props = defineProps<{
   transactions: Transaction[];
@@ -223,6 +269,8 @@ const props = defineProps<{
   formatTimestamp: (value: string) => string;
   onLoadMore: () => void;
   onLoadAll?: () => void | Promise<void>;
+  onUpdateNote?: (input: UpdateTransactionNoteInput) => Promise<TransactionNoteResult>;
+  onLoadNoteHistory?: (transactionId: string) => Promise<NoteHistoryResult>;
   onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;
 }>();
 
@@ -238,6 +286,50 @@ const pressTargetId = ref<string | null>(null);
 const startX = ref(0);
 const startY = ref(0);
 const confirmingTransaction = ref<Transaction | null>(null);
+const noteTransaction = ref<Transaction | null>(null);
+const noteReadOnly = ref(false);
+const menuTransactionId = ref<string | null>(null);
+const canEditNote = (transaction: Transaction) => Boolean(props.onUpdateNote) &&
+  !transaction.is_void && transaction.type !== 'interest' &&
+  (!transaction.related_account_id || transaction.note_prefix != null);
+const actionsLabel = (transaction: Transaction) =>
+  `更多操作：${props.getTransactionNote(transaction)}，${props.formatSignedAmount(transaction)}，${formatCompactTimestamp(transaction.created_at)}`;
+const restoreFocus = async () => {
+  await nextTick();
+  if (returnFocusElement.value?.isConnected) returnFocusElement.value.focus({ preventScroll: true });
+  else searchInput.value?.focus({ preventScroll: true });
+  returnFocusElement.value = null;
+};
+const openActions = async (transaction: Transaction) => {
+  if (!canVoid?.value || props.loading || transaction.is_void) return;
+  if (menuTransactionId.value === transaction.id) { closeActions(); return; }
+  menuTransactionId.value = transaction.id;
+  await nextTick();
+  const menu = document.getElementById(`transaction-actions-${transaction.id}`);
+  returnFocusElement.value = menu?.previousElementSibling as HTMLElement | null;
+  menu?.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus({ preventScroll: true });
+};
+const closeActions = () => {
+  menuTransactionId.value = null;
+  void restoreFocus();
+};
+const dismissActions = (event: PointerEvent) => {
+  if (menuTransactionId.value && event.target instanceof Element &&
+    !event.target.closest('[data-transaction-actions]')) menuTransactionId.value = null;
+};
+onMounted(() => document.addEventListener('pointerdown', dismissActions));
+onBeforeUnmount(() => document.removeEventListener('pointerdown', dismissActions));
+const openNote = (transaction: Transaction, readOnly: boolean) => {
+  if (!readOnly && (!canVoid?.value || !canEditNote(transaction))) return;
+  if (menuTransactionId.value === null) returnFocusElement.value = document.activeElement as HTMLElement | null;
+  menuTransactionId.value = null;
+  noteReadOnly.value = readOnly;
+  noteTransaction.value = transaction;
+};
+const closeNote = () => {
+  noteTransaction.value = null;
+  void restoreFocus();
+};
 const searchInput = ref<HTMLInputElement | null>(null);
 const searchTerm = ref("");
 const searchAllHistory = async () => {
@@ -264,8 +356,6 @@ const compactTimestampFormatter = new Intl.DateTimeFormat("zh-CN", {
   minute: "2-digit",
 });
 const formatCompactTimestamp = (value: string) => compactTimestampFormatter.format(new Date(value));
-const voidButtonLabel = (transaction: Transaction) =>
-  `撤销交易：${props.getTransactionNote(transaction)}，${props.formatSignedAmount(transaction)}，${formatCompactTimestamp(transaction.created_at)}`;
 
 const filteredTransactions = computed(() => {
   const query = searchTerm.value.trim().toLocaleLowerCase("zh-CN");
@@ -303,7 +393,8 @@ const clearPressTimer = () => {
 
 const requestVoid = (transaction: Transaction) => {
   if (!canVoid?.value || transaction.is_void) return;
-  returnFocusElement.value = document.activeElement as HTMLElement | null;
+  if (menuTransactionId.value === null) returnFocusElement.value = document.activeElement as HTMLElement | null;
+  menuTransactionId.value = null;
   confirmingTransaction.value = transaction;
 };
 
@@ -315,7 +406,7 @@ const startLongPress = (transaction: Transaction, event: PointerEvent) => {
   clearPressTimer();
   pressTimer.value = window.setTimeout(() => {
     pressTimer.value = null;
-    if (pressTargetId.value === transaction.id) requestVoid(transaction);
+    if (pressTargetId.value === transaction.id) void openActions(transaction);
   }, LONG_PRESS_MS);
 };
 
@@ -335,9 +426,7 @@ const handlePointerMove = (event: PointerEvent) => {
 
 const cancelConfirm = async () => {
   confirmingTransaction.value = null;
-  await nextTick();
-  returnFocusElement.value?.focus();
-  returnFocusElement.value = null;
+  await restoreFocus();
 };
 
 const confirmVoid = async () => {
@@ -345,8 +434,6 @@ const confirmVoid = async () => {
     await onVoidTransaction.value(confirmingTransaction.value);
   }
   confirmingTransaction.value = null;
-  await nextTick();
-  returnFocusElement.value?.focus();
-  returnFocusElement.value = null;
+  await restoreFocus();
 };
 </script>

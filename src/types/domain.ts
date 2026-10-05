@@ -36,6 +36,9 @@ export type Transaction = {
   amount: number;
   currency: string;
   note: string | null;
+  user_note?: string | null;
+  note_prefix?: string | null;
+  note_revision?: number;
   related_account_id: string | null;
   transfer_group_id?: string | null;
   created_by: string;
@@ -47,6 +50,28 @@ export type Transaction = {
 };
 
 export type StatusTone = "success" | "error";
+
+export type TransactionNoteEdit = {
+  id: string;
+  transaction_id: string;
+  revision: number;
+  old_note: string | null;
+  new_note: string | null;
+  updated_by: string;
+  updated_by_name: string;
+  updated_at: string;
+};
+export type UpdateTransactionNoteInput = {
+  transactionId: string;
+  note: string;
+  expectedRevision: number;
+};
+export type TransactionNoteResult =
+  | { ok: true; transactions: Transaction[] }
+  | { ok: false; message: string; latest?: Transaction };
+export type NoteHistoryResult =
+  | { ok: true; edits: TransactionNoteEdit[] }
+  | { ok: false; message: string };
 
 export type LedgerActionResult =
   { ok: true; warning?: string } | { ok: false; message: string; uncertain?: boolean };

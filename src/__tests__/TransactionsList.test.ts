@@ -53,6 +53,8 @@ describe("TransactionsList", () => {
     vi.advanceTimersByTime(600);
     await nextTick();
 
+    expect(screen.queryByRole("heading", { name: "撤销这笔交易？" })).toBeNull();
+    await fireEvent.click(screen.getByRole("button", { name: "撤销交易" }));
     expect(screen.getByRole("heading", { name: "撤销这笔交易？" })).toBeTruthy();
     await fireEvent.click(screen.getByRole("button", { name: "确认撤销" }));
     expect(onVoidTransaction).toHaveBeenCalledWith(baseTransaction);
@@ -128,8 +130,9 @@ describe("TransactionsList", () => {
       },
     });
 
-    const trigger = screen.getByRole("button", { name: /^撤销交易：/ });
+    const trigger = screen.getByRole("button", { name: /^更多操作：/ });
     await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: "撤销交易" }));
     const cancel = screen.getByRole("button", { name: "取消" });
     expect(document.activeElement).toBe(cancel);
 
@@ -150,7 +153,8 @@ describe("TransactionsList", () => {
         formatTimestamp: () => "2026/9/30 12:00", onLoadMore: vi.fn(), onVoidTransaction,
       },
     });
-    await user.click(screen.getByRole("button", { name: /^撤销交易：/ }));
+    await user.click(screen.getByRole("button", { name: /^更多操作：/ }));
+    await user.click(screen.getByRole("button", { name: "撤销交易" }));
     const dialog = within(screen.getByRole("dialog"));
     expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/小乐.*10.00 CNY.*家务奖励.*2026\/9\/30/);
     for (const text of ["小乐 · 零花钱 · CNY", "+10.00 CNY", "家务奖励", "2026/9/30 12:00"]) {
@@ -211,4 +215,58 @@ describe("TransactionsList loading and search feedback", () => {
     expect(screen.queryByRole("button", { name: "搜索全部历史" })).toBeNull();
   });
 
+});
+
+describe('TransactionsList note actions', () => {
+  const noteProps = () => ({
+    transactions: [{ ...baseTransaction, user_note: '测试', note_revision: 0 }], hasMore: true, loading: false, canVoid: true,
+    transactionLabels: { deposit: '存入', withdrawal: '取出', transfer_in: '转入', transfer_out: '转出', interest: '利息' },
+    formatSignedAmount: () => '+10.00 CNY', transactionTone: () => 'text-emerald-600',
+    getTransactionNote: (row: Transaction) => row.note ?? '—', formatTimestamp: (value: string) => value,
+    onLoadMore: vi.fn(), onVoidTransaction: vi.fn(),
+    onUpdateNote: vi.fn(async () => ({ ok: true as const, transactions: [] })),
+    onLoadNoteHistory: vi.fn(async () => ({ ok: true as const, edits: [] })),
+  });
+  it('opens the editor from the menu and restores focus, filters and loaded rows after saving', async () => {
+    const user = userEvent.setup();
+    const props = noteProps();
+    render(TransactionsList, { props });
+    await user.type(screen.getByRole('searchbox'), '测试');
+    const trigger = screen.getByRole('button', { name: /^更多操作：/ });
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('button', { name: '修改备注' }));
+    expect(screen.getByRole('heading', { name: '修改备注' })).toBeInTheDocument();
+    await user.clear(screen.getByRole('textbox', { name: '备注' }));
+    await user.type(screen.getByRole('textbox', { name: '备注' }), '测试修正');
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(trigger).toHaveFocus();
+    expect(screen.getByRole('searchbox')).toHaveValue('测试');
+    expect(screen.getByRole('button', { name: '加载更多' })).toBeInTheDocument();
+    expect(props.onVoidTransaction).not.toHaveBeenCalled();
+  });
+  it('offers children read-only note history', async () => {
+    const user = userEvent.setup();
+    const props = noteProps();
+    render(TransactionsList, { props: { ...props, canVoid: false,
+      transactions: [{ ...baseTransaction, note_revision: 1 }] } });
+    expect(screen.queryByRole('button', { name: /^更多操作：/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /^查看备注修改记录/ }));
+    expect(screen.getByRole('heading', { name: '备注修改记录' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    await user.click(screen.getByRole('button', { name: '关闭' }));
+  });
+  it('closes the actions with Escape and leaves no edit entry on voided rows', async () => {
+    const user = userEvent.setup();
+    const props = noteProps();
+    const { rerender } = render(TransactionsList, { props });
+    const trigger = screen.getByRole('button', { name: /^更多操作：/ });
+    await user.click(trigger);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: '交易操作' })).toBeNull();
+    expect(trigger).toHaveFocus();
+    await rerender({ transactions: [{ ...baseTransaction, is_void: true }] });
+    expect(screen.queryByRole('button', { name: /^更多操作：/ })).toBeNull();
+  });
 });

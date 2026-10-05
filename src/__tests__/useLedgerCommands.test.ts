@@ -354,3 +354,38 @@ describe("useLedgerCommands", () => {
     ).toBe(newer?.requestId);
   });
 });
+
+
+describe("transaction note commands", () => {
+  it("submits the expected revision and original actor without triggering a balance/history reset", async () => {
+    const { commands, rpc, onChanged } = setup();
+    const row = { id: "txn-1", note: "新备注", note_revision: 1 };
+    rpc.mockResolvedValue({ data: { conflict: false, transactions: [row] }, error: null });
+    expect(await commands.updateTransactionNote({ transactionId: "txn-1", note: "新备注", expectedRevision: 0 }))
+      .toEqual({ ok: true, transactions: [row] });
+    expect(rpc).toHaveBeenCalledWith("update_transaction_note", {
+      p_transaction_id: "txn-1", p_note: "新备注", p_expected_revision: 0, p_updated_by: "parent",
+    });
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+  it("returns the current row on a conflict and maps readonly database rejections", async () => {
+    const { commands, rpc } = setup();
+    const latest = { id: "txn-1", note: "他人的备注", note_revision: 2 };
+    rpc.mockResolvedValueOnce({ data: { conflict: true, transactions: [latest] }, error: null });
+    const input = { transactionId: "txn-1", note: "我的备注", expectedRevision: 0 };
+    expect(await commands.updateTransactionNote(input)).toEqual({
+      ok: false, message: "备注已被修改，请核对最新内容后再保存。", latest,
+    });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "Cannot edit notes of voided or interest transactions" } });
+    expect(await commands.updateTransactionNote(input)).toEqual({ ok: false, message: "已作废交易和系统利息说明不能修改。" });
+  });
+  it("rejects children and reports uncertain transport results without claiming a successful save", async () => {
+    const { commands, rpc, user } = setup();
+    const input = { transactionId: "txn-1", note: "备注", expectedRevision: 0 };
+    rpc.mockRejectedValueOnce(new Error("Offline"));
+    expect(await commands.updateTransactionNote(input)).toEqual({ ok: false, message: "未能确认保存结果，请重试核对最新备注。" });
+    user.value = { id: "child", name: "孩子", role: "child" };
+    expect((await commands.updateTransactionNote(input)).ok).toBe(false);
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});

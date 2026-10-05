@@ -6,7 +6,8 @@ import {
   watch,
   type Ref,
 } from "vue";
-import type { Account, AppUser, SupabaseClient, Transaction } from "../types";
+import type { Account, AppUser, SupabaseClient, Transaction, TransactionNoteEdit,
+  NoteHistoryResult, UpdateTransactionNoteInput, TransactionNoteResult } from "../types";
 import type { LedgerCommands } from "./useLedgerCommands";
 import type { Feedback } from "../features/contracts";
 import { useTransactions } from "./useTransactions";
@@ -23,6 +24,7 @@ export const useAccountHistory = (
     selectedAccount: Readonly<Ref<Account | null>>;
     timeZone: Ref<string>;
     voidTransaction: LedgerCommands["voidTransaction"];
+    updateTransactionNote?: LedgerCommands["updateTransactionNote"];
   },
 ) => {
   const display = useTransactionDisplay(params);
@@ -54,6 +56,7 @@ export const useAccountHistory = (
   const voiding = ref(false);
   let active = true;
   let voidGeneration = 0;
+  let noteGeneration = 0;
   if (getCurrentScope())
     onScopeDispose(() => {
       active = false;
@@ -65,11 +68,15 @@ export const useAccountHistory = (
     pages.clearTransactions();
     return true;
   };
-  watch(() => params.selectedAccount.value?.id, refresh);
+  watch(() => params.selectedAccount.value?.id, () => {
+    noteGeneration += 1;
+    void refresh();
+  });
   watch(
     params.user,
     () => {
       voidGeneration += 1;
+      noteGeneration += 1;
       voiding.value = false;
       pages.clearTransactions();
     },
@@ -106,6 +113,39 @@ export const useAccountHistory = (
       if (generation === voidGeneration) voiding.value = false;
     }
   };
+  const handleUpdateTransactionNote = async (input: UpdateTransactionNoteInput): Promise<TransactionNoteResult> => {
+    const actor = params.user.value;
+    const accountId = params.selectedAccount.value?.id;
+    const generation = noteGeneration;
+    if (actor?.role !== "parent" || !params.updateTransactionNote ||
+      !pages.transactions.value.some(row => row.id === input.transactionId && row.account_id === accountId))
+      return { ok: false, message: "当前交易不可编辑，请重新打开账本。" };
+    const result = await params.updateTransactionNote(input);
+    if (!active || generation !== noteGeneration || params.user.value !== actor || params.selectedAccount.value?.id !== accountId)
+      return { ok: false, message: "账户或会话已切换，请重新打开账本。" };
+    const updated = result.ok ? result.transactions : result.latest ? [result.latest] : [];
+    const replace = (rows: Transaction[]) => rows.map(row => {
+      const next = updated.find(next => next.id === row.id);
+      return next && (next.note_revision ?? 0) >= (row.note_revision ?? 0) ? next : row;
+    });
+    pages.transactions.value = replace(pages.transactions.value);
+    pages.chartTransactions.value = replace(pages.chartTransactions.value);
+    if (result.ok) params.setSuccessStatus("备注已更新。");
+    return result;
+  };
+  const loadNoteHistory = async (transactionId: string): Promise<NoteHistoryResult> => {
+    const actor = params.user.value;
+    try {
+      const { data, error } = await params.supabase.from("transaction_note_edits")
+        .select("*").eq("transaction_id", transactionId).order("revision", { ascending: false });
+      if (!active || params.user.value !== actor)
+        return { ok: false, message: "会话已切换，请重新打开账本。" };
+      if (error) return { ok: false, message: "修改记录加载失败，请重试。" };
+      return { ok: true, edits: (data ?? []) as TransactionNoteEdit[] };
+    } catch {
+      return { ok: false, message: "修改记录加载失败，请重试。" };
+    }
+  };
   return {
     ...display,
     chartPoints,
@@ -123,5 +163,7 @@ export const useAccountHistory = (
     handleLoadMoreForSelected,
     handleLoadAllForSelected,
     handleVoidTransaction,
+    handleUpdateTransactionNote,
+    loadNoteHistory,
   };
 };

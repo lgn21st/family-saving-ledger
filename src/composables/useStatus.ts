@@ -2,6 +2,11 @@ import { getCurrentInstance, onBeforeUnmount, ref, watch } from "vue";
 import type { StatusTone } from "../types";
 
 export const mapErrorMessage = (message: string) => {
+  if (message.includes("Cannot edit notes of voided or interest transactions"))
+    return "已作废交易和系统利息说明不能修改。";
+  if (message.includes("Legacy transfer note cannot be separated safely"))
+    return "这笔旧转账的备注无法自动分离，请保留原记录。";
+  if (message.includes("Transaction not found")) return "交易记录不存在，请刷新账本。";
   if (message.includes("Insufficient balance")) return "余额不足。";
   if (message.includes("Account not found or inactive")) return "账户不可用。";
   if (message.includes("Account balance must be zero before closing"))

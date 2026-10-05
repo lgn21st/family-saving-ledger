@@ -121,7 +121,7 @@ describe("AccountDetailPanel", () => {
     });
 
     expect(screen.queryByText("零钱")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^撤销交易：/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^更多操作：/ })).toBeNull();
     await user.click(screen.getByRole("button", { name: "加载更多" }));
     expect(onLoadMore).toHaveBeenCalled();
   });

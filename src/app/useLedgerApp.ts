@@ -63,6 +63,7 @@ export const useLedgerApp = () => {
     selectedAccount: selection.selectedAccount,
     timeZone: data.ledgerTimeZone,
     voidTransaction: commands.voidTransaction,
+    updateTransactionNote: commands.updateTransactionNote,
     ...featureFeedback,
   });
   const refreshState = ref<"idle" | "loading" | "error">("idle");

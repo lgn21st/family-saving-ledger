@@ -66,7 +66,9 @@
       :get-transaction-context="getTransactionContext"
       :format-timestamp="formatTimestamp"
       :on-load-more="handleLoadMoreForSelected"
+      :on-load-note-history="loadNoteHistory"
       :on-load-all="handleLoadAllForSelected"
+      :on-update-note="handleUpdateTransactionNote"
       :on-void-transaction="handleVoidTransaction"
     >
       <template #entry="{ onClose }">
@@ -93,6 +95,7 @@
       :get-transaction-note="getTransactionNote"
       :format-timestamp="formatTimestamp"
       :on-load-more="handleLoadMoreForSelected"
+      :on-load-note-history="loadNoteHistory"
       :on-load-all="handleLoadAllForSelected"
     />
   </AppShell>
@@ -159,6 +162,8 @@ const {
   handleLoadMoreForSelected,
   handleLoadAllForSelected,
   handleVoidTransaction,
+  handleUpdateTransactionNote,
+  loadNoteHistory,
   groupedAccounts,
   members,
   accountManagement,

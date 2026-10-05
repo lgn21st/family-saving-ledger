@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import App from "../App.vue";
 import { vi } from "vitest";
-import type { Account, AppUser, Transaction } from "../types";
+import type { Account, AppUser, Transaction, TransactionNoteEdit } from "../types";
 import { accountFixture, transactionFixture } from "../test/setup";
 import { flushPromises } from "@vue/test-utils";
 
@@ -22,6 +22,7 @@ type DataStore = {
   app_users: AppUser[];
   accounts: Account[];
   transactions: Transaction[];
+  transaction_note_edits: TransactionNoteEdit[];
   settings: Settings[];
   account_balances: AccountBalance[];
 };
@@ -31,6 +32,7 @@ function createDefaultData() {
     app_users: [],
     accounts: [],
     transactions: [],
+    transaction_note_edits: [],
     settings: [{ id: "settings", annual_rate: 5, timezone: "Asia/Singapore" }],
     account_balances: [],
   };
@@ -215,6 +217,17 @@ function createSupabaseMock() {
       data: unknown;
       error: { message: string; code?: string } | null;
     }> => {
+      if (fnName === "update_transaction_note") {
+        const row = dataStore.transactions.find(row => row.id === payload.p_transaction_id)!;
+        if ((row.note_revision ?? 0) !== payload.p_expected_revision)
+          return Promise.resolve({ data: { conflict: true, transactions: [row] }, error: null });
+        const note = String(payload.p_note).trim() || null;
+        const updated = { ...row, note, user_note: note, note_revision: (row.note_revision ?? 0) + 1 };
+        dataStore.transactions = dataStore.transactions.map(row => row.id === updated.id ? updated : row);
+        dataStore.transaction_note_edits.push({ id: nextId(), transaction_id: row.id, revision: updated.note_revision,
+          old_note: row.note, new_note: note, updated_by: String(payload.p_updated_by), updated_by_name: "爸爸", updated_at: now() });
+        return Promise.resolve({ data: { conflict: false, transactions: [updated] }, error: null });
+      }
       if (fnName === "apply_transaction") {
         const accountId = String(payload.p_account_id);
         const type = String(payload.p_type) as Transaction["type"];
@@ -1144,6 +1157,42 @@ describe("Home Bank UI", () => {
     expect(await screen.findByText("零花钱发放")).toBeInTheDocument();
   });
 
+  it("edits a loaded historical note in place, retains pagination/search, and opens its audit", async () => {
+    const rows = Array.from({ length: 12 }, (_, i) => transactionFixture({ id: `note-${i}`, amount: 20,
+      note: `奖励记录${i}`, user_note: `奖励记录${i}`, note_revision: 0,
+      created_at: `2024-01-${String(i + 1).padStart(2, '0')}T10:00:00Z` }));
+    loadMockData({
+      app_users: [{ id: "parent", name: "爸爸", role: "parent", pin: "1234" },
+        { id: "child-1", name: "小女儿", role: "child", pin: "1111" }],
+      accounts: [accountFixture({ name: "零花钱" })], transactions: rows,
+    });
+    render(App);
+    const user = userEvent.setup();
+    await loginAs(user, "爸爸", "1234");
+    await selectChild(user, "小女儿");
+    await selectAccount(user, "零花钱");
+    await user.click(await screen.findByRole("button", { name: "加载更多" }));
+    await screen.findByText("奖励记录0");
+    await user.type(screen.getByRole("searchbox"), "奖励记录0");
+    const from = vi.spyOn(supabaseMock.supabase, "from");
+    await user.click(screen.getByRole("button", { name: /^更多操作：奖励记录0/ }));
+    await user.click(screen.getByRole("button", { name: "修改备注" }));
+    await user.clear(screen.getByRole("textbox", { name: "备注" }));
+    await user.type(screen.getByRole("textbox", { name: "备注" }), "奖励记录0（已更正）");
+    await user.click(screen.getByRole("button", { name: "保存" }));
+    expect(await screen.findByText("奖励记录0（已更正）")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox")).toHaveValue("奖励记录0");
+    expect(screen.getByText("12 笔已加载")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(from).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /^查看备注修改记录/ }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(await dialog.findByText("奖励记录0")).toBeInTheDocument();
+    expect(dialog.getByText("奖励记录0（已更正）")).toBeInTheDocument();
+    expect(dialog.getByText(/^爸爸 ·/)).toBeInTheDocument();
+    expect(from).toHaveBeenCalledWith("transaction_note_edits");
+  });
+
   it("voids a deposit through the database RPC", async () => {
     loadMockData({
       app_users: [
@@ -1185,7 +1234,8 @@ describe("Home Bank UI", () => {
     await selectAccount(user, "零花钱");
 
     expect(await screen.findByText("可作废存款")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^撤销交易：/ }));
+    await user.click(screen.getByRole("button", { name: /^更多操作：/ }));
+    await user.click(screen.getByRole("button", { name: "撤销交易" }));
     await user.click(screen.getByRole("button", { name: "确认撤销" }));
 
     expect(await screen.findByText("已作废")).toBeInTheDocument();
@@ -1506,7 +1556,7 @@ describe("Home Bank UI", () => {
     ).toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "记一笔" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^撤销交易/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^更多操作/ })).not.toBeInTheDocument();
     expect(await screen.findByRole("combobox", { name: "选择账户" })).toHaveValue("acc-1");
     expect(screen.getByText("家务奖励")).toBeInTheDocument();
   });
@@ -1522,7 +1572,7 @@ describe("Home Bank UI", () => {
     await loginAs(user, "小乐", "1111");
     expect(await screen.findByText("本月比月初多 15.00 CNY")).toBeInTheDocument();
     expect(screen.getByText("10 笔已加载")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^撤销交易/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^更多操作/ })).toBeNull();
   });
 
   it("renders interest transaction with interest_month", async () => {

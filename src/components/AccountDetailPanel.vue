@@ -13,6 +13,8 @@
       :get-transaction-note="getTransactionNote"
       :get-transaction-context="getTransactionContext"
       :format-timestamp="formatTimestamp"
+      :on-load-note-history="onLoadNoteHistory"
+      :on-update-note="onUpdateNote"
       :on-load-more="onLoadMore"
       :on-load-all="onLoadAll"
       :on-void-transaction="onVoidTransaction"
@@ -25,7 +27,7 @@
 <script setup lang="ts">
 import AccountTrendCard from "./AccountTrendCard.vue";
 import TransactionsList from "./TransactionsList.vue";
-import type { Account, Transaction } from "../types";
+import type { Account, Transaction, UpdateTransactionNoteInput, TransactionNoteResult, NoteHistoryResult } from "../types";
 import type { ChartPoint } from "../composables/useChartData";
 
 defineProps<{
@@ -41,6 +43,8 @@ defineProps<{
   getTransactionNote: (transaction: Transaction) => string;
   getTransactionContext?: (transaction: Transaction) => string;
   formatTimestamp: (value: string) => string;
+  onLoadNoteHistory?: (transactionId: string) => Promise<NoteHistoryResult>;
+  onUpdateNote?: (input: UpdateTransactionNoteInput) => Promise<TransactionNoteResult>;
   onLoadMore: () => void;
   onLoadAll?: () => void | Promise<void>;
   onVoidTransaction?: (transaction: Transaction) => void | Promise<void>;

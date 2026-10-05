@@ -8,6 +8,9 @@ import type {
   TransactionInput,
   TransferInput,
   LedgerChange,
+  UpdateTransactionNoteInput,
+  TransactionNoteResult,
+  Transaction,
 } from "../types";
 import { mapErrorMessage } from "./useStatus";
 
@@ -180,6 +183,32 @@ export const useLedgerCommands = (params: {
 
   return {
     pendingWrite: computed(() => pending.value),
+    updateTransactionNote: async (input: UpdateTransactionNoteInput): Promise<TransactionNoteResult> => {
+      const actor = params.user.value;
+      if (!actor || actor.role !== "parent" || actor.is_active === false)
+        return { ok: false, message: "仅家长可以执行此操作。" };
+      try {
+        const { data, error } = await params.supabase.rpc("update_transaction_note", {
+          p_transaction_id: input.transactionId,
+          p_note: input.note,
+          p_expected_revision: input.expectedRevision,
+          p_updated_by: actor.id,
+        });
+        if (error) return { ok: false, message: mapErrorMessage(error.message) };
+        const result = data as { conflict: boolean; transactions: Transaction[] } | null;
+        if (!result || !Array.isArray(result.transactions) ||
+          !result.transactions.some(row => row.id === input.transactionId))
+          return { ok: false, message: "未能确认保存结果，请重试核对最新备注。" };
+        if (result.conflict) return {
+          ok: false,
+          message: "备注已被修改，请核对最新内容后再保存。",
+          latest: result.transactions.find(row => row.id === input.transactionId),
+        };
+        return { ok: true, transactions: result.transactions };
+      } catch {
+        return { ok: false, message: "未能确认保存结果，请重试核对最新备注。" };
+      }
+    },
     retryPending: async (): Promise<LedgerActionResult> => {
       const receipt = pending.value;
       if (!receipt || receipt.actorId !== params.user.value?.id)

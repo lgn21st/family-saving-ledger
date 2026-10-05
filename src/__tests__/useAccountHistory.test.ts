@@ -169,3 +169,50 @@ describe("useAccountHistory", () => {
   });
 
 });
+
+describe('account note corrections', () => {
+  const setupNotes = () => {
+    const user = ref<AppUser | null>({ id: 'parent', name: '爸爸', role: 'parent' });
+    const selectedAccount = ref(account);
+    const from = vi.fn(() => ({ select: () => queryMock(() => ({ data: [transaction], count: 1, error: null })) }));
+    const updateTransactionNote = vi.fn(async (): Promise<import('../types').TransactionNoteResult> => ({ ok: true, transactions: [{ ...transaction, note: '更正', user_note: '更正', note_revision: 1 }] }));
+    const setSuccessStatus = vi.fn();
+    const scope = effectScope();
+    const history = scope.run(() => useAccountHistory({
+      supabase: { from, rpc: vi.fn(async () => ({ data: 0, error: null })) }, user, selectedAccount,
+      accounts: ref([account]), childUsers: ref([]), timeZone: ref('Asia/Singapore'),
+      voidTransaction: vi.fn(), updateTransactionNote, setSuccessStatus, setErrorStatus: vi.fn(),
+    }))!;
+    return { scope, history, updateTransactionNote, from, user, selectedAccount, setSuccessStatus };
+  };
+  it('patches the loaded row without re-reading pages and exposes conflicts without claiming success', async () => {
+    const { history, from, updateTransactionNote, setSuccessStatus, scope } = setupNotes();
+    await history.refresh();
+    from.mockClear();
+    const input = { transactionId: transaction.id, note: '更正', expectedRevision: 0 };
+    expect((await history.handleUpdateTransactionNote(input)).ok).toBe(true);
+    expect(history.pagedTransactions.value[0]?.note).toBe('更正');
+    expect(from).not.toHaveBeenCalled();
+    expect(setSuccessStatus).toHaveBeenCalledTimes(1);
+    updateTransactionNote.mockResolvedValueOnce({ ok: false, message: '冲突', latest: { ...transaction, note: '最新', note_revision: 2 } });
+    expect((await history.handleUpdateTransactionNote(input)).ok).toBe(false);
+    expect(history.pagedTransactions.value[0]?.note).toBe('最新');
+    expect(setSuccessStatus).toHaveBeenCalledTimes(1);
+    scope.stop();
+  });
+  it('ignores old-session writes and rejects editing a row outside the loaded account', async () => {
+    const { history, updateTransactionNote, user, setSuccessStatus, scope } = setupNotes();
+    await history.refresh();
+    expect((await history.handleUpdateTransactionNote({ transactionId: 'other', note: '更正', expectedRevision: 0 })).ok).toBe(false);
+    expect(updateTransactionNote).not.toHaveBeenCalled();
+    let finish!: (result: import('../types').TransactionNoteResult) => void;
+    updateTransactionNote.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const saving = history.handleUpdateTransactionNote({ transactionId: transaction.id, note: '更正', expectedRevision: 0 });
+    user.value = { id: 'other', name: '妈妈', role: 'parent' };
+    finish({ ok: true, transactions: [{ ...transaction, note: '更正' }] });
+    expect((await saving).ok).toBe(false);
+    expect(setSuccessStatus).not.toHaveBeenCalled();
+    expect(history.pagedTransactions.value).toEqual([]);
+    scope.stop();
+  });
+});

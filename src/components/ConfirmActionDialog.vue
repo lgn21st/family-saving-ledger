@@ -22,18 +22,19 @@
       </p>
       <p v-if="detail" class="mt-2 text-sm leading-6 text-slate-500">{{ detail }}</p>
       <div v-if="$slots.default" :id="`${descriptionId}-details`"><slot /></div>
-      <div class="mt-6 grid grid-cols-2 gap-3">
+      <div class="mt-6 grid gap-3" :class="hideConfirm ? 'grid-cols-1' : 'grid-cols-2'">
         <button ref="cancelButton" type="button" class="button-secondary min-h-11" :disabled="isBusy" @click="requestCancel">
-          取消
+          {{ cancelLabel }}
         </button>
         <button
+          v-if="!hideConfirm"
           type="button"
           class="min-h-11 rounded-2xl px-4 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
           :class="tone === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand-700 hover:bg-brand-800'"
-          :disabled="isBusy"
+          :disabled="isBusy || confirmDisabled"
           @click="confirm"
         >
-          {{ isBusy ? "处理中…" : confirmLabel }}
+          {{ isBusy ? busyLabel : confirmLabel }}
         </button>
       </div>
     </section>
@@ -54,6 +55,11 @@ const props = withDefaults(defineProps<{
   confirmLabel: string;
   tone?: "danger" | "primary";
   loading?: boolean;
+  confirmDisabled?: boolean;
+  hideConfirm?: boolean;
+  cancelLabel?: string;
+  busyLabel?: string;
+  focusInput?: boolean;
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
 }>(), {
@@ -61,6 +67,11 @@ const props = withDefaults(defineProps<{
   detail: "",
   tone: "danger",
   loading: false,
+  confirmDisabled: false,
+  hideConfirm: false,
+  cancelLabel: "取消",
+  busyLabel: "处理中…",
+  focusInput: false,
 });
 
 const confirming = ref(false);
@@ -69,7 +80,7 @@ const requestCancel = () => {
   if (!isBusy.value) props.onCancel();
 };
 const confirm = async () => {
-  if (isBusy.value) return;
+  if (isBusy.value || props.confirmDisabled || props.hideConfirm) return;
   confirming.value = true;
   try {
     await props.onConfirm();
@@ -102,7 +113,8 @@ onMounted(async () => {
     appRoot.setAttribute("aria-hidden", "true");
   }
   await nextTick();
-  cancelButton.value?.focus();
+  const input = props.focusInput ? dialogElement.value?.querySelector<HTMLElement>("input, textarea") : null;
+  (input ?? cancelButton.value)?.focus();
 });
 
 onBeforeUnmount(() => {
@@ -121,7 +133,7 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
   if (event.key !== "Tab" || !dialogElement.value) return;
   const controls = Array.from(dialogElement.value.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
   ));
   const first = controls[0];
   const last = controls[controls.length - 1];
