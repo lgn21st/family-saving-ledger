@@ -10,7 +10,10 @@ import { NavigationRoute, registerRoute } from "workbox-routing";
 declare let self: ServiceWorkerGlobalScope;
 
 clientsClaim();
-// Activate updates after every ledger page closes, preserving drafts and pending writes.
+// The page only requests activation when it can safely reload.
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
+});
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);

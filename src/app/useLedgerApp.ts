@@ -1,4 +1,5 @@
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch } from "vue";
+import { startPwaUpdates } from "./pwaUpdates";
 import { avatarOptions } from "../config";
 import { useAuth } from "../composables/useAuth";
 import { useLedgerData } from "../composables/useLedgerData";
@@ -66,6 +67,13 @@ export const useLedgerApp = () => {
     updateTransactionNote: commands.updateTransactionNote,
     ...featureFeedback,
   });
+  let stopPwaUpdates = () => {};
+  onMounted(() => {
+    if (import.meta.env.PROD) stopPwaUpdates = startPwaUpdates(() =>
+      !showSettings.value && !commands.pendingWrite.value && !auth.loading.value &&
+      !auth.loginPin.value && !document.querySelector('[role="dialog"]'),
+    );
+  });
   const refreshState = ref<"idle" | "loading" | "error">("idle");
   let active = true;
   let refreshingActor: AppUser | null = null;
@@ -121,6 +129,7 @@ export const useLedgerApp = () => {
   watch([user, data.ledgerTimeZone], scheduleNextDay);
   onScopeDispose(() => {
     active = false;
+    stopPwaUpdates();
     clearTimeout(dayTimer);
     document.removeEventListener("visibilitychange", resumeLedger);
     window.removeEventListener("online", resumeLedger);

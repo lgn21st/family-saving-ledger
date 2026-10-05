@@ -10,6 +10,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['icons/home-bank.svg', 'icons/apple-touch-icon.png', 'avatars/*.png'],
       strategies: 'injectManifest',
       srcDir: 'src',
