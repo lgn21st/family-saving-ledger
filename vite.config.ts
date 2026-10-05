@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     vue(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       injectRegister: false,
       includeAssets: ['icons/home-bank.svg', 'icons/apple-touch-icon.png', 'avatars/*.png'],
       strategies: 'injectManifest',

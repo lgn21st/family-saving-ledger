@@ -3,24 +3,12 @@ import { flushPromises } from '@vue/test-utils';
 import { startPwaUpdates } from '../app/pwaUpdates';
 
 const setup = (failRegistration = false) => {
-  const oldWorker = Object.assign(new EventTarget(), { state: 'activated', postMessage: vi.fn() });
-  const nextWorker = Object.assign(new EventTarget(), { state: 'installing', postMessage: vi.fn() });
-  const registration = Object.assign(new EventTarget(), {
-    installing: nextWorker as typeof nextWorker | null,
-    waiting: null as typeof nextWorker | null,
-    update: vi.fn(async () => {}),
-  });
-  const workers = Object.assign(new EventTarget(), {
-    controller: oldWorker as typeof oldWorker | null,
-    register: vi.fn(async () => registration),
-  });
+  const registration = { update: vi.fn(async () => {}) };
+  const workers = { register: vi.fn(async () => registration) };
   if (failRegistration) workers.register.mockRejectedValueOnce(new Error('offline'));
   vi.stubGlobal('navigator', { serviceWorker: workers, onLine: true });
-  vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
-  const reload = vi.fn();
-  let safe = true;
-  const stop = startPwaUpdates(() => safe, reload);
-  return { workers, nextWorker, registration, reload, stop, block: () => { safe = false; }, allow: () => { safe = true; } };
+  const stop = startPwaUpdates();
+  return { workers, registration, stop };
 };
 
 afterEach(() => {
@@ -30,8 +18,9 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('PWA updates', () => {
-  it('checks on launch, foreground, restored pages and restored network', async () => {
+describe('PWA update checks', () => {
+  it('checks on launch, foreground, restored pages, network restoration and every minute', async () => {
+    vi.useFakeTimers();
     const t = setup();
     try {
       await flushPromises();
@@ -43,54 +32,25 @@ describe('PWA updates', () => {
       await flushPromises();
       window.dispatchEvent(new Event('online'));
       await flushPromises();
-      expect(t.registration.update).toHaveBeenCalledTimes(4);
+      vi.advanceTimersByTime(60_000);
+      await flushPromises();
+      expect(t.registration.update).toHaveBeenCalledTimes(5);
     } finally { t.stop(); }
   });
-  it('activates a completed update and reloads once after the controller changes', async () => {
+  it('checks while a draft is open, even in the background', async () => {
     const t = setup();
     try {
       await flushPromises();
-      t.registration.waiting = t.nextWorker;
-      t.nextWorker.state = 'installed';
-      t.nextWorker.dispatchEvent(new Event('statechange'));
-      expect(t.nextWorker.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
-      expect(t.reload).not.toHaveBeenCalled();
-      t.workers.controller = t.nextWorker;
-      t.workers.dispatchEvent(new Event('controllerchange'));
-      t.workers.dispatchEvent(new Event('controllerchange'));
-      expect(t.reload).toHaveBeenCalledTimes(1);
+      const draft = document.createElement('div');
+      draft.setAttribute('role', 'dialog');
+      document.body.append(draft);
+      vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+      document.dispatchEvent(new Event('visibilitychange'));
+      await flushPromises();
+      expect(t.registration.update).toHaveBeenCalledTimes(2);
     } finally { t.stop(); }
   });
-  it('preserves drafts both before activation and when another page activates the update', async () => {
-    const t = setup();
-    try {
-      await flushPromises();
-      t.block();
-      t.registration.waiting = t.nextWorker;
-      t.nextWorker.dispatchEvent(new Event('statechange'));
-      expect(t.nextWorker.postMessage).not.toHaveBeenCalled();
-      t.workers.controller = t.nextWorker;
-      t.workers.dispatchEvent(new Event('controllerchange'));
-      expect(t.reload).not.toHaveBeenCalled();
-      t.allow();
-      document.body.append(document.createElement('div'));
-      await flushPromises();
-      expect(t.reload).toHaveBeenCalledTimes(1);
-    } finally { t.stop(); }
-  });
-  it('does not reload for the first offline installation', async () => {
-    const t = setup();
-    t.stop();
-    t.workers.controller = null;
-    const stop = startPwaUpdates(() => true, t.reload);
-    try {
-      await flushPromises();
-      t.workers.controller = t.nextWorker;
-      t.workers.dispatchEvent(new Event('controllerchange'));
-      expect(t.reload).not.toHaveBeenCalled();
-    } finally { stop(); }
-  });
-  it('retries failed registration on network restoration and survives failed update checks', async () => {
+  it('retries failed registration and failed update checks', async () => {
     const t = setup(true);
     try {
       await flushPromises();
@@ -103,29 +63,26 @@ describe('PWA updates', () => {
       window.dispatchEvent(new Event('online'));
       await flushPromises();
       expect(t.registration.update).toHaveBeenCalledTimes(3);
-      expect(t.reload).not.toHaveBeenCalled();
     } finally { t.stop(); }
   });
-  it('does not check or reload in the background and removes all listeners on disposal', async () => {
+  it('merges overlapping checks and removes listeners and timers on disposal', async () => {
     vi.useFakeTimers();
     const t = setup();
     try {
       await flushPromises();
-      vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
-      t.registration.waiting = t.nextWorker;
-      vi.advanceTimersByTime(60_000);
-      await flushPromises();
-      expect(t.registration.update).toHaveBeenCalledTimes(1);
-      expect(t.nextWorker.postMessage).not.toHaveBeenCalled();
-      t.stop();
-      vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+      let finish!: () => void;
+      t.registration.update.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
       window.dispatchEvent(new Event('online'));
-      t.workers.controller = t.nextWorker;
-      t.workers.dispatchEvent(new Event('controllerchange'));
+      window.dispatchEvent(new Event('pageshow'));
+      expect(t.registration.update).toHaveBeenCalledTimes(2);
+      finish();
+      await flushPromises();
+      t.stop();
+      window.dispatchEvent(new Event('online'));
+      document.dispatchEvent(new Event('visibilitychange'));
       vi.advanceTimersByTime(60_000);
       await flushPromises();
-      expect(t.registration.update).toHaveBeenCalledTimes(1);
-      expect(t.reload).not.toHaveBeenCalled();
+      expect(t.registration.update).toHaveBeenCalledTimes(2);
     } finally { t.stop(); }
   });
 });

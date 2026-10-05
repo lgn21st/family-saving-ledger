@@ -69,10 +69,7 @@ export const useLedgerApp = () => {
   });
   let stopPwaUpdates = () => {};
   onMounted(() => {
-    if (import.meta.env.PROD) stopPwaUpdates = startPwaUpdates(() =>
-      !showSettings.value && !commands.pendingWrite.value && !auth.loading.value &&
-      !auth.loginPin.value && !document.querySelector('[role="dialog"]'),
-    );
+    if (import.meta.env.PROD) stopPwaUpdates = startPwaUpdates();
   });
   const refreshState = ref<"idle" | "loading" | "error">("idle");
   let active = true;
