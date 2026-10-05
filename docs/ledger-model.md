@@ -5,6 +5,7 @@
 - `app_users`: parent/child role, PIN, avatar, active/archive audit fields.
 - `accounts`: child owner, creator, currency, active/close audit fields.
 - `transactions`: positive amount, currency, type, transfer links, interest month, request receipt and void audit fields.
+- `transaction_note_edits`: immutable-by-command note revisions, old/new user text, editor name snapshot and time.
 - `settings`: annual interest rate and timezone.
 - `interest_log`: per-account monthly interest audit.
 
@@ -26,6 +27,16 @@
 - Deposit/withdrawal and transfer RPCs accept an optional request UUID scoped to the active parent. The same ID and original inputs return the original transaction(s), including after voiding or closing; different inputs are rejected.
 - A transfer stores its receipt on the outgoing row. Failed writes leave no receipt; legacy callers may omit the ID.
 
+## Note corrections
+
+- Only active parents may edit notes; children may view revisions. Voided transactions and system interest notes cannot be edited.
+- Note edits preserve IDs, amount, currency, account, type, time, request ID and original request input; balances and interest are unaffected.
+- Each actual text change adds a revision and an audit row in the same transaction. Empty notes are normalized to null; no-op saves do not add revisions.
+- Saves compare the expected revision under locks. Stale drafts receive the latest row without overwriting it, including when the text changed back to an earlier value.
+- Transfer edits lock accounts and rows in UUID order, update both user notes and audit both sides atomically, retaining their original system prefixes.
+- `user_note` is derived from `note` and the stored transfer `note_prefix`. Legacy prefixes are recovered only from original receipts or exact labels/empty-note suffixes; unrecognizable legacy text remains unchanged and is not automatically editable.
+- The new transfer RPC stores the system prefix separately. Original request receipts remain valid after note corrections.
+
 ## Transfers
 
 - Source and target differ, remain active and use the same currency.
@@ -45,6 +56,7 @@
 - `apply_transaction`
 - `transfer_between_accounts`
 - `void_transaction`
+- `update_transaction_note`
 - `close_account`
 - `archive_child`
 - `create_child`

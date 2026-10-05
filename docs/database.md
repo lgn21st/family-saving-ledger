@@ -75,7 +75,7 @@ supabase db push --db-url '<SESSION_POOLER_URL>'
 ./scripts/sync-production-to-dev.sh
 ```
 
-覆盖前必须输入 `SYNC dev`。脚本会：导出并校验 production 五张业务表；启动精简栈；
+覆盖前必须输入 `SYNC dev`。脚本会：导出并校验 production 六张业务表；启动精简栈；
 给开发库做 migration 和覆盖前备份；单事务导入；校验账本不变量。
 COPY 导入仍走开发库容器里的 `psql`（本机没有客户端）。
 
@@ -99,7 +99,7 @@ FSL_SYNC_DIR="$PWD/.local-backups/production-sync/production-YYYYMMDDTHHMMSSZ"
 
 docker exec supabase_db_family-saving-ledger psql -U postgres -d postgres \
   -v ON_ERROR_STOP=1 \
-  -c 'TRUNCATE TABLE public.interest_log, public.transactions, public.accounts, public.app_users, public.settings CASCADE;'
+  -c 'TRUNCATE TABLE public.transaction_note_edits, public.interest_log, public.transactions, public.accounts, public.app_users, public.settings CASCADE;'
 docker exec -i supabase_db_family-saving-ledger psql -U postgres -d postgres \
   --single-transaction --set ON_ERROR_STOP=on \
   --command 'SET session_replication_role = replica;' \

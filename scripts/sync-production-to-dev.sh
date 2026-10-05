@@ -4,7 +4,7 @@ set -euo pipefail
 umask 077
 
 readonly DB_CONTAINER="supabase_db_family-saving-ledger"
-readonly APP_TABLES="accounts app_users interest_log settings transactions"
+readonly APP_TABLES="accounts app_users interest_log settings transaction_note_edits transactions"
 readonly MINIMAL_EXCLUDES="edge-runtime,imgproxy,logflare,mailpit,postgres-meta,realtime,storage-api,studio,supavisor,vector"
 
 die() {

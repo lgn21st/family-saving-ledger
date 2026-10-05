@@ -9,6 +9,7 @@ begin
       'public.app_users',
       'public.accounts',
       'public.transactions',
+      'public.transaction_note_edits',
       'public.interest_log',
       'public.settings',
       'public.account_balances'
@@ -22,6 +23,7 @@ begin
       'public.apply_transaction(uuid,text,numeric,text,uuid,uuid)',
       'public.transfer_between_accounts(uuid,uuid,numeric,text,uuid,uuid)',
       'public.void_transaction(uuid,uuid)',
+      'public.update_transaction_note(uuid,text,integer,uuid)',
       'public.close_account(uuid,uuid)',
       'public.archive_child(uuid,uuid)',
       'public.create_child(text,text,text,uuid)',

@@ -38,6 +38,15 @@ begin
   end if;
 
   select count(*) into violation_count
+  from public.transactions t
+  where t.note_revision <> coalesce((
+    select max(e.revision) from public.transaction_note_edits e where e.transaction_id = t.id
+  ), 0);
+  if violation_count > 0 then
+    raise exception '发现 % 条备注版本与修改记录不一致的交易', violation_count;
+  end if;
+
+  select count(*) into violation_count
   from public.account_balances
   where balance < 0;
   if violation_count > 0 then

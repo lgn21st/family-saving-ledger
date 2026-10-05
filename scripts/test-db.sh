@@ -41,3 +41,8 @@ run_rollback_test \
   supabase/tests/api_privileges.sql \
   API_PRIVILEGE_TESTS_PASSED \
   "API privilege integration tests"
+
+run_rollback_test \
+  supabase/tests/transaction_notes.sql \
+  TRANSACTION_NOTE_TESTS_PASSED \
+  "Transaction note integration tests"
