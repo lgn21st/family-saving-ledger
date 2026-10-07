@@ -59,6 +59,20 @@ pnpm run dev
 `main` 的发布状态在 GitHub 对应提交的 Vercel 状态及 Production deployment 中查看；
 验收时核对部署 SHA 与预期提交，再检查生产入口，不只检查构建完成状态。
 
+仓库的 `vercel.json` 固定 Vite、`dist/` 和以下安装、构建命令：
+
+- 安装：`corepack pnpm install --frozen-lockfile`
+- 构建：`corepack pnpm run build`
+
+Corepack 按 `package.json` 的 `packageManager` 使用 pnpm 10.34.6；依赖版本统一由
+`pnpm-lock.yaml` 管理。依赖变更后运行 `pnpm install` 并一起提交锁文件。
+这避免自定义 `pnpm install` 命令选到 Vercel 镜像中的旧 pnpm，见
+[Vercel 包管理器文档](https://vercel.com/docs/package-managers)。
+
+Vercel 项目使用仓库根目录、Node.js `24.x`，在 Production / Preview 环境分别配置
+`VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY`，指向对应的云端 Supabase；
+这些 Vite 环境变量在构建时嵌入前端，修改后需要重新部署。
+
 发布前运行 `pnpm run check`，提交后推送 `main`。Vercel 使用云端生产环境变量构建，
 不要上传本机连接开发库的 `dist/`。前端构建不会执行数据库 migration；需要时按数据库文档另行发布。
 
