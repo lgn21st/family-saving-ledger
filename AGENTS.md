@@ -46,15 +46,15 @@ Commands, production push, and prod→dev sync live in `docs/database.md`. Confi
 For frontend-only changes:
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 For database, RPC, ledger semantics or full-project changes:
 
 ```bash
-npm run check
-npm run test:db
-npm run db:lint
+pnpm run check
+pnpm run test:db
+pnpm run db:lint
 git diff --check
 ```
 

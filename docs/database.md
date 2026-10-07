@@ -25,15 +25,15 @@
 
 | 入口 | 作用 |
 | --- | --- |
-| `npm run db:start` | 在 Docker context `remote` 上启动精简栈 |
-| `npm run db:migrate` | 开发库增量 migration |
-| `npm run db:lint` | 开发库 schema lint |
-| `npm run test:db` | 开发库上回滚式业务风险和 API 权限测试 |
+| `pnpm run db:start` | 在 Docker context `remote` 上启动精简栈 |
+| `pnpm run db:migrate` | 开发库增量 migration |
+| `pnpm run db:lint` | 开发库 schema lint |
+| `pnpm run test:db` | 开发库上回滚式业务风险和 API 权限测试 |
 | `scripts/run-on-remote-db.sh <supabase 子命令>` | 把任意 Supabase CLI 子命令接到开发库 URL |
 | `scripts/sync-production-to-dev.sh` | 用 production 业务数据覆盖开发库 |
 | `scripts/cleanup-remote-supabase-images.sh` | 删除开发机上未被容器引用的 Supabase 镜像 |
 
-前端门禁是 `npm run check`。动 schema 或账本语义时再加上 `test:db`、`db:lint` 和 `git diff --check`。
+前端门禁是 `pnpm run check`。动 schema 或账本语义时再加上 `test:db`、`db:lint` 和 `git diff --check`。
 
 ## Schema
 
@@ -46,10 +46,10 @@
 ## 开发库
 
 ```bash
-npm run db:start      # 容器未运行时
-npm run db:migrate
-npm run test:db
-npm run db:lint
+pnpm run db:start      # 容器未运行时
+pnpm run db:migrate
+pnpm run test:db
+pnpm run db:lint
 ```
 
 ## production

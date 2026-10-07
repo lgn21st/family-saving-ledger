@@ -4,7 +4,8 @@
 
 ## 工具链
 
-- Node.js 24.20.0（LTS）、npm 12；`mise.toml` 与 `package.json` 的 `engines.node` `24.x` 对齐 Vercel
+- Node.js 24.20.0（LTS）、pnpm 10.34.6；`engines.node` 的 `24.x` 对齐 Vercel，
+  本机 Node.js 版本由 `mise.toml` 固定，pnpm 版本仅由 `package.json` 的 `packageManager` 声明
 - TypeScript `~6.0.3`（TypeScript 7 尚不被当前 ESLint / Vue 工具链支持）
 - Supabase CLI、独立 Docker CLI
 - 本机与开发主机加入同一 Tailscale 网络并启用 MagicDNS
@@ -18,12 +19,13 @@ Host <REMOTE_SSH_ALIAS>
 
 ```bash
 mise install
-npm install --global npm@12.0.2
-npm ci
+pnpm install --frozen-lockfile
 docker context create remote --docker host=ssh://<REMOTE_SSH_ALIAS>
 docker context use remote
 docker --context remote version
 ```
+
+pnpm 使用已有的全局安装；未安装时可运行 `corepack enable pnpm` 启用。
 
 `context create` 只需首次执行；已有配置用 `docker context inspect remote` 检查目标。
 Context 保存在 `${DOCKER_CONFIG:-$HOME/.docker}`，安装 CLI 或拉取仓库不会创建它。
@@ -45,11 +47,11 @@ VITE_SUPABASE_ANON_KEY=<SUPABASE_LOCAL_ANON_KEY>
 ```
 
 ```bash
-npm run db:start      # 容器未运行时
-npm run dev
+pnpm run db:start      # 容器未运行时
+pnpm run dev
 ```
 
-前端验证：`npm run check`（含测试文件的 TypeScript 检查）。数据库验证见 [数据库与运维](database.md)。
+前端验证：`pnpm run check`（含测试文件的 TypeScript 检查）。数据库验证见 [数据库与运维](database.md)。
 
 ## 前端发布与验收
 
@@ -57,7 +59,7 @@ npm run dev
 `main` 的发布状态在 GitHub 对应提交的 Vercel 状态及 Production deployment 中查看；
 验收时核对部署 SHA 与预期提交，再检查生产入口，不只检查构建完成状态。
 
-发布前运行 `npm run check`，提交后推送 `main`。Vercel 使用云端生产环境变量构建，
+发布前运行 `pnpm run check`，提交后推送 `main`。Vercel 使用云端生产环境变量构建，
 不要上传本机连接开发库的 `dist/`。前端构建不会执行数据库 migration；需要时按数据库文档另行发布。
 
 发布后检查登录、余额、历史分页和刷新；在手机上检查安装、键盘遮挡及返回前台。

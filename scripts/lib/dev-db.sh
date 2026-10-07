@@ -59,7 +59,7 @@ dev_db_url() {
       | sed -n 's/^DB_URL="\(.*\)"$/\1/p'
   )"
   [[ -n "$local_db_url" ]] || {
-    _fsl_die "无法从 Supabase 开发栈读取数据库连接信息。请先 npm run db:start。"
+    _fsl_die "无法从 Supabase 开发栈读取数据库连接信息。请先 pnpm run db:start。"
     return 1
   }
   [[ "$local_db_url" == *"127.0.0.1"* || "$local_db_url" == *"localhost"* ]] || {
